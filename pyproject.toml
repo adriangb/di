@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "anydep"
+version = "0.1.0"
+description = "Dependency Injection, backed by AnyIO"
+authors = ["Adrian Garcia Badaracco <adrian@adriangb.com>"]
+
+[tool.poetry.dependencies]
+python = ">=3.8.0,<4"
+anyio = "~3.3"
+toposort = "1.6"
+
+[tool.poetry.dev-dependencies]
+pytest = "~6.2.4"
+pre-commit = "~2.13.0"
+pytest-cov = { version = "~2.12.1", extras = ["toml"] }
+pytest-sugar = "~0.9.4"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.isort]
+profile = "black"
+
+[tool.black]
+line-length = 120
+
+[tool.coverage.run]
+source = ["anydep"]
+
+[tool.coverage.report]
+exclude_lines = ["pragma: no cover"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

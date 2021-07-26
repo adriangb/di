@@ -1,0 +1,2 @@
+class WiringError(TypeError):
+    pass
