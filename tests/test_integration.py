@@ -26,8 +26,11 @@ def sync_gen() -> Generator[int, None, None]:
 
 
 class Class:
+    calls: int = 0
+
     def __init__(self) -> None:
         self.value = 1
+        Class.calls += 1
 
 
 def sub_dep(
@@ -65,4 +68,6 @@ def test_all():
     c = Container()
     c.wire_dependant(dep, cache={})
     r = asyncio.run(amain(dep, c))
+    assert Class.calls == 1  # basic check for caching
+    assert r == 14  # empirical for now
     print(r)
