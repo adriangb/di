@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import asyncio
 from typing import AsyncGenerator, Generator
+
+import pytest
 
 from anydep.container import Container
 from anydep.lifespan import AsyncExitStackDependencyLifespan
-from anydep.models import Dependant
 from anydep.params import Depends
 
 
@@ -25,12 +25,13 @@ def sync_gen() -> Generator[int, None, None]:
     yield 1
 
 
-class Class:
-    calls: int = 0
+counter_holder = {"counter": 0}
 
+
+class Class:
     def __init__(self) -> None:
         self.value = 1
-        Class.calls += 1
+        counter_holder["counter"] += 1
 
 
 def sub_dep(
@@ -58,16 +59,13 @@ def requestor(
     return v0.value + v1 + v2 + v4 + v5 + v7.value + v8 + v9.value + v10
 
 
-async def amain(dep: Dependant, container: Container):
-    async with AsyncExitStackDependencyLifespan() as lifespan:
-        return await container.solve(dep, lifespan=lifespan, solved={Depends(Class): Class()})
-
-
-def test_all():
+@pytest.mark.anyio
+async def test_all():
+    counter_holder["counter"] = 0
     dep = Depends(call=requestor)
-    c = Container()
-    c.wire_dependant(dep, cache={})
-    r = asyncio.run(amain(dep, c))
-    assert Class.calls == 1  # basic check for caching
+    container = Container()
+    container.wire_dependant(dep, cache={})
+    async with AsyncExitStackDependencyLifespan() as lifespan:
+        r = await container.solve(dep, lifespan=lifespan, solved={Depends(Class): Class()})
+    assert counter_holder["counter"] == 1  # basic check for caching
     assert r == 14  # empirical for now
-    print(r)

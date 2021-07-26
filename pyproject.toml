@@ -14,6 +14,7 @@ pytest = "~6.2.4"
 pre-commit = "~2.13.0"
 pytest-cov = { version = "~2.12.1", extras = ["toml"] }
 pytest-sugar = "~0.9.4"
+trio = "^0.19.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
