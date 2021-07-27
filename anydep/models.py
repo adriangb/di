@@ -59,9 +59,9 @@ class Dependant(Generic[DependencyType]):
 @dataclass
 class Task(Generic[DependencyType]):
     dependant: Dependant[DependencyProviderType]
-    positional_arguments: List["Task"] = field(default_factory=list, repr=False)
-    keyword_arguments: Dict[str, "Task"] = field(default_factory=dict, repr=False)
-    dependencies: Optional[List[Set["Task"]]] = field(default=None, repr=False)
+    positional_arguments: List["Task[DependencyProvider]"] = field(default_factory=list, repr=False)  # type: ignore
+    keyword_arguments: Dict[str, "Task[DependencyProvider]"] = field(default_factory=dict, repr=False)  # type: ignore
+    dependencies: List[Set["Task[DependencyProvider]"]] = field(default_factory=list, repr=False)  # type: ignore
 
     def __hash__(self) -> int:
         return id(self)

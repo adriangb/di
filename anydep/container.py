@@ -8,14 +8,13 @@ from contextlib import (
 )
 from functools import partial
 from itertools import chain
-from typing import Any, AsyncGenerator, Callable, Dict, List, Set, Tuple, Union
+from typing import AsyncGenerator, Callable, Dict, List, Set, Tuple, Union
 
 import anyio
 
 from anydep.concurrency import contextmanager_in_threadpool, run_in_threadpool
 from anydep.exceptions import DuplicateScopeError, UnknownScopError, WiringError
 from anydep.inspect import (
-    Parameter,
     call_from_annotation,
     get_parameters,
     is_async_gen_callable,
@@ -36,7 +35,7 @@ from anydep.topsort import topsort
 
 class Container:
     def __init__(self) -> None:
-        self._bound_providers: Dict[DependencyProvider, DependencyProvider] = {}
+        self._bound_providers: Dict[DependencyProvider, Dependant[DependencyProvider]] = {}
         self._bound_dependants: Dict[Dependant[DependencyProvider], Dependant[DependencyProvider]] = {}
         self._cached_values: Dict[DependencyProvider, Dependency] = {}
         self._stacks: Dict[Scope, AsyncExitStack] = {}
@@ -70,28 +69,29 @@ class Container:
         return self._scopes.index(scope)
 
     def _retrieve_cached_value(
-        self, dependant: Dependant[DependencyProviderType]
+        self, dependant: Dependant[DependencyProviderType[DependencyType]]
     ) -> Task[Callable[[], DependencyType]]:
         def retrieve():
             return self._cached_values[dependant.call]
 
-        new_dependant: Dependant[DependencyProviderType] = Dependant(call=retrieve, parameters=[])
+        new_dependant: Dependant[DependencyProviderType[DependencyType]] = Dependant(call=retrieve, parameters=[])
         return Task(dependant=new_dependant, positional_arguments=[], keyword_arguments={}, dependencies=[])
 
-    def _build_task(
+    def _wire_task(
         self,
-        dependant: Dependant[DependencyProviderType],
+        dependant: Dependant[DependencyProviderType[DependencyType]],
         *,
         seen: Set[Dependant],
         cache: Dict[DependencyProvider, Dict[Scope, Task]],
-    ) -> Task[DependencyProviderType]:
+    ) -> Task[DependencyProviderType[DependencyType]]:
+        assert dependant.call is not None  # for mypy
         if dependant in seen:
             raise WiringError("Circular dependencies detected")
         seen = seen | set([dependant])
         if dependant.parameters is None:
             dependant.parameters = get_parameters(dependant.call)  # type: ignore
             assert dependant.parameters is not None
-        task: Task[DependencyProviderType] = Task(dependant=dependant)
+        task: Task[DependencyProviderType[DependencyType]] = Task(dependant=dependant)
         for parameter in dependant.parameters:
             sub_dependant: Dependant[DependencyProvider]
             if isinstance(parameter.default, Dependant):
@@ -105,13 +105,14 @@ class Container:
                 sub_dependant = self._infered_dependants[key]
             else:
                 continue  # parameter has default value, use that
+            assert sub_dependant.call is not None  # for mypy
+            subtask: Union[None, Task[DependencyProvider]] = None
             if sub_dependant in self._bound_dependants:
                 sub_dependant = self._bound_dependants[sub_dependant]
-                subtask = self._build_task(sub_dependant, seen=seen, cache=cache)  # always rebuild
+                subtask = self._wire_task(sub_dependant, seen=seen, cache=cache)  # always rebuild
             else:
                 if sub_dependant.call in self._bound_providers and sub_dependant.scope is not False:
                     sub_dependant = self._bound_providers[sub_dependant.call]
-                subtask: Union[None, Task[DependencyProvider]] = None
                 scope: Scope
                 if sub_dependant.scope is False:
                     scope = False
@@ -120,7 +121,7 @@ class Container:
                 else:
                     scope = sub_dependant.scope
                 if scope is not False and sub_dependant.call in self._cached_values:
-                    subtask = self._retrieve_cached_value(sub_dependant)
+                    subtask = self._retrieve_cached_value(sub_dependant)  # type: ignore
                 else:
                     if scope is not False and sub_dependant.call in cache:
                         for cache_scope, cached in cache[sub_dependant.call].items():
@@ -129,8 +130,9 @@ class Container:
                                 subtask = cached
                                 break
                 if subtask is None:
-                    subtask = self._build_task(sub_dependant, seen=seen, cache=cache)
+                    subtask = self._wire_task(sub_dependant, seen=seen, cache=cache)
                     if scope is not False:
+                        assert sub_dependant.call is not None  # _wire_task allways returns with an assigned .call
                         cache[sub_dependant.call][scope] = subtask
             if parameter.positional:
                 task.positional_arguments.append(subtask)
@@ -138,11 +140,13 @@ class Container:
                 task.keyword_arguments[parameter.name] = subtask
         return task
 
-    def compile_task_graph(self, dependant: Dependant[DependencyProviderType]) -> Task[DependencyProviderType]:
+    def _build_task_dag(
+        self, dependant: Dependant[DependencyProviderType[DependencyType]]
+    ) -> Task[DependencyProviderType[DependencyType]]:
         if dependant.call is None:
             raise WiringError("Top level dependant must have a `call`")
 
-        task = self._build_task(dependant, seen=set(), cache=defaultdict(dict))
+        task = self._wire_task(dependant, seen=set(), cache=defaultdict(dict))
 
         graph: Dict[Task, Set[Task]] = {}
 
@@ -156,7 +160,7 @@ class Container:
 
         build_graph(task)
 
-        tasks = []
+        tasks: List[Set[Task[DependencyProvider]]] = []
         for group in topsort(graph):
             subtasks = tasks.copy()
             for task in group:
@@ -173,7 +177,7 @@ class Container:
             )
 
     async def _run_task(
-        self, task: Task[DependencyProviderType], solved: Dict[Task[DependencyProviderType], DependencyType]
+        self, task: Task[DependencyProviderType[DependencyType]], solved: Dict[Task[DependencyProvider], Dependency]
     ) -> None:
         scope = task.dependant.scope if task.dependant.scope is not None else self._scopes[-1]
         self._check_scope(scope)
@@ -196,24 +200,26 @@ class Container:
             res = await called
         solved[task] = res
 
-    async def resolve(self, call: DependencyProvider) -> DependencyType:
-        task = self.compile_task_graph(self.get_dependant(call))
+    async def resolve(self, call: DependencyProviderType[DependencyType]) -> DependencyType:
+        task = self._build_task_dag(self.get_dependant(call))
         solved: Dict[Task[DependencyProvider], Dependency] = {}
         for taskgroup in task.dependencies:
             async with anyio.create_task_group() as tg:
                 for task in taskgroup:
                     tg.start_soon(self._run_task, task, solved)
         for task, value in solved.items():
+            assert task.dependant.call is not None  # assigned above
             self._cached_values[task.dependant.call] = value
         return solved[task]
 
-    def get_dependant(self, call: DependencyProvider) -> Dependant[DependencyProvider]:
+    def get_dependant(
+        self, call: DependencyProviderType[DependencyType]
+    ) -> Dependant[DependencyProviderType[DependencyType]]:
         return Dependant(call=call)
 
-    def get_flat_dependencies(self, call: DependencyProvider) -> Set[Dependant[Any]]:
-        task = self.compile_task_graph(self.get_dependant(call))
+    def get_flat_dependencies(self, call: DependencyProvider) -> Set[Dependant[DependencyProvider]]:
+        task = self._build_task_dag(self.get_dependant(call))
         res = set()
-        assert task.dependencies is not None  # for mypy
         for tasks in task.dependencies:
             for tsk in tasks:
                 res.add(tsk.dependant)

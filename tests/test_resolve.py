@@ -1,14 +1,14 @@
 from collections import defaultdict
-from typing import AsyncGenerator, Dict, Generator, Union
+from typing import AsyncGenerator, DefaultDict, Generator, Union
 
 import pytest
 
 from anydep.container import Container
 from anydep.params import Depends
 
-counter = defaultdict(int)
+counter: DefaultDict[str, int] = defaultdict(int)
 
-lifetimes: Dict[str, Union[None, str]] = defaultdict(lambda: None)
+lifetimes: DefaultDict[str, Union[None, str]] = defaultdict(lambda: None)
 
 
 async def async_call() -> int:
@@ -65,7 +65,7 @@ def reset():
 
 
 @pytest.mark.anyio
-async def test_solve_call_id_cache(reset: None):
+async def test_solve_call_id_cache(reset: None) -> None:
     container = Container()
     async with container.enter_scope("app"):
         assert all(v is None for v in lifetimes.values())
