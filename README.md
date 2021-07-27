@@ -56,3 +56,6 @@ async def main():
 
 anyio.run(main())
 ```
+
+All the returned value will be cached within the `"app"` scope and trashed as soon as the scope is exited.
+In this case, all of `collector`'s dependencies will be executed in parallel.
