@@ -1,16 +1,10 @@
-from typing import Any, Optional
+from typing import Optional
 
-from anydep.models import Dependant, Dependency, DependencyProvider
+from anydep.models import Dependant, Dependency, DependencyProviderType, Scope
 
 
-def Depends(
-    call: Optional[DependencyProvider] = None,
-    *,
-    lifespan_policy: Optional[Any] = None,
-    cache_policy: Optional[Any] = None
-) -> Dependency:
+def Depends(call: Optional[DependencyProviderType] = None, *, scope: Optional[Scope] = None) -> Dependency:
     return Dependant(  # type: ignore
         call=call,
-        lifespan_policy=lifespan_policy,
-        cache_policy=cache_policy,
+        scope=scope,
     )

@@ -1,7 +1,9 @@
 from typing import Set
 
+import pytest
+
 from anydep.container import Container
-from anydep.models import Dependant
+from anydep.models import Dependant, DependencyProvider
 from anydep.params import Depends
 
 
@@ -33,25 +35,19 @@ def call7(c6: None = Depends(call6)):
     return
 
 
-def assert_compare_call(left: Set[Dependant], right: Set[Dependant]) -> None:
-    assert {d.call for d in left} == {d.call for d in right}
+def assert_compare_call(left: Set[Dependant], right: Set[DependencyProvider]) -> None:
+    assert {d.call for d in left} == right
 
 
-def test_get_flat_dependencies():
-    d1 = Dependant(call1)
-    d2 = Dependant(call2)
-    d3 = Dependant(call3)
-    d4 = Dependant(call4)
-    d5 = Dependant(call5)
-    d6 = Dependant(call6)
-    d7 = Dependant(call7)
-
+@pytest.mark.anyio
+async def test_get_flat_dependencies():
     container = Container()
 
-    assert_compare_call(container.get_flat_dependencies(d7), {d1, d2, d3, d4, d6})
-    assert_compare_call(container.get_flat_dependencies(d6), {d1, d2, d3, d4})
-    assert_compare_call(container.get_flat_dependencies(d5), {d1, d2, d3, d4})
-    assert_compare_call(container.get_flat_dependencies(d4), {d1, d2, d3})
-    assert_compare_call(container.get_flat_dependencies(d3), set())
-    assert_compare_call(container.get_flat_dependencies(d2), {d1})
-    assert_compare_call(container.get_flat_dependencies(d1), set())
+    async with container.enter_scope("dummy"):
+        assert_compare_call(container.get_flat_dependencies(call7), {call1, call2, call3, call4, call6})
+        assert_compare_call(container.get_flat_dependencies(call6), {call1, call2, call3, call4})
+        assert_compare_call(container.get_flat_dependencies(call5), {call1, call2, call3, call4})
+        assert_compare_call(container.get_flat_dependencies(call4), {call1, call2, call3})
+        assert_compare_call(container.get_flat_dependencies(call3), set())
+        assert_compare_call(container.get_flat_dependencies(call2), {call1})
+        assert_compare_call(container.get_flat_dependencies(call1), set())

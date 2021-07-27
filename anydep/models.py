@@ -1,3 +1,5 @@
+import inspect as stdlib_inspect
+from dataclasses import dataclass, field
 from typing import (
     Any,
     AsyncGenerator,
@@ -6,6 +8,7 @@ from typing import (
     Dict,
     Generator,
     Generic,
+    Hashable,
     List,
     Optional,
     Set,
@@ -13,59 +16,52 @@ from typing import (
     Union,
 )
 
-Dependency = TypeVar("Dependency")
+DependencyType = TypeVar("DependencyType")
 
-DependencyProvider = Union[
-    Callable[..., Dependency],
-    Callable[..., Awaitable[Dependency]],
-    Generator[Dependency, None, None],
-    AsyncGenerator[Dependency, None],
+DependencyProviderType = Union[
+    Callable[..., DependencyType],
+    Callable[..., Awaitable[DependencyType]],
+    Generator[DependencyType, None, None],
+    AsyncGenerator[DependencyType, None],
 ]
 
+Scope = Hashable
 
-class Dependant(Generic[Dependency]):
+DependencyProvider = Union[
+    Callable[..., Any],
+    Callable[..., Awaitable[Any]],
+    Generator[Any, None, None],
+    AsyncGenerator[Any, None],
+]
 
-    def __init__(
-        self,
-        call: Optional[DependencyProvider] = None,
-        *,
-        lifespan_policy: Optional[Any] = None,
-        cache_policy: Optional[Any] = None,
-    ) -> None:
-        self.call = call
-        self.lifespan_policy = lifespan_policy
-        self.cache_policy = cache_policy
-        self.wired: bool = False
-        self.positional_arguments: List[Dependant] = []
-        self.keyword_arguments: Dict[str, Dependant] = {}
-
-    @property
-    def dependencies(self) -> List["Dependant"]:
-        return [*self.positional_arguments, *self.keyword_arguments.values()]
-
-    def __repr__(self) -> str:
-        call = f"call={self.call}"
-        lifespan_policy = "" if self.lifespan_policy is None else f", lifespan_policy={self.lifespan_policy}"
-        cache_policy = "" if self.cache_policy is None else f", cache_policy={self.cache_policy}"
-        return f"{self.__class__.__name__}({call}{lifespan_policy}{cache_policy})"
+Dependency = Any
 
 
-class Task(Generic[Dependency]):
+@dataclass
+class Parameter:
+    positional: bool
+    name: str
+    annotation: Any
+    default: Any
+    empty: Any = stdlib_inspect.Parameter.empty
 
-    def __init__(
-        self,
-        call: Optional[DependencyProvider] = None,
-        *,
-        lifespan_policy: Optional[Any] = None,
-    ) -> None:
-        self.call = call
-        self.lifespan_policy = lifespan_policy
-        self.wired: bool = False
-        self.positional_arguments: List[Task] = []
-        self.keyword_arguments: Dict[str, Task] = {}
-        self.dependencies: List[Set[Task]] = []
 
-    def __repr__(self) -> str:
-        call = f"call={self.call}"
-        lifespan_policy = "" if self.lifespan_policy is None else f", lifespan_policy={self.lifespan_policy}"
-        return f"{self.__class__.__name__}({call}{lifespan_policy})"
+@dataclass
+class Dependant(Generic[DependencyType]):
+    call: Optional[DependencyProviderType] = None
+    scope: Optional[Scope] = None
+    parameters: Union[List[Parameter], None] = None
+
+    def __hash__(self) -> int:
+        return id(self)
+
+
+@dataclass
+class Task(Generic[DependencyType]):
+    dependant: Dependant[DependencyProviderType]
+    positional_arguments: List["Task"] = field(default_factory=list, repr=False)
+    keyword_arguments: Dict[str, "Task"] = field(default_factory=dict, repr=False)
+    dependencies: Optional[List[Set["Task"]]] = field(default=None, repr=False)
+
+    def __hash__(self) -> int:
+        return id(self)
