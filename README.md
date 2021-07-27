@@ -36,8 +36,8 @@ def sync_gen() -> Generator[int, None, None]:
     yield 4
 
 class Class:
-    def __init__(self) -> None:
-        self.value = 5
+    def __init__(self, value: int = 5) -> None:
+        self.value = value
 
 def collector(
     v5: Class,
@@ -52,7 +52,8 @@ def collector(
 async def main():
     container = Container()
     async with container.enter_scope("app"):
-        assert (await container.resolve(collector)) == 15
+        container.bind(Class, Dependant(lambda: Class(-10)))  # bind an instance, class, callable, etc.; for example an incoming request
+        assert (await container.resolve(collector)) == 0  # summed up to 10 but Class.value is -10
 
 anyio.run(main())
 ```
