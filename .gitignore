@@ -6,6 +6,7 @@
 !/.flake8
 !/.pre-commit-config.yaml
 !/anydep/
+!/comparisons/
 !/docs/
 !/docs_src/
 !/index.html
