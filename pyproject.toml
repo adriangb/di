@@ -9,11 +9,11 @@ python = ">=3.8.0,<4"
 anyio = "~3.3"
 
 [tool.poetry.dev-dependencies]
-pytest = "~6.2.4"
-pre-commit = "~2.13.0"
-pytest-cov = { version = "~2.12.1", extras = ["toml"] }
-pytest-sugar = "~0.9.4"
-trio = "^0.19.0"
+pytest = "~6"
+pre-commit = "~2"
+pytest-cov = { version = "~2", extras = ["toml"] }
+pytest-sugar = "~0"
+trio = "~0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
