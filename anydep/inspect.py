@@ -1,4 +1,5 @@
 import inspect
+import types
 from typing import List, get_type_hints
 
 from anydep.exceptions import WiringError
@@ -33,6 +34,9 @@ def get_parameters(call: DependencyProvider) -> List[Parameter]:
     params = inspect.signature(call).parameters
     if inspect.isclass(call):
         types_from = call.__init__  # type: ignore
+    elif not isinstance(call, types.FunctionType) and hasattr(call, "__call__"):
+        # callable class
+        types_from = call.__call__  # type: ignore
     else:
         types_from = call
     annotations = get_type_hints(types_from)

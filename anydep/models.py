@@ -3,8 +3,8 @@ from dataclasses import dataclass, field
 from typing import (
     Any,
     AsyncGenerator,
-    Awaitable,
     Callable,
+    Coroutine,
     Dict,
     Generator,
     Generic,
@@ -20,10 +20,11 @@ DependencyType = TypeVar("DependencyType")
 
 DependencyProviderType = Union[
     Callable[..., DependencyType],
-    Callable[..., Awaitable[DependencyType]],
+    Callable[..., Coroutine[Any, Any, DependencyType]],
     Callable[..., Generator[DependencyType, None, None]],
     Callable[..., AsyncGenerator[DependencyType, None]],
 ]
+
 
 Scope = Hashable
 
@@ -43,7 +44,7 @@ class Parameter:
 
 @dataclass
 class Dependant(Generic[DependencyType]):
-    call: Optional[DependencyProviderType] = None
+    call: DependencyProviderType
     scope: Optional[Scope] = None
     parameters: Union[List[Parameter], None] = None
 

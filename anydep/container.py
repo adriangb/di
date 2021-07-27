@@ -8,7 +8,7 @@ from contextlib import (
 )
 from functools import partial
 from itertools import chain
-from typing import AsyncGenerator, Callable, Dict, List, Set, Tuple, Union
+from typing import AsyncGenerator, Callable, Dict, Hashable, List, Set, Tuple, Union
 
 import anyio
 
@@ -37,10 +37,20 @@ class Container:
     def __init__(self) -> None:
         self._bound_providers: Dict[DependencyProvider, Dependant[DependencyProvider]] = {}
         self._bound_dependants: Dict[Dependant[DependencyProvider], Dependant[DependencyProvider]] = {}
-        self._cached_values: Dict[DependencyProvider, Dependency] = {}
+        self._cached_values: Dict[Hashable, Dict[DependencyProvider, Dependency]] = {}
         self._stacks: Dict[Scope, AsyncExitStack] = {}
         self._scopes: List[Scope] = []
         self._infered_dependants: Dict[Tuple[DependencyProvider, str], Dependant[DependencyProvider]] = {}
+
+    def bind(
+        self,
+        target: Union[Dependant[DependencyProviderType[DependencyType]], DependencyProviderType[Dependency]],
+        dependant: Dependant[DependencyProviderType[DependencyType]],
+    ) -> None:
+        if isinstance(target, Dependant):
+            self._bound_dependants[target] = dependant
+        else:
+            self._bound_providers[target] = dependant
 
     @asynccontextmanager
     async def enter_scope(self, scope: Scope) -> AsyncGenerator[None, None]:
@@ -51,28 +61,33 @@ class Container:
             self._stacks[scope] = stack
             bound_providers = self._bound_providers
             bound_dependants = self._bound_dependants
-            cached_values = self._cached_values
             self._bound_providers = bound_providers.copy()
             self._bound_dependants = bound_dependants.copy()
-            self._cached_values = cached_values.copy()
+            self._cached_values[scope] = {}
             try:
                 yield
             finally:
                 self._stacks.pop(scope)
                 self._bound_providers = bound_providers
                 self._bound_dependants = bound_dependants
-                self._cached_values = cached_values
+                self._cached_values.pop(scope)
                 self._scopes.pop()
 
     def _get_scope_index(self, scope: Scope) -> int:
         self._check_scope(scope)
         return self._scopes.index(scope)
 
-    def _retrieve_cached_value(
-        self, dependant: Dependant[DependencyProviderType[DependencyType]]
-    ) -> Task[Callable[[], DependencyType]]:
+    def _resolve_scope(self, dependant_scope: Scope) -> Hashable:
+        if dependant_scope is False:
+            return False
+        elif dependant_scope is None:
+            return self._scopes[-1]  # current scope
+        else:
+            return dependant_scope
+
+    def _task_from_cached_value(self, value: DependencyType) -> Task[Callable[[], DependencyType]]:
         def retrieve():
-            return self._cached_values[dependant.call]
+            return value
 
         new_dependant: Dependant[DependencyProviderType[DependencyType]] = Dependant(call=retrieve, parameters=[])
         return Task(dependant=new_dependant, positional_arguments=[], keyword_arguments={}, dependencies=[])
@@ -113,17 +128,16 @@ class Container:
             else:
                 if sub_dependant.call in self._bound_providers and sub_dependant.scope is not False:
                     sub_dependant = self._bound_providers[sub_dependant.call]
-                scope: Scope
-                if sub_dependant.scope is False:
-                    scope = False
-                elif sub_dependant.scope is None:
-                    scope = self._scopes[-1]  # current scope
-                else:
-                    scope = sub_dependant.scope
-                if scope is not False and sub_dependant.call in self._cached_values:
-                    subtask = self._retrieve_cached_value(sub_dependant)
-                else:
-                    if scope is not False and sub_dependant.call in cache:
+                scope = self._resolve_scope(sub_dependant.scope)
+                self._check_scope(scope)
+                if scope is not False:
+                    for cache_scope in self._scopes:
+                        cached_values = self._cached_values[cache_scope]
+                        if sub_dependant.call in cached_values:
+                            value = cached_values[sub_dependant.call]
+                            subtask = self._task_from_cached_value(value)
+                            break
+                    if sub_dependant.call in cache:
                         for cache_scope, cached in cache[sub_dependant.call].items():
                             if self._get_scope_index(cache_scope) <= self._get_scope_index(scope):
                                 # e.g. cache_scope == "app" and scope == "request"
@@ -171,6 +185,8 @@ class Container:
         return task
 
     def _check_scope(self, scope: Scope):
+        if scope is False:
+            return
         if scope not in self._stacks:  # self._stacks is just an O(1) lookup of current scopes
             raise UnknownScopError(
                 f"Scope {scope} is not known. Did you forget to enter it? Known scopes: {self._scopes}"
@@ -211,7 +227,9 @@ class Container:
                     tg.start_soon(self._run_task, task, solved)
         for task, value in solved.items():
             assert task.dependant.call is not None  # assigned above
-            self._cached_values[task.dependant.call] = value
+            if task.dependant.scope is not False:
+                scope = self._resolve_scope(task.dependant.scope)
+                self._cached_values[scope][task.dependant.call] = value
         return solved[task]
 
     def get_dependant(
