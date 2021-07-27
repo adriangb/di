@@ -21,20 +21,15 @@ DependencyType = TypeVar("DependencyType")
 DependencyProviderType = Union[
     Callable[..., DependencyType],
     Callable[..., Awaitable[DependencyType]],
-    Generator[DependencyType, None, None],
-    AsyncGenerator[DependencyType, None],
+    Callable[..., Generator[DependencyType, None, None]],
+    Callable[..., AsyncGenerator[DependencyType, None]],
 ]
 
 Scope = Hashable
 
-DependencyProvider = Union[
-    Callable[..., Any],
-    Callable[..., Awaitable[Any]],
-    Generator[Any, None, None],
-    AsyncGenerator[Any, None],
-]
-
 Dependency = Any
+
+DependencyProvider = DependencyProviderType[Dependency]
 
 
 @dataclass
@@ -59,9 +54,9 @@ class Dependant(Generic[DependencyType]):
 @dataclass
 class Task(Generic[DependencyType]):
     dependant: Dependant[DependencyProviderType]
-    positional_arguments: List["Task[DependencyProvider]"] = field(default_factory=list, repr=False)  # type: ignore
-    keyword_arguments: Dict[str, "Task[DependencyProvider]"] = field(default_factory=dict, repr=False)  # type: ignore
-    dependencies: List[Set["Task[DependencyProvider]"]] = field(default_factory=list, repr=False)  # type: ignore
+    positional_arguments: List["Task[DependencyProvider]"] = field(default_factory=list, repr=False)
+    keyword_arguments: Dict[str, "Task[DependencyProvider]"] = field(default_factory=dict, repr=False)
+    dependencies: List[Set["Task[DependencyProvider]"]] = field(default_factory=list, repr=False)
 
     def __hash__(self) -> int:
         return id(self)

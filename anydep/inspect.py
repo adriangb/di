@@ -30,12 +30,12 @@ def is_gen_callable(call: DependencyProvider) -> bool:
 
 def get_parameters(call: DependencyProvider) -> List[Parameter]:
     res = []
-    params = inspect.signature(call).parameters  # type: ignore
+    params = inspect.signature(call).parameters
     if inspect.isclass(call):
         types_from = call.__init__  # type: ignore
     else:
         types_from = call
-    annotations = get_type_hints(types_from)  # type: ignore
+    annotations = get_type_hints(types_from)
     for param_name, parameter in params.items():
         res.append(
             Parameter(

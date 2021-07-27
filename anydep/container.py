@@ -89,7 +89,7 @@ class Container:
             raise WiringError("Circular dependencies detected")
         seen = seen | set([dependant])
         if dependant.parameters is None:
-            dependant.parameters = get_parameters(dependant.call)  # type: ignore
+            dependant.parameters = get_parameters(dependant.call)
             assert dependant.parameters is not None
         task: Task[DependencyProviderType[DependencyType]] = Task(dependant=dependant)
         for parameter in dependant.parameters:
@@ -121,7 +121,7 @@ class Container:
                 else:
                     scope = sub_dependant.scope
                 if scope is not False and sub_dependant.call in self._cached_values:
-                    subtask = self._retrieve_cached_value(sub_dependant)  # type: ignore
+                    subtask = self._retrieve_cached_value(sub_dependant)
                 else:
                     if scope is not False and sub_dependant.call in cache:
                         for cache_scope, cached in cache[sub_dependant.call].items():
@@ -183,14 +183,16 @@ class Container:
         self._check_scope(scope)
         args = (solved[subdep] for subdep in task.positional_arguments)
         kwargs = {keyword: solved[subdep] for keyword, subdep in task.keyword_arguments.items()}
-        if is_async_gen_callable(task.dependant.call):  # type: ignore
-            call = asynccontextmanager(partial(task.dependant.call, *args, **kwargs))  # type: ignore
-        elif is_gen_callable(task.dependant.call):  # type: ignore
-            call = contextmanager(partial(task.dependant.call, *args, **kwargs))  # type: ignore
-        elif not is_coroutine_callable(task.dependant.call):  # type: ignore
-            call = partial(run_in_threadpool, partial(task.dependant.call, *args, **kwargs))  # type: ignore
+        assert task.dependant.call is not None, "Cannot run task without a call! Is the Dependant unwired?"
+        call: DependencyProvider
+        if is_async_gen_callable(task.dependant.call):
+            call = asynccontextmanager(partial(task.dependant.call, *args, **kwargs))
+        elif is_gen_callable(task.dependant.call):
+            call = contextmanager(partial(task.dependant.call, *args, **kwargs))
+        elif not is_coroutine_callable(task.dependant.call):
+            call = partial(run_in_threadpool, partial(task.dependant.call, *args, **kwargs))
         else:
-            call = partial(task.dependant.call, *args, **kwargs)  # type: ignore
+            call = partial(task.dependant.call, *args, **kwargs)
         called = call()
         if isinstance(called, AbstractContextManager):
             called = contextmanager_in_threadpool(called)
