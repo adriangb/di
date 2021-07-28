@@ -38,6 +38,7 @@ from anydep.models import (
     Dependant,
     Dependency,
     DependencyProvider,
+    DependencyProviderType,
     DependencyType,
     GeneratorProvider,
     Scope,
@@ -48,8 +49,7 @@ from anydep.topsort import topsort
 
 class Container:
     def __init__(self) -> None:
-        self._bound_providers: Dict[DependencyProvider, Dependant[DependencyProvider]] = {}
-        self._bound_dependants: Dict[Dependant[DependencyProvider], Dependant[DependencyProvider]] = {}
+        self._binds: Dict[DependencyProvider, Dependant[DependencyProvider]] = {}
         self._cached_values: Dict[Hashable, Dict[DependencyProvider, Dependency]] = {}
         self._stacks: Dict[Scope, AsyncExitStack] = {}
         self._scopes: List[Scope] = []
@@ -74,7 +74,7 @@ class Container:
         ...
 
     def bind(self, target: DependencyProvider, source: DependencyProvider) -> None:
-        self._bound_providers[target] = Dependant(source)  # type: ignore
+        self._binds[target] = Dependant(source)  # type: ignore
 
     @asynccontextmanager
     async def enter_scope(self, scope: Scope) -> AsyncGenerator[None, None]:
@@ -83,17 +83,14 @@ class Container:
         async with AsyncExitStack() as stack:
             self._scopes.append(scope)
             self._stacks[scope] = stack
-            bound_providers = self._bound_providers
-            bound_dependants = self._bound_dependants
-            self._bound_providers = bound_providers.copy()
-            self._bound_dependants = bound_dependants.copy()
+            bound_providers = self._binds
+            self._binds = bound_providers.copy()
             self._cached_values[scope] = {}
             try:
                 yield
             finally:
                 self._stacks.pop(scope)
-                self._bound_providers = bound_providers
-                self._bound_dependants = bound_dependants
+                self._binds = bound_providers
                 self._cached_values.pop(scope)
                 self._scopes.pop()
 
@@ -146,32 +143,28 @@ class Container:
                 continue  # parameter has default value, use that
             assert sub_dependant.call is not None  # for mypy
             subtask: Union[None, Task[DependencyProvider]] = None
-            if sub_dependant in self._bound_dependants:
-                sub_dependant = self._bound_dependants[sub_dependant]
-                subtask = self._wire_task(sub_dependant, seen=seen, cache=cache)  # always rebuild
-            else:
-                if sub_dependant.call in self._bound_providers and sub_dependant.scope is not False:
-                    sub_dependant = self._bound_providers[sub_dependant.call]
-                scope = self._resolve_scope(sub_dependant.scope)
-                self._check_scope(scope)
-                if scope is not False:
-                    for cache_scope in self._scopes:
-                        cached_values = self._cached_values[cache_scope]
-                        if sub_dependant.call in cached_values:
-                            value = cached_values[sub_dependant.call]
-                            subtask = self._task_from_cached_value(value)
+            if sub_dependant.call in self._binds and sub_dependant.scope is not False:
+                sub_dependant = self._binds[sub_dependant.call]
+            scope = self._resolve_scope(sub_dependant.scope)
+            self._check_scope(scope)
+            if scope is not False:
+                for cache_scope in self._scopes:
+                    cached_values = self._cached_values[cache_scope]
+                    if sub_dependant.call in cached_values:
+                        value = cached_values[sub_dependant.call]
+                        subtask = self._task_from_cached_value(value)
+                        break
+                if sub_dependant.call in cache:
+                    for cache_scope, cached in cache[sub_dependant.call].items():
+                        if self._get_scope_index(cache_scope) <= self._get_scope_index(scope):
+                            # e.g. cache_scope == "app" and scope == "request"
+                            subtask = cached
                             break
-                    if sub_dependant.call in cache:
-                        for cache_scope, cached in cache[sub_dependant.call].items():
-                            if self._get_scope_index(cache_scope) <= self._get_scope_index(scope):
-                                # e.g. cache_scope == "app" and scope == "request"
-                                subtask = cached
-                                break
-                if subtask is None:
-                    subtask = self._wire_task(sub_dependant, seen=seen, cache=cache)
-                    if scope is not False:
-                        assert sub_dependant.call is not None  # _wire_task allways returns with an assigned .call
-                        cache[sub_dependant.call][scope] = subtask
+            if subtask is None:
+                subtask = self._wire_task(sub_dependant, seen=seen, cache=cache)
+                if scope is not False:
+                    assert sub_dependant.call is not None  # _wire_task allways returns with an assigned .call
+                    cache[sub_dependant.call][scope] = subtask
             if parameter.positional:
                 task.positional_arguments.append(subtask)
             else:
@@ -265,7 +258,7 @@ class Container:
         ...
 
     async def resolve(
-        self, call: DependencyProvider
+        self, call: DependencyProviderType[DependencyType]
     ) -> Tuple[Dict[Dependant[DependencyProvider], Dependency], DependencyType]:
         task = self._build_task_dag(self.get_dependant(call))
         solved: Dict[Task[DependencyProvider], Dependency] = {}
@@ -279,6 +272,25 @@ class Container:
                 scope = self._resolve_scope(task.dependant.scope)
                 self._cached_values[scope][task.dependant.call] = value
         return {t.dependant: v for t, v in solved.items()}, solved[task]
+
+    @overload
+    async def execute(self, call: AsyncGeneratorProvider[DependencyType]) -> DependencyType:
+        ...
+
+    @overload
+    async def execute(self, call: CoroutineProvider[DependencyType]) -> DependencyType:
+        ...
+
+    @overload
+    async def execute(self, call: GeneratorProvider[DependencyType]) -> DependencyType:
+        ...
+
+    @overload
+    async def execute(self, call: CallableProvider[DependencyType]) -> DependencyType:
+        ...
+
+    async def execute(self, call: DependencyProviderType[DependencyType]) -> DependencyType:
+        return (await self.resolve(call))[1]  # type: ignore
 
     @overload
     def get_dependant(

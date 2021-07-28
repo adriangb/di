@@ -70,7 +70,7 @@ async def test_solve_call_id_cache(reset: None) -> None:
     async with container.enter_scope("app"):
         assert all(v is None for v in lifetimes.values())
         for _ in range(2):  # to check that values are cached
-            deps, r = await container.resolve(parent)
+            r = await container.execute(parent)
             assert all(v == "started" for v in lifetimes.values())
     assert all(v == "finished" for v in lifetimes.values())
     assert r == 30
