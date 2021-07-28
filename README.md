@@ -4,9 +4,9 @@ WIP.
 
 A dependency injection framework based on:
 
-- Type annotations for inference of types
+- Type inference though defaults & evaluation.
 - Anyio compatibility
-- Arbitrary nested scoping for value caching & lifetimes
+- Arbitrary nested scoping for value caching & lifetimes (no specific Singleton, App/Request scope, etc., it's up to the implementer)
 - Lifetimes for generator context managers (i.e. an AsyncExitStack for each scope)
 - Explicit building of a task DAG & parallel execution
 - Concurrency for sync function by executing them in a ThreadPool
@@ -52,7 +52,7 @@ def collector(
 async def main():
     container = Container()
     async with container.enter_scope("app"):
-        container.bind(Class, Dependant(lambda: Class(-10)))  # bind an instance, class, callable, etc.; for example an incoming request
+        container.bind(Class, lambda: Class(-10))  # bind an instance, class, callable, etc.; for example an incoming request
         assert (await container.resolve(collector)) == 0  # summed up to 10 but Class.value is -10
 
 anyio.run(main())
