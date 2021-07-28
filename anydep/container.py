@@ -8,7 +8,17 @@ from contextlib import (
 )
 from functools import partial
 from itertools import chain
-from typing import AsyncGenerator, Callable, Dict, Hashable, List, Set, Tuple, Union
+from typing import (
+    AsyncGenerator,
+    Callable,
+    Dict,
+    Hashable,
+    List,
+    Set,
+    Tuple,
+    Union,
+    overload,
+)
 
 import anyio
 
@@ -22,11 +32,14 @@ from anydep.inspect import (
     is_gen_callable,
 )
 from anydep.models import (
+    AsyncGeneratorProvider,
+    CallableProvider,
+    CoroutineProvider,
     Dependant,
     Dependency,
     DependencyProvider,
-    DependencyProviderType,
     DependencyType,
+    GeneratorProvider,
     Scope,
     Task,
 )
@@ -42,15 +55,26 @@ class Container:
         self._scopes: List[Scope] = []
         self._infered_dependants: Dict[Tuple[DependencyProvider, str], Dependant[DependencyProvider]] = {}
 
+    @overload
     def bind(
-        self,
-        target: Union[Dependant[DependencyProviderType[DependencyType]], DependencyProviderType[Dependency]],
-        dependant: Dependant[DependencyProviderType[DependencyType]],
+        self, target: AsyncGeneratorProvider[DependencyType], source: AsyncGeneratorProvider[DependencyType]
     ) -> None:
-        if isinstance(target, Dependant):
-            self._bound_dependants[target] = dependant
-        else:
-            self._bound_providers[target] = dependant
+        ...
+
+    @overload
+    def bind(self, target: CoroutineProvider[DependencyType], source: CoroutineProvider[DependencyType]) -> None:
+        ...
+
+    @overload
+    def bind(self, target: GeneratorProvider[DependencyType], source: GeneratorProvider[DependencyType]) -> None:
+        ...
+
+    @overload
+    def bind(self, target: CallableProvider[DependencyType], source: CallableProvider[DependencyType]) -> None:
+        ...
+
+    def bind(self, target: DependencyProvider, source: DependencyProvider) -> None:
+        self._bound_providers[target] = Dependant(source)  # type: ignore
 
     @asynccontextmanager
     async def enter_scope(self, scope: Scope) -> AsyncGenerator[None, None]:
@@ -89,16 +113,16 @@ class Container:
         def retrieve():
             return value
 
-        new_dependant: Dependant[DependencyProviderType[DependencyType]] = Dependant(call=retrieve, parameters=[])
+        new_dependant: Dependant[CallableProvider[DependencyType]] = Dependant(call=retrieve, parameters=[])
         return Task(dependant=new_dependant, positional_arguments=[], keyword_arguments={}, dependencies=[])
 
     def _wire_task(
         self,
-        dependant: Dependant[DependencyProviderType[DependencyType]],
+        dependant: Dependant[DependencyProvider],
         *,
         seen: Set[Dependant],
         cache: Dict[DependencyProvider, Dict[Scope, Task]],
-    ) -> Task[DependencyProviderType[DependencyType]]:
+    ) -> Task[DependencyProvider]:
         assert dependant.call is not None  # for mypy
         if dependant in seen:
             raise WiringError("Circular dependencies detected")
@@ -106,7 +130,7 @@ class Container:
         if dependant.parameters is None:
             dependant.parameters = get_parameters(dependant.call)
             assert dependant.parameters is not None
-        task: Task[DependencyProviderType[DependencyType]] = Task(dependant=dependant)
+        task = Task(dependant=dependant)
         for parameter in dependant.parameters:
             sub_dependant: Dependant[DependencyProvider]
             if isinstance(parameter.default, Dependant):
@@ -154,9 +178,7 @@ class Container:
                 task.keyword_arguments[parameter.name] = subtask
         return task
 
-    def _build_task_dag(
-        self, dependant: Dependant[DependencyProviderType[DependencyType]]
-    ) -> Task[DependencyProviderType[DependencyType]]:
+    def _build_task_dag(self, dependant: Dependant[DependencyProvider]) -> Task[DependencyProvider]:
         if dependant.call is None:
             raise WiringError("Top level dependant must have a `call`")
 
@@ -193,7 +215,7 @@ class Container:
             )
 
     async def _run_task(
-        self, task: Task[DependencyProviderType[DependencyType]], solved: Dict[Task[DependencyProvider], Dependency]
+        self, task: Task[DependencyProvider], solved: Dict[Task[DependencyProvider], Dependency]
     ) -> None:
         scope = task.dependant.scope if task.dependant.scope is not None else self._scopes[-1]
         self._check_scope(scope)
@@ -202,9 +224,9 @@ class Container:
         assert task.dependant.call is not None, "Cannot run task without a call! Is the Dependant unwired?"
         call: DependencyProvider
         if is_async_gen_callable(task.dependant.call):
-            call = asynccontextmanager(partial(task.dependant.call, *args, **kwargs))
+            call = asynccontextmanager(partial(task.dependant.call, *args, **kwargs))  # type: ignore
         elif is_gen_callable(task.dependant.call):
-            call = contextmanager(partial(task.dependant.call, *args, **kwargs))
+            call = contextmanager(partial(task.dependant.call, *args, **kwargs))  # type: ignore
         elif not is_coroutine_callable(task.dependant.call):
             call = partial(run_in_threadpool, partial(task.dependant.call, *args, **kwargs))
         else:
@@ -218,7 +240,33 @@ class Container:
             res = await called
         solved[task] = res
 
-    async def resolve(self, call: DependencyProviderType[DependencyType]) -> DependencyType:
+    @overload
+    async def resolve(
+        self, call: AsyncGeneratorProvider[DependencyType]
+    ) -> Tuple[Dict[Dependant[DependencyProvider], Dependency], DependencyType]:
+        ...
+
+    @overload
+    async def resolve(
+        self, call: CoroutineProvider[DependencyType]
+    ) -> Tuple[Dict[Dependant[DependencyProvider], Dependency], DependencyType]:
+        ...
+
+    @overload
+    async def resolve(
+        self, call: GeneratorProvider[DependencyType]
+    ) -> Tuple[Dict[Dependant[DependencyProvider], Dependency], DependencyType]:
+        ...
+
+    @overload
+    async def resolve(
+        self, call: CallableProvider[DependencyType]
+    ) -> Tuple[Dict[Dependant[DependencyProvider], Dependency], DependencyType]:
+        ...
+
+    async def resolve(
+        self, call: DependencyProvider
+    ) -> Tuple[Dict[Dependant[DependencyProvider], Dependency], DependencyType]:
         task = self._build_task_dag(self.get_dependant(call))
         solved: Dict[Task[DependencyProvider], Dependency] = {}
         for taskgroup in task.dependencies:
@@ -230,11 +278,27 @@ class Container:
             if task.dependant.scope is not False:
                 scope = self._resolve_scope(task.dependant.scope)
                 self._cached_values[scope][task.dependant.call] = value
-        return solved[task]
+        return {t.dependant: v for t, v in solved.items()}, solved[task]
 
+    @overload
     def get_dependant(
-        self, call: DependencyProviderType[DependencyType]
-    ) -> Dependant[DependencyProviderType[DependencyType]]:
+        self, call: AsyncGeneratorProvider[DependencyType]
+    ) -> Dependant[AsyncGeneratorProvider[DependencyType]]:
+        ...
+
+    @overload
+    def get_dependant(self, call: CoroutineProvider[DependencyType]) -> Dependant[CoroutineProvider[DependencyType]]:
+        ...
+
+    @overload
+    def get_dependant(self, call: GeneratorProvider[DependencyType]) -> Dependant[GeneratorProvider[DependencyType]]:
+        ...
+
+    @overload
+    def get_dependant(self, call: CallableProvider[DependencyType]) -> Dependant[CallableProvider[DependencyType]]:
+        ...
+
+    def get_dependant(self, call: DependencyProvider) -> Dependant[DependencyProvider]:  # type: ignore
         return Dependant(call=call)
 
     def get_flat_dependencies(self, call: DependencyProvider) -> Set[Dependant[DependencyProvider]]:

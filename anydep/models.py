@@ -18,13 +18,18 @@ from typing import (
 
 DependencyType = TypeVar("DependencyType")
 
-DependencyProviderType = Union[
-    Callable[..., DependencyType],
-    Callable[..., Coroutine[Any, Any, DependencyType]],
-    Callable[..., Generator[DependencyType, None, None]],
-    Callable[..., AsyncGenerator[DependencyType, None]],
-]
 
+CallableProvider = Callable[..., DependencyType]
+CoroutineProvider = Callable[..., Coroutine[Any, Any, DependencyType]]
+GeneratorProvider = Callable[..., Generator[DependencyType, None, None]]
+AsyncGeneratorProvider = Callable[..., AsyncGenerator[DependencyType, None]]
+
+DependencyProviderType = Union[
+    CallableProvider[DependencyType],
+    CoroutineProvider[DependencyType],
+    GeneratorProvider[DependencyType],
+    AsyncGeneratorProvider[DependencyType],
+]
 
 Scope = Hashable
 
@@ -44,7 +49,7 @@ class Parameter:
 
 @dataclass
 class Dependant(Generic[DependencyType]):
-    call: DependencyProviderType
+    call: DependencyProviderType[DependencyType]
     scope: Optional[Scope] = None
     parameters: Union[List[Parameter], None] = None
 
@@ -54,7 +59,7 @@ class Dependant(Generic[DependencyType]):
 
 @dataclass
 class Task(Generic[DependencyType]):
-    dependant: Dependant[DependencyProviderType]
+    dependant: Dependant[DependencyType]
     positional_arguments: List["Task[DependencyProvider]"] = field(default_factory=list, repr=False)
     keyword_arguments: Dict[str, "Task[DependencyProvider]"] = field(default_factory=dict, repr=False)
     dependencies: List[Set["Task[DependencyProvider]"]] = field(default_factory=list, repr=False)
