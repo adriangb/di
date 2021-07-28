@@ -41,15 +41,35 @@ class Class:
         counter["Class"] += 1
 
 
+class CallableClass:
+    def __call__(self) -> int:
+        return 6
+
+
+callable_class = CallableClass()
+
+
+class AsyncCallableClass:
+    async def __call__(self) -> int:
+        return 7
+
+
+async_callable_class = AsyncCallableClass()
+
+
 def collector(
+    v0: Class,
     v1: int = Depends(async_call),
     v2: int = Depends(async_gen),
     v3: int = Depends(sync_call),
     v4: int = Depends(sync_gen),
     v5: Class = Depends(Class),
+    v5b: Class = Depends(),
+    v6: int = Depends(callable_class),
+    v7: int = Depends(async_callable_class),
 ) -> int:
     counter["collector"] += 1
-    return v1 + v2 + v3 + v4 + v5.value
+    return v0.value + v1 + v2 + v3 + v4 + v5.value + v5b.value + v6 + v7
 
 
 def parent(v1: int = Depends(collector), v2: int = Depends(collector)) -> int:
@@ -73,5 +93,5 @@ async def test_solve_call_id_cache(reset: None) -> None:
             r = await container.execute(parent)
             assert all(v == "started" for v in lifetimes.values())
     assert all(v == "finished" for v in lifetimes.values())
-    assert r == 30
+    assert r == 76
     assert counter == {"async_call": 1, "async_gen": 1, "sync_call": 1, "sync_gen": 1, "Class": 1, "collector": 1}

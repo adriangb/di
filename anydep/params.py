@@ -13,22 +13,30 @@ from anydep.models import (
 
 
 @overload
-def Depends(call: Optional[AsyncGeneratorProvider[DependencyType]], *, scope: Optional[Scope] = None) -> DependencyType:
+def Depends(
+    call: Optional[AsyncGeneratorProvider[DependencyType]] = None, *, scope: Optional[Scope] = None
+) -> DependencyType:
     ...
 
 
 @overload
-def Depends(call: Optional[CoroutineProvider[DependencyType]], *, scope: Optional[Scope] = None) -> DependencyType:
+def Depends(
+    call: Optional[CoroutineProvider[DependencyType]] = None, *, scope: Optional[Scope] = None
+) -> DependencyType:
     ...
 
 
 @overload
-def Depends(call: Optional[GeneratorProvider[DependencyType]], *, scope: Optional[Scope] = None) -> DependencyType:
+def Depends(
+    call: Optional[GeneratorProvider[DependencyType]] = None, *, scope: Optional[Scope] = None
+) -> DependencyType:
     ...
 
 
 @overload
-def Depends(call: Optional[CallableProvider[DependencyType]], *, scope: Optional[Scope] = None) -> DependencyType:
+def Depends(
+    call: Optional[CallableProvider[DependencyType]] = None, *, scope: Optional[Scope] = None
+) -> DependencyType:
     ...
 
 
