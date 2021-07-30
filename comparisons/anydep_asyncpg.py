@@ -30,9 +30,9 @@ async def test(container: Container):
 async def main():
     container = Container()
     t = []
-    async with container.enter_scope("app"):
+    async with container.enter_global_scope("app"):
         for _ in range(100):  # 100 incoming requests
-            async with container.enter_scope("request"):
+            async with container.enter_local_scope("request"):
                 start = time()
                 await test(container)
             t.append(time() - start)

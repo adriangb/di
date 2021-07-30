@@ -88,7 +88,7 @@ def reset():
 async def test_solve_call_id_cache(reset: None) -> None:
     container = Container()
     for iteration in range(1, 3):
-        async with container.enter_scope("app"):
+        async with container.enter_global_scope("app"):
             for _ in range(2):  # to check that values are cached
                 dependant = container.get_dependant(parent)
                 value = await container.execute(dependant)

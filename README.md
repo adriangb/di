@@ -52,8 +52,8 @@ def collector(
 async def main():
     container = Container()
     dependant = container.get_dependant(collector)
-    async with container.enter_scope("app"):
-        async with container.enter_scope("request"):
+    async with container.enter_global_scope("app"):
+        async with container.enter_local_scope("request"):
             container.bind(Class, lambda: Class(-10))  # bind an instance, class, callable, etc.; for example an incoming request
             assert (await container.execute(dependant)) == 0  # summed up to 10 but Class.value is -10
         assert (await container.execute(dependant)) == 15  # our bind was cleared since we exited the scope

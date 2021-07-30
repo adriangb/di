@@ -34,12 +34,12 @@ def default_scope(v: int = Depends(dep, scope=None)):
 @pytest.mark.anyio
 async def test_nested_scopes():
     container = Container()
-    async with container.enter_scope("app"):
+    async with container.enter_global_scope("app"):
         dep.value = 1
         r = await container.execute(container.get_dependant(app_scoped))
         assert r == 1
         dep.value = 2
-        async with container.enter_scope("request"):
+        async with container.enter_local_scope("request"):
             dep.value = 2
             r = await container.execute(container.get_dependant(request_scoped))
             assert r == 1  # cached from app scope
@@ -50,8 +50,8 @@ async def test_nested_scopes():
 @pytest.mark.anyio
 async def test_nested_caching():
     container = Container()
-    async with container.enter_scope("app"):
-        async with container.enter_scope("request"):
+    async with container.enter_global_scope("app"):
+        async with container.enter_local_scope("request"):
             dep.value = 1
             r = await container.execute(container.get_dependant(request_scoped))
             assert r == 1
@@ -59,14 +59,14 @@ async def test_nested_caching():
             r = await container.execute(container.get_dependant(app_scoped))
             assert r == 1  # uses the request scoped cache
         r = await container.execute(container.get_dependant(app_scoped))
-        assert r == 1  # cache is mantained even after exiting scope
+        assert r == 2  # not cached anymore
 
 
 @pytest.mark.anyio
 async def test_nested_caching_outlive():
     container = Container()
-    async with container.enter_scope("app"):
-        async with container.enter_scope("request"):
+    async with container.enter_global_scope("app"):
+        async with container.enter_local_scope("request"):
             dep.value = 1
             # since dep hasn't been cached yet, it gets cached
             # because it is marked as app scoped, it gets cached in the app scope
@@ -75,4 +75,4 @@ async def test_nested_caching_outlive():
             assert r == 1
         dep.value = 2
         r = await container.execute(container.get_dependant(app_scoped))
-        assert r == 1  # still cached in the app scope
+        assert r == 2  # not cached anymore

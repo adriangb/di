@@ -1,5 +1,17 @@
 from contextlib import AsyncExitStack, asynccontextmanager
-from typing import AsyncGenerator, Callable, Dict, Hashable, List, Tuple, overload
+from contextvars import ContextVar
+from typing import (
+    AsyncGenerator,
+    Callable,
+    Dict,
+    Hashable,
+    List,
+    Mapping,
+    Optional,
+    Tuple,
+    cast,
+    overload,
+)
 
 from anydep.concurrency import wrap_call
 from anydep.exceptions import (
@@ -22,13 +34,49 @@ from anydep.models import (
 from anydep.tasks import Task
 
 
+class ContainerState:
+    def __init__(self) -> None:
+        self.binds: Dict[DependencyProvider, Dependant[DependencyProvider]] = {}
+        self.cached_values: Dict[Hashable, Dict[DependencyProvider, Dependency]] = {}
+        self.stacks: Dict[Scope, AsyncExitStack] = {}
+        self.scopes: List[Scope] = []
+
+    def copy(self) -> "ContainerState":
+        new = ContainerState()
+        new.binds = self.binds.copy()
+        new.cached_values = {k: v.copy() for k, v in self.cached_values.items()}
+        new.stacks = self.stacks.copy()
+        new.scopes = self.scopes.copy()
+        return new
+
+    @asynccontextmanager
+    async def enter_scope(self, scope: Scope) -> AsyncGenerator[None, None]:
+        if scope in self.stacks:
+            raise DuplicateScopeError(f"Scope {scope} has already been entered!")
+        async with AsyncExitStack() as stack:
+            self.scopes.append(scope)
+            self.stacks[scope] = stack
+            bound_providers = self.binds
+            self.binds = bound_providers.copy()
+            self.cached_values[scope] = {}
+            try:
+                yield
+            finally:
+                self.stacks.pop(scope)
+                self.binds = bound_providers
+                self.cached_values.pop(scope)
+                self.scopes.pop()
+
+
 class Container:
     def __init__(self) -> None:
-        self._binds: Dict[DependencyProvider, Dependant[DependencyProvider]] = {}
-        self._cached_values: Dict[Hashable, Dict[DependencyProvider, Dependency]] = {}
-        self._stacks: Dict[Scope, AsyncExitStack] = {}
-        self._scopes: List[Scope] = []
-        self._infered_dependants: Dict[Tuple[DependencyProvider, str], Dependant[DependencyProvider]] = {}
+        self.context = ContextVar[ContainerState]("context")
+        state = ContainerState()
+        self.context.set(state)
+
+    @property
+    def state(self) -> ContainerState:
+        return self.context.get()
 
     @overload
     def bind(
@@ -49,38 +97,36 @@ class Container:
         ...
 
     def bind(self, target: DependencyProvider, source: DependencyProvider) -> None:
-        self._binds[target] = Dependant(source)  # type: ignore
-        for cached_values in self._cached_values.values():
+        self.state.binds[target] = Dependant(source)  # type: ignore
+        for cached_values in self.state.cached_values.values():
             if target in cached_values:
                 cached_values.pop(target)
 
     @asynccontextmanager
-    async def enter_scope(self, scope: Scope) -> AsyncGenerator[None, None]:
-        if scope in self._stacks:
-            raise DuplicateScopeError(f"Scope {scope} has already been entered!")
-        async with AsyncExitStack() as stack:
-            self._scopes.append(scope)
-            self._stacks[scope] = stack
-            bound_providers = self._binds
-            self._binds = bound_providers.copy()
-            self._cached_values[scope] = {}
-            try:
+    async def enter_global_scope(self, scope: Scope) -> AsyncGenerator[None, None]:
+        async with self.state.enter_scope(scope):
+            yield
+
+    @asynccontextmanager
+    async def enter_local_scope(self, scope: Scope) -> AsyncGenerator[None, None]:
+        current = self.state
+        new = current.copy()
+        token = self.context.set(new)
+        try:
+            async with self.state.enter_scope(scope):
                 yield
-            finally:
-                self._stacks.pop(scope)
-                self._binds = bound_providers
-                self._cached_values.pop(scope)
-                self._scopes.pop()
+        finally:
+            self.context.reset(token)
 
     def _get_scope_index(self, scope: Scope) -> int:
         self._check_scope(scope)
-        return self._scopes.index(scope)
+        return self.state.scopes.index(scope)
 
     def _resolve_scope(self, dependant_scope: Scope) -> Hashable:
         if dependant_scope is False:
             return False
         elif dependant_scope is None:
-            return self._scopes[-1]  # current scope
+            return self.state.scopes[-1]  # current scope
         else:
             return dependant_scope
 
@@ -95,14 +141,14 @@ class Container:
     def _check_scope(self, scope: Scope):
         if scope is False:
             return
-        if len(self._stacks) == 0:
+        if len(self.state.stacks) == 0:
             raise UnknownScopeError(
                 "No current scope in container."
                 " You must set a scope before you can execute or resolve any dependencies."
             )
-        if scope not in self._stacks:  # self._stacks is just an O(1) lookup of current scopes
+        if scope not in self.state.stacks:  # self._stacks is just an O(1) lookup of current scopes
             raise UnknownScopeError(
-                f"Scope {scope} is not known. Did you forget to enter it? Known scopes: {self._scopes}"
+                f"Scope {scope} is not known. Did you forget to enter it? Known scopes: {self.state.scopes}"
             )
 
     def _build_task(
@@ -111,10 +157,13 @@ class Container:
         dependant: Dependant[DependencyProviderType[DependencyType]],
         task_cache: Dict[Dependant[DependencyProvider], Task[DependencyProvider]],
         call_cache: Dict[DependencyProvider, Dependant[DependencyProvider]],
+        binds: Mapping[DependencyProvider, DependencyProvider],
     ) -> Tuple[bool, Task[DependencyType]]:
 
-        if dependant.call in self._binds:
-            dependant = self._binds[dependant.call]
+        if dependant.call in binds:
+            dependant = binds[dependant.call]  # type: ignore
+        elif dependant.call in self.state.binds:
+            dependant = self.state.binds[dependant.call]  # type: ignore
 
         scope = self._resolve_scope(dependant.scope)
         self._check_scope(scope)
@@ -129,14 +178,17 @@ class Container:
                     )
                 dependant = other
             else:
-                call_cache[dependant.call] = dependant
+                call_cache[dependant.call] = dependant  # type: ignore
 
         if dependant in task_cache:
             return True, task_cache[dependant]  # type: ignore
 
         scope = self._resolve_scope(dependant.scope)
         self._check_scope(scope)
-        call = wrap_call(dependant.call, self._stacks[scope if scope is not False else self._scopes[-1]])
+        call = wrap_call(
+            cast(Callable[..., DependencyProvider], dependant.call),
+            self.state.stacks[scope if scope is not False else self.state.scopes[-1]],
+        )
 
         subtasks = {}
         allow_cache = True
@@ -145,15 +197,15 @@ class Container:
                 subtask = task_cache[sub_dependant]
             else:
                 allow_cache, subtask = self._build_task(
-                    dependant=sub_dependant, task_cache=task_cache, call_cache=call_cache
+                    dependant=sub_dependant, task_cache=task_cache, call_cache=call_cache, binds=binds
                 )
                 task_cache[sub_dependant] = subtask
             subtasks[param_name] = subtask
 
         if allow_cache and scope is not False:
             # try to get cached value
-            for cache_scope in self._scopes:
-                cached_values = self._cached_values[cache_scope]
+            for cache_scope in self.state.scopes:
+                cached_values = self.state.cached_values[cache_scope]
                 if dependant.call in cached_values:
                     value = cached_values[dependant.call]
                     task = self._task_from_cached_value(dependant, value)
@@ -180,17 +232,21 @@ class Container:
     async def execute(self, dependant: Dependant[CallableProvider[DependencyType]]) -> DependencyType:
         ...
 
-    async def execute(self, dependant: Dependant) -> Dependency:
+    async def execute(
+        self, dependant: Dependant, binds: Optional[Mapping[DependencyProvider, DependencyProvider]] = None
+    ) -> Dependency:
         task_cache: Dict[Dependant[DependencyProvider], Task[DependencyProvider]] = {}
-        use_cache, task = self._build_task(dependant=dependant, task_cache=task_cache, call_cache={})
+        binds = binds or {}
+        _, task = self._build_task(dependant=dependant, task_cache=task_cache, call_cache={}, binds=binds)
         result = await task.result()
         scope = self._resolve_scope(task.dependant.scope)
         if scope is not False:
-            self._cached_values[scope][task.dependant.call] = result
+            self.state.cached_values[scope][cast(DependencyProvider, task.dependant.call)] = result
         for subtask in task_cache.values():
             scope = self._resolve_scope(subtask.dependant.scope)
             if scope is not False:
-                self._cached_values[scope][subtask.dependant.call] = await subtask.result()
+                v = await subtask.result()
+                self.state.cached_values[scope][cast(DependencyProvider, subtask.dependant.call)] = v
         return result
 
     @overload

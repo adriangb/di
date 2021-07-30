@@ -78,8 +78,8 @@ async def endpoint(query1: int, query2: str, body1: Item, accept: str = Header()
 async def main():
     container = Container()
     dependant = EndpointDependant(call=endpoint)
-    async with container.enter_scope("app"):
-        async with container.enter_scope("request"):
+    async with container.enter_global_scope("app"):
+        async with container.enter_local_scope("request"):
             json_body = '{"name":"hammer","price": 12.42}'.encode()
             request = Request(
                 scope={
