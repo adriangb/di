@@ -44,9 +44,13 @@ def get_parameters(call: Callable) -> Dict[str, inspect.Parameter]:
     annotations = get_annotations(call)
     processed_params = {}
     for param_name, param in params.items():
-        processed_params[param_name] = inspect.Parameter(
-            name=param.name, kind=param.kind, default=param.default, annotation=annotations[param_name]
-        )
+        if isinstance(str, param.annotation):
+            processed_params[param_name] = inspect.Parameter(
+                name=param.name, kind=param.kind, default=param.default, annotation=annotations[param_name]
+            )
+        else:
+            processed_params[param_name] = param
+
     return processed_params
 
 

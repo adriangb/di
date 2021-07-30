@@ -42,7 +42,7 @@ DependencyProvider = DependencyProviderType[Dependency]
 class Dependant(Generic[DependencyType]):
     def __init__(
         self,
-        call: DependencyProviderType[DependencyType],
+        call: Optional[DependencyProviderType[DependencyType]] = None,
         scope: Optional[Scope] = None,
         **kwargs: Any,
     ) -> None:
@@ -55,24 +55,31 @@ class Dependant(Generic[DependencyType]):
 
     @cached_property
     def parameters(self) -> Dict[str, Parameter]:
-        return get_parameters(self.call)
+        return self.gather_parameters()
 
     @cached_property
     def dependencies(self) -> Dict[str, "Dependant[DependencyProvider]"]:
+        return self.gather_dependencies()
+
+    def gather_parameters(self) -> Dict[str, Parameter]:
+        assert self.call is not None, "Cannot gather parameters without a bound call"
+        return get_parameters(self.call)
+
+    def gather_dependencies(self) -> Dict[str, "Dependant[DependencyProvider]"]:
         res = {}
         for param_name, param in self.parameters.items():
             if isinstance(param.default, Dependant):
                 sub_dependant = param.default
                 if sub_dependant.call is None:
-                    sub_dependant.call = infer_call_from_annotation(param)
+                    sub_dependant.call = sub_dependant.infer_call_from_annotation(param)
             elif param.default is param.empty:
-                sub_dependant = self.infer_sub_dependant(param)
+                sub_dependant = self.__class__(call=self.infer_call_from_annotation(param))
             else:
                 continue  # use default value
             res[param_name] = sub_dependant
         return res
 
-    def infer_sub_dependant(self, param: Parameter):
+    def infer_call_from_annotation(self, param: Parameter) -> DependencyProvider:
         if param.annotation is param.empty:
             raise WiringError("Cannot wire a parameter with no default and no type annotation")
-        return self.__class__(call=infer_call_from_annotation(param))
+        return infer_call_from_annotation(param)
