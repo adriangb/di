@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import anyio
 import pytest
 
@@ -29,24 +31,38 @@ async def test_bind():
         assert r == 0  # back to the default value
 
 
-def inject():
+def inject1():
     return -1
 
 
-async def endpoint2(injected: int = Depends(inject)) -> int:
-    return injected
+def inject2():
+    return -2
 
 
-async def run_endpoint2(expected: int, container: Container):
+def inject3():
+    return -2
+
+
+async def endpoint2(
+    v1: int = Depends(inject1), v2: int = Depends(inject2), v3: int = Depends(inject3)
+) -> Tuple[int, int, int]:
+    return v1, v2, v3
+
+
+async def run_endpoint2(expected: Tuple[int, int, int], container: Container):
     async with container.enter_local_scope("request"):
-        container.bind(inject, lambda: expected)
+        container.bind(inject3, lambda: expected[2])
         got = await container.execute(container.get_dependant(endpoint2))
-    assert expected == got
+    assert expected == got, (expected, got)
 
 
 @pytest.mark.anyio
 async def test_concurrent_binds():
     container = Container()
-    async with anyio.create_task_group() as tg:
-        for i in range(50):
-            tg.start_soon(run_endpoint2, i, container)
+    async with container.enter_local_scope("app-local"):
+        container.bind(inject1, lambda: -10)
+        async with container.enter_global_scope("app-global"):
+            container.bind(inject2, lambda: -20)
+            async with anyio.create_task_group() as tg:
+                for i in range(10):
+                    tg.start_soon(run_endpoint2, (-10, -20, i), container)
