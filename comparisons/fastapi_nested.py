@@ -5,9 +5,14 @@ from time import time
 from fastapi import Depends, Request  # noqa
 from fastapi.dependencies.utils import get_dependant, solve_dependencies
 
-tempalate = "async def func_{}({}): return 1"
+counter = {"counter": 0}
 
-for f in range(15):
+tempalate = "async def func_{}({}): counter['counter'] += 1;return 1"
+
+NESTING = 15
+ITER = 3
+
+for f in range(NESTING):
     params = []
     for p in range(f):
         params.append(f"v{p}: int = Depends(func_{p})")
@@ -27,12 +32,14 @@ async def test(request: Request):
 
 async def main():
     t = []
-    for _ in range(10):  # 10 incoming requests
+    counter["counter"] = 0
+    for _ in range(ITER):  # 10 incoming requests
         async with AsyncExitStack() as stack:
             request = Request(scope={"type": "http", "fastapi_astack": stack, "query_string": None, "headers": {}})
             start = time()
             await test(request=request)
         t.append(time() - start)
+    assert counter["counter"] == NESTING * ITER
     average = sum(t) / len(t)
     worst = max(t)
     worst_idx = t.index(worst)
