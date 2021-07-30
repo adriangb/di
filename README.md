@@ -10,7 +10,7 @@ A dependency injection framework based on:
 - Lifetimes for generator context managers (i.e. an AsyncExitStack for each scope)
 - Concurrency for sync function by executing them in a ThreadPool
 
-The goal of this mini-project is to try to generalize FastAPI's dependency injection framework, hopefully to fold back into FastAPI
+The goal of this mini-project is to try to generalize FastAPI's dependency injection framework, hopefully to fold back into FastAPI.
 
 Sample:
 
