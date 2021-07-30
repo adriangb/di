@@ -56,7 +56,7 @@ async def main():
             container.bind(Class, lambda: Class(-10))  # bind an instance, class, callable, etc.; for example an incoming request
             assert (await container.resolve(collector)) == 0  # summed up to 10 but Class.value is -10
         assert (await container.resolve(collector)) == 15  # our bind was cleared since we exited the scope
-    
+
 anyio.run(main())
 ```
 

@@ -13,7 +13,7 @@ async def db_conn_pool() -> AsyncGenerator[asyncpg.Connection, None]:
         yield pool
 
 
-async def db_conn(pool: asyncpg.Pool = Depends(db_conn_pool)) -> AsyncGenerator[asyncpg.Connection, None]:
+async def db_conn(pool: asyncpg.Pool = Depends(db_conn_pool, scope="app")) -> AsyncGenerator[asyncpg.Connection, None]:
     async with pool.acquire() as conn:
         yield conn
 
@@ -23,18 +23,19 @@ async def endpoint(conn: asyncpg.Connection = Depends(db_conn)) -> int:
 
 
 async def test(container: Container):
-    r = await container.resolve(endpoint)
+    r = await container.execute(container.get_dependant(endpoint))
     assert r == 256
 
 
 async def main():
     container = Container()
     t = []
-    for _ in range(100):  # 100 incoming requests
-        async with container.enter_scope("request"):
-            start = time()
-            await test(container)
-        t.append(time() - start)
+    async with container.enter_scope("app"):
+        for _ in range(100):  # 100 incoming requests
+            async with container.enter_scope("request"):
+                start = time()
+                await test(container)
+            t.append(time() - start)
     average = sum(t) / len(t)
     worst = max(t)
     worst_idx = t.index(worst)

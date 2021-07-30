@@ -6,7 +6,7 @@ authors = ["Adrian Garcia Badaracco <adrian@adriangb.com>"]
 
 [tool.poetry.dependencies]
 python = ">=3.8.0,<4"
-anyio = "~3.3"
+anyio = "~3"
 
 [tool.poetry.dev-dependencies]
 pytest = "~6"

@@ -2,9 +2,13 @@ class WiringError(Exception):
     pass
 
 
-class UnknownScopError(Exception):
+class UnknownScopeError(Exception):
     pass
 
 
 class DuplicateScopeError(ValueError):
+    pass
+
+
+class DuplicatedDependencyError(RuntimeError):
     pass

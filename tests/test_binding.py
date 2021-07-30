@@ -16,12 +16,12 @@ def endpoint(r: Request) -> int:
 async def test_bind():
     container = Container()
     async with container.enter_scope("app"):
-        r = await container.execute(endpoint)
+        r = await container.execute(container.get_dependant(endpoint))
         assert r == 0  # just the default value
         async with container.enter_scope("request"):
             request = Request(2)  # build a request
             container.bind(Request, lambda: request)  # bind the request
-            r = await container.execute(endpoint)
+            r = await container.execute(container.get_dependant(endpoint))
             assert r == 2  # bound value
-        r = await container.execute(endpoint)
+        r = await container.execute(container.get_dependant(endpoint))
         assert r == 0  # back to the default value
