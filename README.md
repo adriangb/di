@@ -4,13 +4,13 @@ WIP.
 
 A dependency injection framework based on:
 
-- Type inference though defaults & evaluation.
+- Type hinting using generics -> your defaults will have the right type infered
 - Anyio compatibility
-- Arbitrary nested scoping for value caching & lifetimes (no specific Singleton, App/Request scope, etc., it's up to the implementer)
+- Arbitrary nested scoping for value caching & lifetimes (no specific Singleton, App/Request scope, etc., it's up to the implementer!)
 - Lifetimes for generator context managers (i.e. an AsyncExitStack for each scope)
-- Explicit building of a task DAG & parallel execution
 - Concurrency for sync function by executing them in a ThreadPool
 
+The goal of this mini-project is to try to generalize FastAPI's dependency injection framework, hopefully to fold back into FastAPI
 
 Sample:
 
@@ -51,11 +51,12 @@ def collector(
 
 async def main():
     container = Container()
+    dependant = container.get_dependant(collector)
     async with container.enter_scope("app"):
         async with container.enter_scope("request"):
             container.bind(Class, lambda: Class(-10))  # bind an instance, class, callable, etc.; for example an incoming request
-            assert (await container.resolve(collector)) == 0  # summed up to 10 but Class.value is -10
-        assert (await container.resolve(collector)) == 15  # our bind was cleared since we exited the scope
+            assert (await container.execute(dependant)) == 0  # summed up to 10 but Class.value is -10
+        assert (await container.execute(dependant)) == 15  # our bind was cleared since we exited the scope
 
 anyio.run(main())
 ```
