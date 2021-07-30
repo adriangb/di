@@ -8,7 +8,7 @@ A dependency injection framework based on:
 - Anyio compatibility
 - Arbitrary nested scoping for value caching & lifetimes (no specific Singleton, App/Request scope, etc., it's up to the implementer!)
 - Lifetimes for generator context managers (i.e. an AsyncExitStack for each scope)
-- Concurrency for sync function by executing them in a ThreadPool
+- Parallel execution of the dependency DAG (using anyio task groups)
 
 The goal of this mini-project is to try to generalize FastAPI's dependency injection framework, hopefully to fold back into FastAPI.
 
