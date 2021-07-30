@@ -8,7 +8,9 @@ from typing import (
     Awaitable,
     Callable,
     ContextManager,
+    Generator,
     TypeVar,
+    overload,
 )
 
 import anyio
@@ -61,7 +63,27 @@ def bind_sync_context_manager(
     return bind_async_context_manager(context_manager_in_threadpool(cm), stack)
 
 
-def wrap_call(call, stack):
+@overload
+def wrap_call(call: Callable[..., AsyncGenerator[T, None]], stack: AsyncExitStack) -> Callable[..., Awaitable[T]]:
+    ...
+
+
+@overload
+def wrap_call(call: Callable[..., Awaitable[T]], stack: AsyncExitStack) -> Callable[..., Awaitable[T]]:
+    ...
+
+
+@overload
+def wrap_call(call: Callable[..., Generator[T, None, None]], stack: AsyncExitStack) -> Callable[..., Awaitable[T]]:
+    ...
+
+
+@overload
+def wrap_call(call: Callable[..., T], stack: AsyncExitStack) -> Callable[..., Awaitable[T]]:
+    ...
+
+
+def wrap_call(call: Callable[..., Any], stack: AsyncExitStack) -> Callable[..., Awaitable[Any]]:
     if is_async_gen_callable(call):
         call = bind_async_context_manager(asynccontextmanager(call), stack)
     elif is_gen_callable(call):

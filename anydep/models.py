@@ -3,8 +3,8 @@ from inspect import Parameter
 from typing import (
     Any,
     AsyncGenerator,
+    Awaitable,
     Callable,
-    Coroutine,
     Dict,
     Generator,
     Generic,
@@ -21,7 +21,7 @@ DependencyType = TypeVar("DependencyType")
 
 
 CallableProvider = Callable[..., DependencyType]
-CoroutineProvider = Callable[..., Coroutine[Any, Any, DependencyType]]
+CoroutineProvider = Callable[..., Awaitable[DependencyType]]
 GeneratorProvider = Callable[..., Generator[DependencyType, None, None]]
 AsyncGeneratorProvider = Callable[..., AsyncGenerator[DependencyType, None]]
 
