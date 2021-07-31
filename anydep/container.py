@@ -6,19 +6,14 @@ from typing import (
     Dict,
     Hashable,
     List,
-    Mapping,
-    Optional,
+    Set,
     Tuple,
     cast,
     overload,
 )
 
 from anydep.concurrency import wrap_call
-from anydep.exceptions import (
-    DuplicatedDependencyError,
-    DuplicateScopeError,
-    UnknownScopeError,
-)
+from anydep.exceptions import DuplicateScopeError, UnknownScopeError
 from anydep.models import (
     AsyncGeneratorProvider,
     CallableProvider,
@@ -136,7 +131,7 @@ class Container:
         async def retrieve():
             return value
 
-        return Task(dependant=dependant, call=retrieve, dependencies={})
+        return Task(dependant=dependant, call=retrieve, dependencies={}, scope=False)
 
     def _check_scope(self, scope: Scope):
         if scope is False:
@@ -157,26 +152,18 @@ class Container:
         dependant: Dependant[DependencyProviderType[DependencyType]],
         task_cache: Dict[Dependant[DependencyProvider], Task[DependencyProvider]],
         call_cache: Dict[DependencyProvider, Dependant[DependencyProvider]],
-        binds: Mapping[DependencyProvider, DependencyProvider],
     ) -> Tuple[bool, Task[DependencyType]]:
 
-        if dependant.call in binds:
-            dependant = binds[dependant.call]  # type: ignore
-        elif dependant.call in self.state.binds:
+        if dependant.call in self.state.binds:
             dependant = self.state.binds[dependant.call]  # type: ignore
 
         scope = self._resolve_scope(dependant.scope)
         self._check_scope(scope)
+        task_scope = scope
 
         if scope is not False:
             if dependant.call in call_cache:
-                other = call_cache[dependant.call]
-                if self._resolve_scope(other.scope) != self._resolve_scope(dependant.scope):
-                    raise DuplicatedDependencyError(
-                        f"{other.call} is declared as a dependency multiple"
-                        " times in the same dependency graph under different scopes"
-                    )
-                dependant = other
+                dependant = call_cache[dependant.call]
             else:
                 call_cache[dependant.call] = dependant  # type: ignore
 
@@ -197,14 +184,14 @@ class Container:
                 subtask = task_cache[sub_dependant]
             else:
                 allow_cache, subtask = self._build_task(
-                    dependant=sub_dependant, task_cache=task_cache, call_cache=call_cache, binds=binds
+                    dependant=sub_dependant, task_cache=task_cache, call_cache=call_cache
                 )
                 task_cache[sub_dependant] = subtask
             subtasks[param_name] = subtask
 
         if allow_cache and scope is not False:
             # try to get cached value
-            for cache_scope in self.state.scopes:
+            for cache_scope in reversed(self.state.scopes):
                 cached_values = self.state.cached_values[cache_scope]
                 if dependant.call in cached_values:
                     value = cached_values[dependant.call]
@@ -212,7 +199,7 @@ class Container:
                     task_cache[dependant] = task
                     return True, task  # type: ignore
 
-        task = Task(dependant=dependant, call=call, dependencies=subtasks)  # type: ignore
+        task = Task(dependant=dependant, call=call, dependencies=subtasks, scope=task_scope)  # type: ignore
         task_cache[dependant] = task
         return False, task  # type: ignore
 
@@ -232,18 +219,15 @@ class Container:
     async def execute(self, dependant: Dependant[CallableProvider[DependencyType]]) -> DependencyType:
         ...
 
-    async def execute(
-        self, dependant: Dependant, binds: Optional[Mapping[DependencyProvider, DependencyProvider]] = None
-    ) -> Dependency:
+    async def execute(self, dependant: Dependant) -> Dependency:
         task_cache: Dict[Dependant[DependencyProvider], Task[DependencyProvider]] = {}
-        binds = binds or {}
-        _, task = self._build_task(dependant=dependant, task_cache=task_cache, call_cache={}, binds=binds)
+        _, task = self._build_task(dependant=dependant, task_cache=task_cache, call_cache={})
         result = await task.result()
-        scope = self._resolve_scope(task.dependant.scope)
+        scope = self._resolve_scope(task.scope)
         if scope is not False:
             self.state.cached_values[scope][cast(DependencyProvider, task.dependant.call)] = result
         for subtask in task_cache.values():
-            scope = self._resolve_scope(subtask.dependant.scope)
+            scope = self._resolve_scope(subtask.scope)
             if scope is not False:
                 v = await subtask.result()
                 self.state.cached_values[scope][cast(DependencyProvider, subtask.dependant.call)] = v
@@ -267,5 +251,13 @@ class Container:
     def get_dependant(self, call: CallableProvider[DependencyType]) -> Dependant[CallableProvider[DependencyType]]:
         ...
 
-    def get_dependant(self, call: DependencyProvider) -> Dependant[DependencyProvider]:  # type: ignore
+    def get_dependant(self, call: DependencyProvider) -> Dependant:
         return Dependant(call=call)
+
+    def get_flat_subdependants(self, dependant: Dependant) -> Set[Dependant]:
+        task_cache: Dict[Dependant[DependencyProvider], Task[DependencyProvider]] = {}
+        self._build_task(dependant=dependant, task_cache=task_cache, call_cache={})
+        deps: Set[Dependant] = set()
+        for task in task_cache.values():
+            deps.add(task.dependant)
+        return deps - set([dependant])

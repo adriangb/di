@@ -7,6 +7,7 @@ from anydep.models import (
     DependencyProvider,
     DependencyProviderType,
     DependencyType,
+    Scope,
 )
 
 _UNSET = object()
@@ -16,10 +17,12 @@ class Task(Generic[DependencyType]):
     def __init__(
         self,
         dependant: Dependant[DependencyProviderType[DependencyType]],
+        scope: Scope,
         call: Callable[..., Awaitable[DependencyType]],
         dependencies: Dict[str, "Task[DependencyProvider]"],
     ) -> None:
         self.dependant = dependant
+        self.scope = scope
         self.call = call
         self.dependencies = dependencies
         self._result: Any = _UNSET
