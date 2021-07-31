@@ -77,19 +77,19 @@ class Container:
     def bind(
         self, target: AsyncGeneratorProvider[DependencyType], source: AsyncGeneratorProvider[DependencyType]
     ) -> None:
-        ...
+        ...  # pragma: no cover
 
     @overload
     def bind(self, target: CoroutineProvider[DependencyType], source: CoroutineProvider[DependencyType]) -> None:
-        ...
+        ...  # pragma: no cover
 
     @overload
     def bind(self, target: GeneratorProvider[DependencyType], source: GeneratorProvider[DependencyType]) -> None:
-        ...
+        ...  # pragma: no cover
 
     @overload
     def bind(self, target: CallableProvider[DependencyType], source: CallableProvider[DependencyType]) -> None:
-        ...
+        ...  # pragma: no cover
 
     def bind(self, target: DependencyProvider, source: DependencyProvider) -> None:
         self.state.binds[target] = Dependant(source)  # type: ignore
@@ -113,14 +113,15 @@ class Container:
         finally:
             self.context.reset(token)
 
-    def _get_scope_index(self, scope: Scope) -> int:
-        self._check_scope(scope)
-        return self.state.scopes.index(scope)
-
     def _resolve_scope(self, dependant_scope: Scope) -> Hashable:
         if dependant_scope is False:
             return False
         elif dependant_scope is None:
+            if len(self.state.scopes) == 0:
+                raise UnknownScopeError(
+                    "No current scope in container."
+                    " You must set a scope before you can execute or resolve any dependencies."
+                )
             return self.state.scopes[-1]  # current scope
         else:
             return dependant_scope
@@ -136,11 +137,6 @@ class Container:
     def _check_scope(self, scope: Scope):
         if scope is False:
             return
-        if len(self.state.stacks) == 0:
-            raise UnknownScopeError(
-                "No current scope in container."
-                " You must set a scope before you can execute or resolve any dependencies."
-            )
         if scope not in self.state.stacks:  # self._stacks is just an O(1) lookup of current scopes
             raise UnknownScopeError(
                 f"Scope {scope} is not known. Did you forget to enter it? Known scopes: {self.state.scopes}"
@@ -158,7 +154,6 @@ class Container:
             dependant = self.state.binds[dependant.call]  # type: ignore
 
         scope = self._resolve_scope(dependant.scope)
-        self._check_scope(scope)
         task_scope = scope
 
         if scope is not False:
@@ -180,13 +175,10 @@ class Container:
         subtasks = {}
         allow_cache = True
         for param_name, sub_dependant in dependant.dependencies.items():
-            if sub_dependant in task_cache:
-                subtask = task_cache[sub_dependant]
-            else:
-                allow_cache, subtask = self._build_task(
-                    dependant=sub_dependant, task_cache=task_cache, call_cache=call_cache
-                )
-                task_cache[sub_dependant] = subtask
+            allow_cache, subtask = self._build_task(
+                dependant=sub_dependant, task_cache=task_cache, call_cache=call_cache
+            )
+            task_cache[sub_dependant] = subtask
             subtasks[param_name] = subtask
 
         if allow_cache and scope is not False:
@@ -205,19 +197,19 @@ class Container:
 
     @overload
     async def execute(self, dependant: Dependant[AsyncGeneratorProvider[DependencyType]]) -> DependencyType:
-        ...
+        ...  # pragma: no cover
 
     @overload
     async def execute(self, dependant: Dependant[CoroutineProvider[DependencyType]]) -> DependencyType:
-        ...
+        ...  # pragma: no cover
 
     @overload
     async def execute(self, dependant: Dependant[GeneratorProvider[DependencyType]]) -> DependencyType:
-        ...
+        ...  # pragma: no cover
 
     @overload
     async def execute(self, dependant: Dependant[CallableProvider[DependencyType]]) -> DependencyType:
-        ...
+        ...  # pragma: no cover
 
     async def execute(self, dependant: Dependant) -> Dependency:
         task_cache: Dict[Dependant[DependencyProvider], Task[DependencyProvider]] = {}
@@ -237,19 +229,19 @@ class Container:
     def get_dependant(
         self, call: AsyncGeneratorProvider[DependencyType]
     ) -> Dependant[AsyncGeneratorProvider[DependencyType]]:
-        ...
+        ...  # pragma: no cover
 
     @overload
     def get_dependant(self, call: CoroutineProvider[DependencyType]) -> Dependant[CoroutineProvider[DependencyType]]:
-        ...
+        ...  # pragma: no cover
 
     @overload
     def get_dependant(self, call: GeneratorProvider[DependencyType]) -> Dependant[GeneratorProvider[DependencyType]]:
-        ...
+        ...  # pragma: no cover
 
     @overload
     def get_dependant(self, call: CallableProvider[DependencyType]) -> Dependant[CallableProvider[DependencyType]]:
-        ...
+        ...  # pragma: no cover
 
     def get_dependant(self, call: DependencyProvider) -> Dependant:
         return Dependant(call=call)

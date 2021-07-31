@@ -4,6 +4,7 @@ from typing import AsyncGenerator, DefaultDict, Generator, Union
 import pytest
 
 from anydep.container import Container
+from anydep.exceptions import WiringError
 from anydep.params import Depends
 
 counter: DefaultDict[str, int] = defaultdict(int)
@@ -36,8 +37,8 @@ def sync_gen() -> Generator[int, None, None]:
 
 
 class Class:
-    def __init__(self) -> None:
-        self.value = 5
+    def __init__(self, value: int = 5) -> None:
+        self.value = value
         counter["Class"] += 1
 
 
@@ -103,3 +104,24 @@ async def test_solve_call_id_cache(reset: None) -> None:
             "Class": iteration,
             "collector": iteration,
         }
+
+
+@pytest.mark.anyio
+async def test_no_default_no_depends():
+    def method(value):
+        ...
+
+    container = Container()
+    async with container.enter_global_scope("app"):
+        with pytest.raises(WiringError):
+            await container.execute(container.get_dependant(method))
+
+
+@pytest.mark.anyio
+async def test_solve_default():
+    def method(value: int = 5) -> int:
+        return value
+
+    container = Container()
+    async with container.enter_global_scope("app"):
+        assert 5 == await container.execute(container.get_dependant(method))

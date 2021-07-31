@@ -28,9 +28,6 @@ class Task(Generic[DependencyType]):
         self._result: Any = _UNSET
         self._lock = anyio.Lock()
 
-    def __hash__(self) -> int:
-        return id(self)
-
     async def result(self):
         async with self._lock:
             if self._result is _UNSET:

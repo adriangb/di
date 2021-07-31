@@ -65,22 +65,22 @@ def bind_sync_context_manager(
 
 @overload
 def wrap_call(call: Callable[..., AsyncGenerator[T, None]], stack: AsyncExitStack) -> Callable[..., Awaitable[T]]:
-    ...
+    ...  # pragma: no cover
 
 
 @overload
 def wrap_call(call: Callable[..., Awaitable[T]], stack: AsyncExitStack) -> Callable[..., Awaitable[T]]:
-    ...
+    ...  # pragma: no cover
 
 
 @overload
 def wrap_call(call: Callable[..., Generator[T, None, None]], stack: AsyncExitStack) -> Callable[..., Awaitable[T]]:
-    ...
+    ...  # pragma: no cover
 
 
 @overload
 def wrap_call(call: Callable[..., T], stack: AsyncExitStack) -> Callable[..., Awaitable[T]]:
-    ...
+    ...  # pragma: no cover
 
 
 def wrap_call(call: Callable[..., Any], stack: AsyncExitStack) -> Callable[..., Awaitable[Any]]:
