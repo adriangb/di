@@ -19,7 +19,7 @@ def call3():
     return
 
 
-def call4(c2: None = Depends(call2), /, *, c3: None = Depends(call3)):
+def call4(c2: None = Depends(call2), *, c3: None = Depends(call3)):
     return
 
 
