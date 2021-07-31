@@ -50,7 +50,10 @@ async def test_detect_class_in_dependencies():
 
     expected_scopes = ["a", "b", "c"]
 
-    def endpoint(v: int = CallableClass(MyChildClass, security_scopes=expected_scopes)) -> None:
+    def endpoint(
+        v1: int = CallableClass(MyChildClass, security_scopes=expected_scopes[:-1]),
+        v2: int = CallableClass(MyChildClass, security_scopes=expected_scopes[-1:]),
+    ) -> None:
         return
 
     scopes = []
@@ -60,4 +63,4 @@ async def test_detect_class_in_dependencies():
             if isinstance(dep, CallableClassDependant):
                 if issubclass(dep.cls, MyClass):
                     scopes.extend(getattr(dep, "security_scopes", []))
-    assert scopes == expected_scopes
+    assert sorted(scopes) == sorted(expected_scopes)

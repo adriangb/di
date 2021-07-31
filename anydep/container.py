@@ -1,8 +1,10 @@
+from collections import deque
 from contextlib import AsyncExitStack, asynccontextmanager
 from contextvars import ContextVar
 from typing import (
     AsyncGenerator,
     Callable,
+    Deque,
     Dict,
     Hashable,
     List,
@@ -209,9 +211,11 @@ class Container:
         return result
 
     def get_flat_subdependants(self, dependant: Dependant) -> Set[Dependant]:
-        task_cache: Dict[Dependant[DependencyProvider], Task[DependencyProvider]] = {}
-        self._build_task(dependant=dependant, task_cache=task_cache, call_cache={})
-        deps: Set[Dependant] = set()
-        for task in task_cache.values():
-            deps.add(task.dependant)
-        return deps - set([dependant])
+        seen: Set[Dependant] = set()
+        to_visit: Deque[Dependant] = deque([dependant])
+        while to_visit:
+            dep = to_visit.popleft()
+            seen.add(dep)
+            for sub in dep.dependencies.values():
+                to_visit.append(sub)
+        return seen - set([dependant])
