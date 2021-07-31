@@ -1,6 +1,7 @@
 import pytest
 
 from anydep.container import Container
+from anydep.models import CallableClassDependant, Dependant
 from anydep.params import CallableClass
 
 
@@ -40,3 +41,23 @@ async def test_inheritence():
     async with container.enter_global_scope("app"):
         assert 2 == await container.execute(CallableClass(MyClass))
         assert 4 == await container.execute(CallableClass(MyChildClass))
+
+
+@pytest.mark.anyio
+async def test_detect_class_in_dependencies():
+    """Simulate how FastAPI could detect security scopes and aggreate them for a given route"""
+    container = Container()
+
+    expected_scopes = ["a", "b", "c"]
+
+    def endpoint(v: int = CallableClass(MyChildClass, security_scopes=expected_scopes)) -> None:
+        return
+
+    scopes = []
+    async with container.enter_global_scope("app"):
+        deps = container.get_flat_subdependants(Dependant(endpoint))
+        for dep in deps:
+            if isinstance(dep, CallableClassDependant):
+                if issubclass(dep.cls, MyClass):
+                    scopes.extend(getattr(dep, "security_scopes", []))
+    assert scopes == expected_scopes
