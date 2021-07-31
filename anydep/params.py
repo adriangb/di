@@ -1,7 +1,9 @@
-from typing import Optional, overload
+from typing import Optional, Union, overload
 
 from anydep.models import (
+    AsyncCallableClass,
     AsyncGeneratorProvider,
+    CallableClassDependant,
     CallableProvider,
     CoroutineProvider,
     Dependant,
@@ -9,6 +11,7 @@ from anydep.models import (
     DependencyType,
     GeneratorProvider,
     Scope,
+    SyncCallableClass,
 )
 
 
@@ -44,3 +47,19 @@ def Depends(
     call: Optional[DependencyProviderType[DependencyType]] = None, *, scope: Optional[Scope] = None
 ) -> DependencyType:
     return Dependant(call=call, scope=scope)  # type: ignore
+
+
+@overload
+def CallableClass(cls: AsyncCallableClass[DependencyType], *, scope: Optional[Scope] = None) -> DependencyType:
+    ...
+
+
+@overload
+def CallableClass(cls: SyncCallableClass[DependencyType], *, scope: Optional[Scope] = None) -> DependencyType:
+    ...
+
+
+def CallableClass(
+    cls: Union[SyncCallableClass[DependencyType], AsyncCallableClass[DependencyType]], *, scope: Optional[Scope] = None
+) -> DependencyType:
+    return CallableClassDependant(cls=cls, call=cls.__call__, scope=scope)  # type: ignore

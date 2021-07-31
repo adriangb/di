@@ -20,6 +20,7 @@ from typing import AsyncGenerator, Dict, Generator, Union
 import anyio
 
 from anydep.container import Container
+from anydep.models import Dependant
 from anydep.params import Depends
 
 
@@ -51,14 +52,14 @@ def collector(
 
 async def main():
     container = Container()
-    dependant = container.get_dependant(collector)
+    dependant = Dependant(collector)
     async with container.enter_global_scope("app"):
         async with container.enter_local_scope("request"):  # localized using contextvars
             container.bind(Class, lambda: Class(-10))  # bind an instance, class, callable, etc.; for example an incoming request
             assert (await container.execute(dependant)) == 0  # summed up to 10 but Class.value is -10
         assert (await container.execute(dependant)) == 15  # our bind was cleared since we exited the scope
 
-anyio.run(main())
+anyio.run(main)
 ```
 
 All the returned value will be cached within the `"app"` scope and trashed as soon as the scope is exited.

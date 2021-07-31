@@ -2,6 +2,7 @@ import asyncio
 from time import time
 
 from anydep.container import Container
+from anydep.models import Dependant
 from anydep.params import Depends  # noqa
 
 counter = {"counter": 0}
@@ -23,7 +24,7 @@ final = eval(f"func_{f}")
 
 
 async def test(container: Container):
-    r = await container.execute(container.get_dependant(final))
+    r = await container.execute(Dependant(final))  # type: ignore
     assert r == 1
 
 

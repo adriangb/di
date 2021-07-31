@@ -5,6 +5,7 @@ import pytest
 
 from anydep.container import Container
 from anydep.exceptions import WiringError
+from anydep.models import Dependant
 from anydep.params import Depends
 
 counter: DefaultDict[str, int] = defaultdict(int)
@@ -91,7 +92,7 @@ async def test_solve_call_id_cache(reset: None) -> None:
     for iteration in range(1, 3):
         async with container.enter_global_scope("app"):
             for _ in range(2):  # to check that values are cached
-                dependant = container.get_dependant(parent)
+                dependant = Dependant(parent)
                 value = await container.execute(dependant)
                 assert all(v == "started" for v in lifetimes.values())
         assert all(v == "finished" for v in lifetimes.values())
@@ -114,7 +115,7 @@ async def test_no_default_no_depends():
     container = Container()
     async with container.enter_global_scope("app"):
         with pytest.raises(WiringError):
-            await container.execute(container.get_dependant(method))
+            await container.execute(Dependant(method))
 
 
 @pytest.mark.anyio
@@ -124,4 +125,4 @@ async def test_solve_default():
 
     container = Container()
     async with container.enter_global_scope("app"):
-        assert 5 == await container.execute(container.get_dependant(method))
+        assert 5 == await container.execute(Dependant(method))

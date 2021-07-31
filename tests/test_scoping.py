@@ -2,6 +2,7 @@ import pytest
 
 from anydep.container import Container
 from anydep.exceptions import DuplicateScopeError, UnknownScopeError
+from anydep.models import Dependant
 from anydep.params import Depends
 
 
@@ -38,10 +39,10 @@ async def test_scoped():
     for d in (dep, app_scoped):
         async with container.enter_global_scope("app"):
             dep.value = 1
-            r = await container.execute(container.get_dependant(d))
+            r = await container.execute(Dependant(d))
             assert r == 1, d
             dep.value = 2
-            r = await container.execute(container.get_dependant(d))
+            r = await container.execute(Dependant(d))
             assert r == 1, d  # unchanged
 
 
@@ -50,10 +51,10 @@ async def test_transient():
     container = Container()
     async with container.enter_global_scope("app"):
         dep.value = 1
-        r = await container.execute(container.get_dependant(app_scoped))
+        r = await container.execute(Dependant(app_scoped))
         assert r == 1
         dep.value = 2
-        r = await container.execute(container.get_dependant(no_scope))
+        r = await container.execute(Dependant(no_scope))
         assert r == 2  # not cached
 
 
@@ -65,7 +66,7 @@ async def test_unknown_scope():
     container = Container()
     async with container.enter_global_scope("app"):
         with pytest.raises(UnknownScopeError):
-            await container.execute(container.get_dependant(bad_dep))
+            await container.execute(Dependant(bad_dep))
 
 
 @pytest.mark.anyio
@@ -75,7 +76,7 @@ async def test_no_scopes():
 
     container = Container()
     with pytest.raises(UnknownScopeError):
-        await container.execute(container.get_dependant(bad_dep))
+        await container.execute(Dependant(bad_dep))
 
 
 @pytest.mark.anyio
@@ -93,14 +94,14 @@ async def test_nested_scopes():
     container = Container()
     async with container.enter_global_scope("app"):
         dep.value = 1
-        r = await container.execute(container.get_dependant(app_scoped))
+        r = await container.execute(Dependant(app_scoped))
         assert r == 1
         dep.value = 2
         async with container.enter_local_scope("request"):
             dep.value = 2
-            r = await container.execute(container.get_dependant(request_scoped))
+            r = await container.execute(Dependant(request_scoped))
             assert r == 1  # cached from app scope
-            r = await container.execute(container.get_dependant(no_scope))
+            r = await container.execute(Dependant(no_scope))
             assert r == 2  # not cached
 
 
@@ -110,12 +111,12 @@ async def test_nested_caching():
     async with container.enter_global_scope("app"):
         async with container.enter_local_scope("request"):
             dep.value = 1
-            r = await container.execute(container.get_dependant(request_scoped))
+            r = await container.execute(Dependant(request_scoped))
             assert r == 1
             dep.value = 2
-            r = await container.execute(container.get_dependant(app_scoped))
+            r = await container.execute(Dependant(app_scoped))
             assert r == 1  # uses the request scoped cache
-        r = await container.execute(container.get_dependant(app_scoped))
+        r = await container.execute(Dependant(app_scoped))
         assert r == 2  # not cached anymore
 
 
@@ -128,8 +129,8 @@ async def test_nested_caching_outlive():
             # since dep hasn't been cached yet, it gets cached
             # because it is marked as app scoped, it gets cached in the app scope
             # even if it is first initialized in a request scope
-            r = await container.execute(container.get_dependant(app_scoped))
+            r = await container.execute(Dependant(app_scoped))
             assert r == 1
         dep.value = 2
-        r = await container.execute(container.get_dependant(app_scoped))
+        r = await container.execute(Dependant(app_scoped))
         assert r == 2  # not cached anymore

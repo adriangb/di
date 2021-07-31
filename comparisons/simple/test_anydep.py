@@ -3,6 +3,7 @@ import time
 import anyio
 
 from anydep.container import Container
+from anydep.models import Dependant
 from anydep.params import Depends
 
 
@@ -24,7 +25,7 @@ async def main():
     container = Container()
     start = time.time()
     async with container.enter_global_scope("app"):
-        await container.execute(container.get_dependant(collector))
+        await container.execute(Dependant(collector))
     print(time.time() - start)
 
 

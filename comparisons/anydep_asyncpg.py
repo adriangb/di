@@ -5,6 +5,7 @@ from typing import AsyncGenerator
 import asyncpg
 
 from anydep.container import Container
+from anydep.models import Dependant
 from anydep.params import Depends
 
 
@@ -23,7 +24,7 @@ async def endpoint(conn: asyncpg.Connection = Depends(db_conn)) -> int:
 
 
 async def test(container: Container):
-    r = await container.execute(container.get_dependant(endpoint))
+    r = await container.execute(Dependant(endpoint))
     assert r == 256
 
 

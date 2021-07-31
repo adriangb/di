@@ -21,7 +21,6 @@ from anydep.models import (
     Dependant,
     Dependency,
     DependencyProvider,
-    DependencyProviderType,
     DependencyType,
     GeneratorProvider,
     Scope,
@@ -31,7 +30,7 @@ from anydep.tasks import Task
 
 class ContainerState:
     def __init__(self) -> None:
-        self.binds: Dict[DependencyProvider, Dependant[DependencyProvider]] = {}
+        self.binds: Dict[DependencyProvider, Dependant[Dependency]] = {}
         self.cached_values: Dict[Hashable, Dict[DependencyProvider, Dependency]] = {}
         self.stacks: Dict[Scope, AsyncExitStack] = {}
         self.scopes: List[Scope] = []
@@ -145,9 +144,9 @@ class Container:
     def _build_task(
         self,
         *,
-        dependant: Dependant[DependencyProviderType[DependencyType]],
-        task_cache: Dict[Dependant[DependencyProvider], Task[DependencyProvider]],
-        call_cache: Dict[DependencyProvider, Dependant[DependencyProvider]],
+        dependant: Dependant[DependencyType],
+        task_cache: Dict[Dependant[Dependency], Task[Dependency]],
+        call_cache: Dict[DependencyProvider, Dependant[Dependency]],
     ) -> Tuple[bool, Task[DependencyType]]:
 
         if dependant.call in self.state.binds:
@@ -195,23 +194,7 @@ class Container:
         task_cache[dependant] = task
         return False, task  # type: ignore
 
-    @overload
-    async def execute(self, dependant: Dependant[AsyncGeneratorProvider[DependencyType]]) -> DependencyType:
-        ...  # pragma: no cover
-
-    @overload
-    async def execute(self, dependant: Dependant[CoroutineProvider[DependencyType]]) -> DependencyType:
-        ...  # pragma: no cover
-
-    @overload
-    async def execute(self, dependant: Dependant[GeneratorProvider[DependencyType]]) -> DependencyType:
-        ...  # pragma: no cover
-
-    @overload
-    async def execute(self, dependant: Dependant[CallableProvider[DependencyType]]) -> DependencyType:
-        ...  # pragma: no cover
-
-    async def execute(self, dependant: Dependant) -> Dependency:
+    async def execute(self, dependant: Dependant[DependencyType]) -> DependencyType:
         task_cache: Dict[Dependant[DependencyProvider], Task[DependencyProvider]] = {}
         _, task = self._build_task(dependant=dependant, task_cache=task_cache, call_cache={})
         result = await task.result()
@@ -224,27 +207,6 @@ class Container:
                 v = await subtask.result()
                 self.state.cached_values[scope][cast(DependencyProvider, subtask.dependant.call)] = v
         return result
-
-    @overload
-    def get_dependant(
-        self, call: AsyncGeneratorProvider[DependencyType]
-    ) -> Dependant[AsyncGeneratorProvider[DependencyType]]:
-        ...  # pragma: no cover
-
-    @overload
-    def get_dependant(self, call: CoroutineProvider[DependencyType]) -> Dependant[CoroutineProvider[DependencyType]]:
-        ...  # pragma: no cover
-
-    @overload
-    def get_dependant(self, call: GeneratorProvider[DependencyType]) -> Dependant[GeneratorProvider[DependencyType]]:
-        ...  # pragma: no cover
-
-    @overload
-    def get_dependant(self, call: CallableProvider[DependencyType]) -> Dependant[CallableProvider[DependencyType]]:
-        ...  # pragma: no cover
-
-    def get_dependant(self, call: DependencyProvider) -> Dependant:
-        return Dependant(call=call)
 
     def get_flat_subdependants(self, dependant: Dependant) -> Set[Dependant]:
         task_cache: Dict[Dependant[DependencyProvider], Task[DependencyProvider]] = {}

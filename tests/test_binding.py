@@ -4,6 +4,7 @@ import anyio
 import pytest
 
 from anydep.container import Container
+from anydep.models import Dependant
 from anydep.params import Depends
 
 
@@ -20,14 +21,14 @@ def endpoint(r: Request) -> int:
 async def test_bind():
     container = Container()
     async with container.enter_global_scope("app"):
-        r = await container.execute(container.get_dependant(endpoint))
+        r = await container.execute(Dependant(endpoint))
         assert r == 0  # just the default value
         async with container.enter_local_scope("request"):
             request = Request(2)  # build a request
             container.bind(Request, lambda: request)  # bind the request
-            r = await container.execute(container.get_dependant(endpoint))
+            r = await container.execute(Dependant(endpoint))
             assert r == 2  # bound value
-        r = await container.execute(container.get_dependant(endpoint))
+        r = await container.execute(Dependant(endpoint))
         assert r == 0  # back to the default value
 
 
@@ -52,7 +53,7 @@ async def endpoint2(
 async def run_endpoint2(expected: Tuple[int, int, int], container: Container):
     async with container.enter_local_scope("request"):
         container.bind(inject3, lambda: expected[2])
-        got = await container.execute(container.get_dependant(endpoint2))
+        got = await container.execute(Dependant(endpoint2))
     assert expected == got, (expected, got)
 
 
