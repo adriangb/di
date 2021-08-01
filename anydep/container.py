@@ -15,7 +15,11 @@ from typing import (
 )
 
 from anydep.concurrency import wrap_call
-from anydep.exceptions import DuplicateScopeError, UnknownScopeError
+from anydep.exceptions import (
+    CircularDependencyError,
+    DuplicateScopeError,
+    UnknownScopeError,
+)
 from anydep.models import (
     AsyncGeneratorProvider,
     CallableProvider,
@@ -40,7 +44,7 @@ class ContainerState:
     def copy(self) -> "ContainerState":
         new = ContainerState()
         new.binds = self.binds.copy()
-        new.cached_values = {k: v.copy() for k, v in self.cached_values.items()}
+        new.cached_values = self.cached_values.copy()
         new.stacks = self.stacks.copy()
         new.scopes = self.scopes.copy()
         return new
@@ -149,13 +153,18 @@ class Container:
         dependant: Dependant[DependencyType],
         task_cache: Dict[Dependant[Dependency], Task[Dependency]],
         call_cache: Dict[DependencyProvider, Dependant[Dependency]],
+        seen: Set[Dependant[Dependency]],
     ) -> Tuple[bool, Task[DependencyType]]:
 
-        if dependant.call in self.state.binds:
-            dependant = self.state.binds[dependant.call]  # type: ignore
+        if dependant in seen:
+            raise CircularDependencyError(f"Circular dependency detected including node {dependant}")
+        seen.add(dependant)
 
         scope = self._resolve_scope(dependant.scope)
         task_scope = scope
+
+        if dependant.call in self.state.binds:
+            dependant = self.state.binds[dependant.call]  # type: ignore
 
         if scope is not False:
             if dependant.call in call_cache:
@@ -177,7 +186,7 @@ class Container:
         allow_cache = True
         for param_name, sub_dependant in dependant.dependencies.items():
             allow_cache, subtask = self._build_task(
-                dependant=sub_dependant, task_cache=task_cache, call_cache=call_cache
+                dependant=sub_dependant, task_cache=task_cache, call_cache=call_cache, seen=seen
             )
             task_cache[sub_dependant] = subtask
             subtasks[param_name] = subtask
@@ -198,7 +207,7 @@ class Container:
 
     async def execute(self, dependant: Dependant[DependencyType]) -> DependencyType:
         task_cache: Dict[Dependant[DependencyProvider], Task[DependencyProvider]] = {}
-        _, task = self._build_task(dependant=dependant, task_cache=task_cache, call_cache={})
+        _, task = self._build_task(dependant=dependant, task_cache=task_cache, call_cache={}, seen=set())
         result = await task.result()
         scope = self._resolve_scope(task.scope)
         if scope is not False:
@@ -217,5 +226,6 @@ class Container:
             dep = to_visit.popleft()
             seen.add(dep)
             for sub in dep.dependencies.values():
-                to_visit.append(sub)
+                if sub not in seen:
+                    to_visit.append(sub)
         return seen - set([dependant])

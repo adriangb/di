@@ -4,7 +4,7 @@ from typing import AsyncGenerator, DefaultDict, Generator, Union
 import pytest
 
 from anydep.container import Container
-from anydep.exceptions import WiringError
+from anydep.exceptions import CircularDependencyError, WiringError
 from anydep.models import Dependant
 from anydep.params import Depends
 
@@ -126,3 +126,21 @@ async def test_solve_default():
     container = Container()
     async with container.enter_global_scope("app"):
         assert 5 == await container.execute(Dependant(method))
+
+
+class C1:
+    def __init__(self, c2: "C2") -> None:
+        ...
+
+
+class C2:
+    def __init__(self, c1: C1) -> None:
+        ...
+
+
+@pytest.mark.anyio
+async def test_cycles():
+    container = Container()
+    async with container.enter_global_scope("app"):
+        with pytest.raises(CircularDependencyError):
+            await container.execute(Dependant(C1))

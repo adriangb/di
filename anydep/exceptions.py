@@ -12,3 +12,7 @@ class DuplicateScopeError(ValueError):
 
 class DuplicatedDependencyError(RuntimeError):
     pass
+
+
+class CircularDependencyError(RuntimeError):
+    pass
