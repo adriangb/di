@@ -15,7 +15,13 @@ from typing import (
 
 import anyio
 
-from anydep.inspect import is_async_gen_callable, is_coroutine_callable, is_gen_callable
+from anydep.inspect import (
+    is_async_context_manager,
+    is_async_gen_callable,
+    is_context_manager,
+    is_coroutine_callable,
+    is_gen_callable,
+)
 
 T = TypeVar("T")
 
@@ -84,10 +90,14 @@ def wrap_call(call: Callable[..., T], stack: AsyncExitStack) -> Callable[..., Aw
 
 
 def wrap_call(call: Callable[..., Any], stack: AsyncExitStack) -> Callable[..., Awaitable[Any]]:
+    if is_async_context_manager(call):
+        return bind_async_context_manager(call, stack)
+    if is_context_manager(call):
+        return bind_sync_context_manager(call, stack)
     if is_async_gen_callable(call):
-        call = bind_async_context_manager(asynccontextmanager(call), stack)
-    elif is_gen_callable(call):
-        call = bind_sync_context_manager(contextmanager(call), stack)
-    elif not is_coroutine_callable(call):
-        call = callable_in_thread_pool(call)
+        return bind_async_context_manager(asynccontextmanager(call), stack)
+    if is_gen_callable(call):
+        return bind_sync_context_manager(contextmanager(call), stack)
+    if not is_coroutine_callable(call):
+        return callable_in_thread_pool(call)
     return call

@@ -5,6 +5,16 @@ from typing import Any, Callable, Dict, get_type_hints
 from anydep.exceptions import WiringError
 
 
+def is_async_context_manager(call: Callable) -> bool:
+    return inspect.iscoroutinefunction(getattr(call, "__aenter__", None)) and inspect.iscoroutinefunction(
+        getattr(call, "__aexit__", None)
+    )
+
+
+def is_context_manager(call: Callable) -> bool:
+    return callable(getattr(call, "__enter__", None)) and callable(getattr(call, "__exit__", None))
+
+
 def is_coroutine_callable(call: Callable) -> bool:
     if inspect.isroutine(call):
         return inspect.iscoroutinefunction(call)
