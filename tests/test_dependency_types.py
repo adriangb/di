@@ -4,6 +4,7 @@ from anydep.container import Container
 from anydep.models import Dependant
 from tests.dependencies import (
     AsyncCMClass,
+    Class,
     SyncCMClass,
     async_call,
     async_callable_class,
@@ -44,6 +45,7 @@ async def test_context_manager_dependency_execution(dep) -> None:
         async_callable_class,
         sync_call,
         callable_class,
+        Class,
     ],
 )
 @pytest.mark.anyio
