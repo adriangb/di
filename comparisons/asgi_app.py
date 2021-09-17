@@ -1,4 +1,4 @@
-"""A quick example of how DI might be applied to an ASIG framework"""
+"""A quick example of how DI might be applied to an ASGI framework"""
 
 import json
 import typing
