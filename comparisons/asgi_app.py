@@ -24,6 +24,8 @@ class BodyDependant(Dependant):
     def infer_call_from_annotation(self, param: Parameter) -> DependencyProvider:
         # here we define how to build param.annotation from the request
         # this could be extended to query params or headers
+        # also this is super haphazard and doesn't deal with nested dataclasses,
+        # or sub-dependants
         async def get_body(request: Request = Depends()):
             body = await request.body()
             if not body:
@@ -40,6 +42,10 @@ def Body(default: typing.Any = ...) -> typing.Any:
 
 
 def wrap_endpoint(endpoint: typing.Callable) -> typing.Callable:
+    """Get the container from the request object and bind that,
+    then repalce the endpoint call with a wired DI execution
+    """
+
     async def wrapped_endpoint(request: Request):
         container: Container = request.state.container
         async with container.enter_local_scope("request"):
@@ -50,6 +56,8 @@ def wrap_endpoint(endpoint: typing.Callable) -> typing.Callable:
 
 
 class DIRoute(Route):
+    """A route that wraps the endpoint in DI wiring"""
+
     def __init__(
         self,
         path: str,
@@ -63,6 +71,8 @@ class DIRoute(Route):
 
 
 class DIMiddleware(BaseHTTPMiddleware):
+    """Needed to hold a reference to the container and inject it into each request"""
+
     def __init__(self, app, *, container: Container) -> None:
         super().__init__(app)
         self.container = container
@@ -83,13 +93,11 @@ class HomeBody:
 
 async def expect_body(body: HomeBody = Body()):
     assert body == HomeBody("abc", 123)
-    # assert someq == "test"
     return Response()
 
 
 def expect_none(body: HomeBody = Body(None)):
     assert body is None
-    # assert someq == "test"
     return Response()
 
 
