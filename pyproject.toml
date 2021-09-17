@@ -8,6 +8,9 @@ authors = ["Adrian Garcia Badaracco <adrian@adriangb.com>"]
 python = ">=3.8.0,<4"
 anyio = "~3"
 
+[tool.poetry.group.dev.dependencies]
+dacite = "^1.6.0"
+
 [tool.poetry.dev-dependencies]
 pytest = "~6"
 pre-commit = "~2"
