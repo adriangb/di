@@ -17,7 +17,7 @@ class HeaderDependant(Dependant):
     @functools.lru_cache(maxsize=1)
     def infer_call_from_annotation(self, param: Parameter) -> DependencyProvider:
         def get_headers(request: Request = Depends()) -> typing.Any:
-            return param.annotation(request.headers[param.name.replace("_", "-")])
+            return param.annotation(request.headers.get(param.name.replace("_", "-"), self.default))
 
         return get_headers
 
