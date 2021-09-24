@@ -1,26 +1,18 @@
-# AnyDep
+# di: Pythonic Dependency Injection
 
-WIP.
+Autowiring dependency injection.
 
-A dependency injection framework based on:
-
-- Type hinting using generics -> your defaults will have the right type infered
-- Anyio compatibility
-- Arbitrary nested scoping for value caching & lifetimes (no specific Singleton, App/Request scope, etc., it's up to the implementer!)
-- Lifetimes for generator context managers (i.e. an AsyncExitStack for each scope)
-- Parallel execution of the dependency DAG (using anyio task groups)
-
-The goal of this mini-project is to try to generalize FastAPI's dependency injection framework, hopefully to fold back into FastAPI.
+This project is a generalization of FastAPI's dependency injection framework.
 
 Sample:
 
 ```python
-from typing import AsyncGenerator, Dict, Generator, Union
+from typing import AsyncGenerator, Generator
 
 import anyio
 
 from di.container import Container
-from di.models import Dependant
+from di.dependency import Dependant
 from di.params import Depends
 
 
@@ -55,8 +47,9 @@ async def main():
     dependant = Dependant(collector)
     async with container.enter_global_scope("app"):
         async with container.enter_local_scope("request"):  # localized using contextvars
-            container.bind(Class, lambda: Class(-10))  # bind an instance, class, callable, etc.; for example an incoming request
-            assert (await container.execute(dependant)) == 0  # summed up to 10 but Class.value is -10
+            # bind an instance, class, callable, etc.; for example an incoming request
+            with container.bind(lambda: Class(-10), Class, scope="request"):  # binds can be permanent or context managers
+                assert (await container.execute(dependant)) == 0  # summed up to 10 but Class.value is -10
         assert (await container.execute(dependant)) == 15  # our bind was cleared since we exited the scope
 
 anyio.run(main)
