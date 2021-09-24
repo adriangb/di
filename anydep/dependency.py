@@ -20,8 +20,12 @@ from typing import (
 )
 
 from anydep._identity_containers import IdentitySet
-from anydep._inspect import get_parameters, infer_call_from_annotation
-from anydep._parameters import DependencyParameter, ParameterKind
+from anydep._inspect import (
+    DependencyParameter,
+    ParameterKind,
+    get_parameters,
+    infer_call_from_annotation,
+)
 from anydep.exceptions import WiringError
 
 DependencyType = TypeVar("DependencyType")
@@ -72,11 +76,15 @@ class DependantProtocol(Protocol[DependencyType]):
         raise NotImplementedError
 
     @property
-    def dependencies(self) -> Optional[Dict[str, DependencyParameter]]:
+    def dependencies(
+        self,
+    ) -> Optional[Dict[str, DependencyParameter[DependantProtocol[Any]]]]:
         raise NotImplementedError
 
     @dependencies.setter
-    def dependencies(self, dependencies: Dict[str, DependencyParameter]) -> None:
+    def dependencies(
+        self, dependencies: Dict[str, DependencyParameter[DependantProtocol[Any]]]
+    ) -> None:
         raise NotImplementedError
 
     @property
@@ -100,7 +108,9 @@ class DependantProtocol(Protocol[DependencyType]):
         """
         return hash(self.call)
 
-    def get_dependencies(self) -> Dict[str, DependencyParameter]:
+    def get_dependencies(
+        self,
+    ) -> Dict[str, DependencyParameter[DependantProtocol[Any]]]:
         """A cache on top of `gather_dependencies()`"""
         if self.dependencies is None:
             self.dependencies = self.gather_dependencies()
@@ -129,7 +139,9 @@ class DependantProtocol(Protocol[DependencyType]):
         """
         raise NotImplementedError
 
-    def gather_dependencies(self) -> Dict[str, DependencyParameter]:
+    def gather_dependencies(
+        self,
+    ) -> Dict[str, DependencyParameter[DependantProtocol[Any]]]:
         """Collect this dependencies sub dependencies.
 
         The returned dict corresponds to keyword arguments that will be passed
@@ -138,7 +150,7 @@ class DependantProtocol(Protocol[DependencyType]):
         assert (
             self.call is not None
         ), "Container should have assigned call; this is a bug!"
-        res: Dict[str, DependencyParameter] = {}
+        res: Dict[str, DependencyParameter[DependantProtocol[Any]]] = {}
         for param_name, param in self.gather_parameters().items():
             if isinstance(param.default, DependantProtocol):
                 sub_dependant = cast(DependantProtocol[Any], param.default)
@@ -220,7 +232,9 @@ class Dependant(DependantProtocol[DependencyType]):
         self._scope = scope
         self._solved_dependencies: Optional[List[List[DependantProtocol[Any]]]] = None
         self._parents: IdentitySet[DependantProtocol[Any]] = IdentitySet()
-        self._dependencies: Dict[str, DependencyParameter] = dict()
+        self._dependencies: Optional[
+            Dict[str, DependencyParameter[DependantProtocol[Any]]]
+        ] = None
 
     @property
     def scope(self) -> Scope:
@@ -247,11 +261,15 @@ class Dependant(DependantProtocol[DependencyType]):
         return self._parents
 
     @property
-    def dependencies(self) -> Optional[Dict[str, DependencyParameter]]:
+    def dependencies(
+        self,
+    ) -> Optional[Dict[str, DependencyParameter[DependantProtocol[Any]]]]:
         return self._dependencies
 
     @dependencies.setter
-    def dependencies(self, dependencies: Dict[str, DependencyParameter]) -> None:
+    def dependencies(
+        self, dependencies: Dict[str, DependencyParameter[DependantProtocol[Any]]]
+    ) -> None:
         self._dependencies = dependencies
 
     def create_sub_dependant(self, call: DependencyProvider) -> DependantProtocol[Any]:

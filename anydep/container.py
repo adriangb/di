@@ -6,6 +6,7 @@ from anyio import create_task_group
 
 from anydep._cache_policy import CachePolicy, forbid_caching, invalidate_caches
 from anydep._concurrency import wrap_call
+from anydep._inspect import DependencyParameter
 from anydep._state import ContainerState
 from anydep._task import Task
 from anydep._topsort import topsort
@@ -107,7 +108,7 @@ class Container:
         if dependency not in state.cache_policy:
             state.cache_policy[dependency] = CachePolicy.invalidate
 
-        async def call(**kwargs: Any) -> DependencyType:
+        async def bound_call(*args: Any, **kwargs: Any) -> DependencyType:
             assert dependency.call is not None
             call = dependency.call
             if state.cache_policy[
@@ -122,7 +123,7 @@ class Container:
                     call = cast(
                         DependencyProviderType[DependencyType], state.binds.get(call)
                     )
-                res = await wrap_call(call, stack=stack)(**kwargs)
+                res = await wrap_call(call, stack=stack)(*args, **kwargs)
                 if state.cache_policy[dependency] is not CachePolicy.forbid:
                     # caching is allowed, now that we have a value we can save it and start using the cache
                     state.cached_values.set(call, res, scope=dependency.scope)
@@ -130,15 +131,14 @@ class Container:
 
             return cast(DependencyType, res)
 
-        try:
-            return Task(
-                call=call,
-                dependencies={
-                    k: tasks[dep][1] for k, dep in dependency.get_dependencies().items()
-                },
+        task_dependencies: Dict[str, DependencyParameter[Task[DependencyProvider]]] = {}
+
+        for k, v in dependency.get_dependencies().items():
+            task_dependencies[k] = DependencyParameter(
+                tasks[v.dependency][1], kind=v.kind
             )
-        except:
-            pass
+
+        return Task(call=bound_call, dependencies=task_dependencies)
 
     async def execute(
         self, dependency: DependantProtocol[DependencyType]
