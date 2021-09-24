@@ -1,11 +1,10 @@
 /*
-/*/
 
 !/.gitignore
 !/.github/
 !/.flake8
 !/.pre-commit-config.yaml
-!/di/
+!/anydep/
 !/comparisons/
 !/docs/
 !/docs_src/
