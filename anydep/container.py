@@ -4,9 +4,11 @@ from typing import Any, AsyncGenerator, ContextManager, Dict, List, Tuple, cast
 
 from anyio import create_task_group
 
+from anydep._cache_policy import CachePolicy, forbid_caching, invalidate_caches
 from anydep._concurrency import wrap_call
 from anydep._state import ContainerState
 from anydep._task import Task
+from anydep._topsort import topsort
 from anydep.dependency import (
     DependantProtocol,
     DependencyProvider,
@@ -15,7 +17,6 @@ from anydep.dependency import (
     Scope,
 )
 from anydep.exceptions import DuplicateScopeError, ScopeConflictError, UnknownScopeError
-from anydep.topsort import topsort
 
 
 class Container:
@@ -26,33 +27,29 @@ class Container:
         self._context.set(state)
 
     @property
-    def state(self) -> ContainerState:
+    def _state(self) -> ContainerState:
         return self._context.get()
 
     @asynccontextmanager
     async def enter_global_scope(self, scope: Scope) -> AsyncGenerator[None, None]:
-        async with self.state.enter_scope(scope):
+        async with self._state.enter_scope(scope):
             # bind ourself so that dependencies can request the container
-            try:
-                self.state.cached_values.get(Container)
-            except KeyError:
-                self.state.cached_values.set(Container, self, scope=scope)
+            if not self._state.cached_values.contains(Container):
+                self._state.cached_values.set(Container, self, scope=scope)
             yield
 
     @asynccontextmanager
     async def enter_local_scope(self, scope: Scope) -> AsyncGenerator[None, None]:
-        if scope in self.state.stacks:
+        if scope in self._state.stacks:
             raise DuplicateScopeError(f"Scope {scope} has already been entered!")
-        current = self.state
+        current = self._state
         new = current.copy()
         token = self._context.set(new)
         try:
-            async with self.state.enter_scope(scope):
+            async with new.enter_scope(scope):
                 # bind ourself so that dependencies can request the container
-                try:
-                    self.state.cached_values.get(Container)
-                except KeyError:
-                    self.state.cached_values.set(Container, self, scope=scope)
+                if not new.cached_values.contains(Container):
+                    new.cached_values.set(Container, self, scope=scope)
                 yield
         finally:
             self._context.reset(token)
@@ -60,7 +57,7 @@ class Container:
     def bind(
         self, provider: DependencyProvider, dependency: DependencyProvider, scope: Scope
     ) -> ContextManager[None]:
-        return self.state.bind(provider=provider, dependency=dependency, scope=scope)
+        return self._state.bind(provider=provider, dependency=dependency, scope=scope)
 
     def resolve_dependency(
         self, dependency: DependantProtocol[Any]
@@ -68,15 +65,27 @@ class Container:
         if dependency.solved_dependencies is None:
             # use id() as a hash, NOT the hash defined by DependantProtocol
             # so that we can build a static graph based on code alone
-            dependency.solved_dependencies = topsort(
-                dependency, lambda dep: set(dep.dependencies.values()), hash=id
+            topsorted_deps = topsort(
+                dependency,
+                lambda dep: [p.dependency for p in dep.get_dependencies().values()],
+                hash=id,
+                parent_callback=lambda dep, parent: dep.parents.add(parent),
             )
+            if dependency.scope is False:
+                forbid_caching(dependency, policies=self._state.cache_policy)
+            dependency.solved_dependencies = topsorted_deps
+        assert dependency.solved_dependencies is not None
         return dependency.solved_dependencies
 
-    def get_flat_dependencies(
+    def get_flat_subdependants(
         self, dependency: DependantProtocol[Any]
     ) -> List[DependantProtocol[Any]]:
-        return [dep for group in self.resolve_dependency(dependency) for dep in group]
+        return [
+            dep
+            for group in self.resolve_dependency(dependency)
+            for dep in group
+            if dependency not in group
+        ]
 
     def _build_task(
         self,
@@ -84,38 +93,52 @@ class Container:
         tasks: Dict[DependantProtocol[Any], Tuple[DependantProtocol[Any], Task[Any]]],
         state: ContainerState,
     ) -> Task[DependencyType]:
-
-        try:
-            stack = state.stacks[dependency.scope]
-        except KeyError:
-            raise UnknownScopeError(
-                f"The dependency {dependency} declares scope {dependency.scope}"
-                f" which is not amongst the known scopes {self.state.stacks.keys()}"
-            )
+        if dependency.scope is False:
+            state.cache_policy[dependency] = CachePolicy.forbid
+            stack = state.stacks[None]
+        else:
+            try:
+                stack = state.stacks[dependency.scope]
+            except KeyError:
+                raise UnknownScopeError(
+                    f"The dependency {dependency} declares scope {dependency.scope}"
+                    f" which is not amongst the known scopes {self._state.stacks.keys()}"
+                )
+        if dependency not in state.cache_policy:
+            state.cache_policy[dependency] = CachePolicy.invalidate
 
         async def call(**kwargs: Any) -> DependencyType:
             assert dependency.call is not None
             call = dependency.call
-            if dependency.scope is not False and state.cached_values.contains(call):
+            if state.cache_policy[
+                dependency
+            ] is not CachePolicy.forbid and state.cached_values.contains(call):
                 # use cached value
                 res = state.cached_values.get(call)
             else:
+                invalidate_caches(dependency, state.cache_policy)
                 if state.binds.contains(call):
                     # use bind
                     call = cast(
                         DependencyProviderType[DependencyType], state.binds.get(call)
                     )
                 res = await wrap_call(call, stack=stack)(**kwargs)
-                state.cached_values.set(call, res, scope=dependency.scope)
+                if state.cache_policy[dependency] is not CachePolicy.forbid:
+                    # caching is allowed, now that we have a value we can save it and start using the cache
+                    state.cached_values.set(call, res, scope=dependency.scope)
+                    state.cache_policy[dependency] = CachePolicy.use
 
             return cast(DependencyType, res)
 
-        return Task(
-            call=call,
-            dependencies={
-                k: tasks[dep][1] for k, dep in dependency.dependencies.items()
-            },
-        )
+        try:
+            return Task(
+                call=call,
+                dependencies={
+                    k: tasks[dep][1] for k, dep in dependency.get_dependencies().items()
+                },
+            )
+        except:
+            pass
 
     async def execute(
         self, dependency: DependantProtocol[DependencyType]
@@ -139,8 +162,8 @@ class Container:
                                 f"The dependency {dep.call} is declared with two different scopes:"
                                 f" {dep.scope} and {task_dep.scope}"
                             )
-                        continue
-                    tasks[dep] = (dep, self._build_task(dep, tasks, self.state))
+                    else:
+                        tasks[dep] = (dep, self._build_task(dep, tasks, self._state))
             ordered_tasks = [
                 [tasks[dep][1] for dep in group]
                 for group in dependency.solved_dependencies

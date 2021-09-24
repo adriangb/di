@@ -1,12 +1,16 @@
 import inspect
 import types
+from dataclasses import dataclass
+from enum import Enum, auto
 from typing import (
     Any,
     AsyncGenerator,
-    Awaitable,
     Callable,
+    Coroutine,
     Dict,
     Generator,
+    Generic,
+    TypeVar,
     Union,
     get_type_hints,
 )
@@ -14,7 +18,7 @@ from typing import (
 from anydep.exceptions import WiringError
 
 CallableProvider = Callable[..., Any]
-CoroutineProvider = Callable[..., Awaitable[Any]]
+CoroutineProvider = Callable[..., Coroutine[Any, Any, Any]]
 GeneratorProvider = Callable[..., Generator[Any, None, None]]
 AsyncGeneratorProvider = Callable[..., AsyncGenerator[Any, None]]
 
@@ -24,6 +28,20 @@ DependencyProvider = Union[
     GeneratorProvider,
     CallableProvider,
 ]
+
+
+T = TypeVar("T")
+
+
+class ParameterKind(Enum):
+    positional = auto()
+    keyword = auto()
+
+
+@dataclass  # this should be a NamedTuple but https://github.com/python/mypy/issues/685
+class DependencyParameter(Generic[T]):
+    dependency: T
+    kind: ParameterKind
 
 
 def is_coroutine_callable(call: DependencyProvider) -> bool:
@@ -66,15 +84,12 @@ def get_parameters(call: DependencyProvider) -> Dict[str, inspect.Parameter]:
     annotations = get_annotations(call)
     processed_params: Dict[str, inspect.Parameter] = {}
     for param_name, param in params.items():
-        if isinstance(param.annotation, str):
-            processed_params[param_name] = inspect.Parameter(
-                name=param.name,
-                kind=param.kind,
-                default=param.default,
-                annotation=annotations[param_name],
-            )
-        else:
-            processed_params[param_name] = param
+        processed_params[param_name] = inspect.Parameter(
+            name=param.name,
+            kind=param.kind,  # type: ignore
+            default=param.default,
+            annotation=annotations[param_name],
+        )
 
     return processed_params
 

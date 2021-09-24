@@ -1,69 +1,13 @@
-from collections import ChainMap
+from __future__ import annotations
+
 from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
-from typing import (
-    Any,
-    AsyncGenerator,
-    ContextManager,
-    Dict,
-    Generator,
-    Generic,
-    Hashable,
-    List,
-    Mapping,
-    Optional,
-    TypeVar,
-)
+from typing import Any, AsyncGenerator, ContextManager, Dict, Generator, List, Optional
 
-from anydep.dependency import DependencyProvider, Scope
+from anydep._cache_policy import CachePolicy
+from anydep._identity_containers import IdentityMapping
+from anydep._scope_map import ScopeMap
+from anydep.dependency import DependantProtocol, DependencyProvider, Scope
 from anydep.exceptions import DuplicateScopeError, UnknownScopeError
-
-T = TypeVar("T")
-KT = TypeVar("KT", bound=Hashable)
-VT = TypeVar("VT")
-
-
-class ScopeMap(Generic[KT, VT]):
-    def __init__(self, *scope_mappings: Mapping[KT, Scope]) -> None:
-        self.scope_mapping: ChainMap[KT, Scope] = ChainMap(*scope_mappings)
-        self.mappings: Dict[Scope, Dict[KT, VT]] = {}
-
-    def get(self, key: KT) -> VT:
-        return self.mappings[self.scope_mapping[key]][key]
-
-    def contains(self, key: KT) -> bool:
-        return key in self.scope_mapping
-
-    def get_scope(self, key: KT) -> Scope:
-        return self.scope_mapping[key]
-
-    def set(self, key: KT, value: VT, *, scope: Scope) -> None:
-        if key in self.scope_mapping:
-            current_scope = self.scope_mapping.pop(key)
-            self.mappings[current_scope].pop(key)
-        self.scope_mapping[key] = scope
-        self.mappings[scope][key] = value
-
-    def pop(self, key: KT) -> None:
-        if key not in self.scope_mapping:
-            raise KeyError
-        scope = self.scope_mapping.pop(key)
-        self.mappings[scope].pop(key)
-
-    def append_scope(self, scope: Scope) -> None:
-        self.mappings[scope] = {}
-
-    def pop_scope(self, scope: Scope) -> None:
-        unbound = self.mappings.pop(scope)
-        for key in unbound.keys():
-            self.scope_mapping.pop(key, None)
-
-    def has_scope(self, scope: Scope) -> bool:
-        return scope in self.mappings
-
-    def copy(self) -> "ScopeMap[KT, VT]":
-        new = ScopeMap[KT, VT](self.scope_mapping, {})
-        new.mappings = self.mappings.copy()
-        return new
 
 
 class ContainerState:
@@ -71,6 +15,9 @@ class ContainerState:
         self.binds = ScopeMap[DependencyProvider, DependencyProvider]()
         self.cached_values = ScopeMap[DependencyProvider, Any]()
         self.stacks: Dict[Scope, AsyncExitStack] = {}
+        self.cache_policy: IdentityMapping[
+            DependantProtocol[Any], CachePolicy
+        ] = IdentityMapping()
 
     @property
     def scopes(self) -> List[Scope]:
@@ -80,6 +27,8 @@ class ContainerState:
         new = ContainerState()
         new.binds = self.binds.copy()
         new.stacks = self.stacks.copy()
+        new.cache_policy = self.cache_policy
+        new.cached_values = self.cached_values.copy()
         return new
 
     @asynccontextmanager

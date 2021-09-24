@@ -95,7 +95,6 @@ async def return_zero() -> int:
 
 async def bind(container: Container) -> None:
     container.bind(lambda: 10, return_zero, scope="something")
-    container.state.binds.contains(return_zero)
 
 
 async def return_one(zero: int = Depends(return_zero)) -> int:
