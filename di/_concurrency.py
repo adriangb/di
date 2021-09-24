@@ -14,12 +14,8 @@ from typing import (
 
 import anyio
 
-from anydep._inspect import (
-    is_async_gen_callable,
-    is_coroutine_callable,
-    is_gen_callable,
-)
-from anydep.dependency import (
+from di._inspect import is_async_gen_callable, is_coroutine_callable, is_gen_callable
+from di.dependency import (
     AsyncGeneratorProvider,
     CallableProvider,
     CoroutineProvider,

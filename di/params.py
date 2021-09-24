@@ -3,7 +3,7 @@
 
 from typing import Optional, overload
 
-from anydep.dependency import (
+from di.dependency import (
     AsyncGeneratorProvider,
     CallableProvider,
     CoroutineProvider,

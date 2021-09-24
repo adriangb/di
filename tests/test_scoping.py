@@ -1,10 +1,10 @@
 import anyio
 import pytest
 
-from anydep.container import Container
-from anydep.dependency import Dependant
-from anydep.exceptions import DuplicateScopeError, UnknownScopeError
-from anydep.params import Depends
+from di.container import Container
+from di.dependency import Dependant
+from di.exceptions import DuplicateScopeError, UnknownScopeError
+from di.params import Depends
 
 
 class Dep:

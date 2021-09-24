@@ -3,11 +3,11 @@ from __future__ import annotations
 from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
 from typing import Any, AsyncGenerator, ContextManager, Dict, Generator, List, Optional
 
-from anydep._cache_policy import CachePolicy
-from anydep._identity_containers import IdentityMapping
-from anydep._scope_map import ScopeMap
-from anydep.dependency import DependantProtocol, DependencyProvider, Scope
-from anydep.exceptions import DuplicateScopeError, UnknownScopeError
+from di._cache_policy import CachePolicy
+from di._identity_containers import IdentityMapping
+from di._scope_map import ScopeMap
+from di.dependency import DependantProtocol, DependencyProvider, Scope
+from di.exceptions import DuplicateScopeError, UnknownScopeError
 
 
 class ContainerState:

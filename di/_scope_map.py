@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, Generic, Hashable, List, TypeVar, Union, overload
 
-from anydep.dependency import Scope
-from anydep.exceptions import DuplicateScopeError, UnknownScopeError
+from di.dependency import Scope
+from di.exceptions import DuplicateScopeError, UnknownScopeError
 
 T = TypeVar("T")
 KT = TypeVar("KT", bound=Hashable)

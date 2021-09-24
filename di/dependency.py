@@ -19,14 +19,14 @@ from typing import (
     runtime_checkable,
 )
 
-from anydep._identity_containers import IdentitySet
-from anydep._inspect import (
+from di._identity_containers import IdentitySet
+from di._inspect import (
     DependencyParameter,
     ParameterKind,
     get_parameters,
     infer_call_from_annotation,
 )
-from anydep.exceptions import WiringError
+from di.exceptions import WiringError
 
 DependencyType = TypeVar("DependencyType")
 

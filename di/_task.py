@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Awaitable, Callable, Dict, Generic, List
 
-from anydep._inspect import DependencyParameter, ParameterKind
-from anydep.dependency import Dependency, DependencyType
+from di._inspect import DependencyParameter, ParameterKind
+from di.dependency import Dependency, DependencyType
 
 _UNSET = object()
 

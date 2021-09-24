@@ -3,9 +3,9 @@ Modeled as call=cls.__call__, where the self argument is a dependency that depen
 """
 import pytest
 
-from anydep.container import Container
-from anydep.dependency import Dependant
-from anydep.params import Depends
+from di.container import Container
+from di.dependency import Dependant
+from di.params import Depends
 
 
 def return_1() -> int:

@@ -2,9 +2,9 @@ from typing import Any, List
 
 import pytest
 
-from anydep.container import Container
-from anydep.dependency import Dependant, DependantProtocol, DependencyProvider
-from anydep.params import Depends
+from di.container import Container
+from di.dependency import Dependant, DependantProtocol, DependencyProvider
+from di.params import Depends
 
 
 def call1():

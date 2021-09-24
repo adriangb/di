@@ -3,8 +3,8 @@ from collections import defaultdict
 
 import pytest
 
-from anydep._topsort import topsort
-from anydep.exceptions import CircularDependencyError
+from di._topsort import topsort
+from di.exceptions import CircularDependencyError
 
 
 @pytest.mark.parametrize(

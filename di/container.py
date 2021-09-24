@@ -4,20 +4,20 @@ from typing import Any, AsyncGenerator, ContextManager, Dict, List, Tuple, cast
 
 from anyio import create_task_group
 
-from anydep._cache_policy import CachePolicy, forbid_caching, invalidate_caches
-from anydep._concurrency import wrap_call
-from anydep._inspect import DependencyParameter
-from anydep._state import ContainerState
-from anydep._task import Task
-from anydep._topsort import topsort
-from anydep.dependency import (
+from di._cache_policy import CachePolicy, forbid_caching, invalidate_caches
+from di._concurrency import wrap_call
+from di._inspect import DependencyParameter
+from di._state import ContainerState
+from di._task import Task
+from di._topsort import topsort
+from di.dependency import (
     DependantProtocol,
     DependencyProvider,
     DependencyProviderType,
     DependencyType,
     Scope,
 )
-from anydep.exceptions import DuplicateScopeError, ScopeConflictError, UnknownScopeError
+from di.exceptions import DuplicateScopeError, ScopeConflictError, UnknownScopeError
 
 
 class Container:
@@ -107,6 +107,9 @@ class Container:
                 )
         if dependency not in state.cache_policy:
             state.cache_policy[dependency] = CachePolicy.invalidate
+
+        if dependency.scope is False:
+            forbid_caching(dependency, state.cache_policy)
 
         async def bound_call(*args: Any, **kwargs: Any) -> DependencyType:
             assert dependency.call is not None

@@ -15,7 +15,7 @@ from typing import (
     get_type_hints,
 )
 
-from anydep.exceptions import WiringError
+from di.exceptions import WiringError
 
 CallableProvider = Callable[..., Any]
 CoroutineProvider = Callable[..., Coroutine[Any, Any, Any]]

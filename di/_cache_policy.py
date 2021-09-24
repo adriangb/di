@@ -2,8 +2,8 @@ import typing
 from collections import deque
 from enum import Enum, auto
 
-from anydep._identity_containers import IdentityMapping
-from anydep.dependency import DependantProtocol
+from di._identity_containers import IdentityMapping
+from di.dependency import DependantProtocol
 
 
 class CachePolicy(Enum):

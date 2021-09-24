@@ -11,7 +11,7 @@ from typing import (
     TypeVar,
 )
 
-from anydep.exceptions import CircularDependencyError
+from di.exceptions import CircularDependencyError
 
 T = TypeVar("T")
 T_contra = TypeVar("T_contra", contravariant=True)
