@@ -16,7 +16,7 @@ from anydep.exceptions import CircularDependencyError
 )
 def test_topsort(dag: typing.Dict[int, typing.Set[int]]):
     for start in dag:
-        ordered = topsort(start, lambda dep: dag[dep], hash=lambda dep: dep)
+        ordered = topsort(start, lambda dep: list(dag[dep]), hash=lambda dep: dep)
         resolved: typing.Set[int] = set()
         for group in reversed(ordered):
             for dep in group:
@@ -29,7 +29,7 @@ def test_topsort(dag: typing.Dict[int, typing.Set[int]]):
 def test_cycles(dag: typing.Dict[int, typing.Set[int]]):
     for start in dag:
         with pytest.raises(CircularDependencyError):
-            topsort(start, lambda dep: dag[dep], hash=lambda dep: dep)
+            topsort(start, lambda dep: list(dag[dep]), hash=lambda dep: dep)
 
 
 def test_parent_callback():
@@ -40,6 +40,9 @@ def test_parent_callback():
         parents[dep].add(parent)
 
     topsort(
-        2, lambda dep: dag[dep], hash=lambda dep: dep, parent_callback=parent_callback
+        2,
+        lambda dep: list(dag[dep]),
+        hash=lambda dep: dep,
+        parent_callback=parent_callback,
     )
     assert parents == {0: {1, 2}, 1: {2}}
