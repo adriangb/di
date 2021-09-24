@@ -19,9 +19,9 @@ from typing import AsyncGenerator, Dict, Generator, Union
 
 import anyio
 
-from anydep.container import Container
-from anydep.models import Dependant
-from anydep.params import Depends
+from di.container import Container
+from di.models import Dependant
+from di.params import Depends
 
 
 async def async_call() -> int:

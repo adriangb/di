@@ -1,6 +1,6 @@
 [tool.poetry]
-name = "anydep"
-version = "0.1.0"
+name = "di"
+version = "0.1.0-alpha"
 description = "Dependency Injection, backed by AnyIO"
 authors = ["Adrian Garcia Badaracco <adrian@adriangb.com>"]
 
@@ -9,9 +9,6 @@ python = ">=3.8.0,<4"
 anyio = "~3"
 
 [tool.poetry.group.dev.dependencies]
-dacite = "^1.6.0"
-
-[tool.poetry.dev-dependencies]
 pytest = "~6"
 pre-commit = "~2"
 pytest-cov = { version = "~2", extras = ["toml"] }
@@ -25,11 +22,8 @@ build-backend = "poetry.core.masonry.api"
 [tool.isort]
 profile = "black"
 
-[tool.black]
-line-length = 120
-
 [tool.coverage.run]
-source = ["anydep"]
+source = ["di"]
 
 [tool.coverage.report]
 exclude_lines = ["pragma: no cover"]

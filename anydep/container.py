@@ -1,231 +1,153 @@
-from collections import deque
-from contextlib import AsyncExitStack, asynccontextmanager
+from contextlib import asynccontextmanager
 from contextvars import ContextVar
-from typing import (
-    AsyncGenerator,
-    Callable,
-    Deque,
-    Dict,
-    Hashable,
-    List,
-    Set,
-    Tuple,
-    cast,
-    overload,
-)
+from typing import Any, AsyncGenerator, ContextManager, Dict, List, Tuple, cast
 
-from anydep.concurrency import wrap_call
-from anydep.exceptions import (
-    CircularDependencyError,
-    DuplicateScopeError,
-    UnknownScopeError,
-)
-from anydep.models import (
-    AsyncGeneratorProvider,
-    CallableProvider,
-    CoroutineProvider,
-    Dependant,
-    Dependency,
+from anyio import create_task_group
+
+from anydep._concurrency import wrap_call
+from anydep._state import ContainerState
+from anydep._task import Task
+from anydep.dependency import (
+    DependantProtocol,
     DependencyProvider,
+    DependencyProviderType,
     DependencyType,
-    GeneratorProvider,
     Scope,
 )
-from anydep.tasks import Task
-
-
-class ContainerState:
-    def __init__(self) -> None:
-        self.binds: Dict[DependencyProvider, Dependant[Dependency]] = {}
-        self.cached_values: Dict[Hashable, Dict[DependencyProvider, Dependency]] = {}
-        self.stacks: Dict[Scope, AsyncExitStack] = {}
-        self.scopes: List[Scope] = []
-
-    def copy(self) -> "ContainerState":
-        new = ContainerState()
-        new.binds = self.binds.copy()
-        new.cached_values = self.cached_values.copy()
-        new.stacks = self.stacks.copy()
-        new.scopes = self.scopes.copy()
-        return new
-
-    @asynccontextmanager
-    async def enter_scope(self, scope: Scope) -> AsyncGenerator[None, None]:
-        if scope in self.stacks:
-            raise DuplicateScopeError(f"Scope {scope} has already been entered!")
-        async with AsyncExitStack() as stack:
-            self.scopes.append(scope)
-            self.stacks[scope] = stack
-            bound_providers = self.binds
-            self.binds = bound_providers.copy()
-            self.cached_values[scope] = {}
-            try:
-                yield
-            finally:
-                self.stacks.pop(scope)
-                self.binds = bound_providers
-                self.cached_values.pop(scope)
-                self.scopes.pop()
+from anydep.exceptions import DuplicateScopeError, ScopeConflictError, UnknownScopeError
+from anydep.topsort import topsort
 
 
 class Container:
     def __init__(self) -> None:
-        self.context = ContextVar[ContainerState]("context")
+        self._context = ContextVar[ContainerState]("context")
         state = ContainerState()
-        self.context.set(state)
+        # bind ourself so that dependencies can request the container
+        self._context.set(state)
 
     @property
     def state(self) -> ContainerState:
-        return self.context.get()
-
-    @overload
-    def bind(
-        self, target: AsyncGeneratorProvider[DependencyType], source: AsyncGeneratorProvider[DependencyType]
-    ) -> None:
-        ...  # pragma: no cover
-
-    @overload
-    def bind(self, target: CoroutineProvider[DependencyType], source: CoroutineProvider[DependencyType]) -> None:
-        ...  # pragma: no cover
-
-    @overload
-    def bind(self, target: GeneratorProvider[DependencyType], source: GeneratorProvider[DependencyType]) -> None:
-        ...  # pragma: no cover
-
-    @overload
-    def bind(self, target: CallableProvider[DependencyType], source: CallableProvider[DependencyType]) -> None:
-        ...  # pragma: no cover
-
-    def bind(self, target: DependencyProvider, source: DependencyProvider) -> None:
-        self.state.binds[target] = Dependant(source)  # type: ignore
-        for cached_values in self.state.cached_values.values():
-            if target in cached_values:
-                cached_values.pop(target)
+        return self._context.get()
 
     @asynccontextmanager
     async def enter_global_scope(self, scope: Scope) -> AsyncGenerator[None, None]:
         async with self.state.enter_scope(scope):
+            # bind ourself so that dependencies can request the container
+            try:
+                self.state.cached_values.get(Container)
+            except KeyError:
+                self.state.cached_values.set(Container, self, scope=scope)
             yield
 
     @asynccontextmanager
     async def enter_local_scope(self, scope: Scope) -> AsyncGenerator[None, None]:
+        if scope in self.state.stacks:
+            raise DuplicateScopeError(f"Scope {scope} has already been entered!")
         current = self.state
         new = current.copy()
-        token = self.context.set(new)
+        token = self._context.set(new)
         try:
             async with self.state.enter_scope(scope):
+                # bind ourself so that dependencies can request the container
+                try:
+                    self.state.cached_values.get(Container)
+                except KeyError:
+                    self.state.cached_values.set(Container, self, scope=scope)
                 yield
         finally:
-            self.context.reset(token)
+            self._context.reset(token)
 
-    def _resolve_scope(self, dependant_scope: Scope) -> Hashable:
-        if dependant_scope is False:
-            return False
-        elif dependant_scope is None:
-            if len(self.state.scopes) == 0:
-                raise UnknownScopeError(
-                    "No current scope in container."
-                    " You must set a scope before you can execute or resolve any dependencies."
-                )
-            return self.state.scopes[-1]  # current scope
-        else:
-            return dependant_scope
+    def bind(
+        self, provider: DependencyProvider, dependency: DependencyProvider, scope: Scope
+    ) -> ContextManager[None]:
+        return self.state.bind(provider=provider, dependency=dependency, scope=scope)
 
-    def _task_from_cached_value(
-        self, dependant: Dependant, value: DependencyType
-    ) -> Task[Callable[[], DependencyType]]:
-        async def retrieve():
-            return value
-
-        return Task(dependant=dependant, call=retrieve, dependencies={}, scope=False)
-
-    def _check_scope(self, scope: Scope):
-        if scope is False:
-            return
-        if scope not in self.state.stacks:  # self._stacks is just an O(1) lookup of current scopes
-            raise UnknownScopeError(
-                f"Scope {scope} is not known. Did you forget to enter it? Known scopes: {self.state.scopes}"
+    def resolve_dependency(
+        self, dependency: DependantProtocol[Any]
+    ) -> List[List[DependantProtocol[Any]]]:
+        if dependency.solved_dependencies is None:
+            # use id() as a hash, NOT the hash defined by DependantProtocol
+            # so that we can build a static graph based on code alone
+            dependency.solved_dependencies = topsort(
+                dependency, lambda dep: set(dep.dependencies.values()), hash=id
             )
+        return dependency.solved_dependencies
+
+    def get_flat_dependencies(
+        self, dependency: DependantProtocol[Any]
+    ) -> List[DependantProtocol[Any]]:
+        return [dep for group in self.resolve_dependency(dependency) for dep in group]
 
     def _build_task(
         self,
-        *,
-        dependant: Dependant[DependencyType],
-        task_cache: Dict[Dependant[Dependency], Task[Dependency]],
-        call_cache: Dict[DependencyProvider, Dependant[Dependency]],
-        seen: Set[Dependant[Dependency]],
-    ) -> Tuple[bool, Task[DependencyType]]:
+        dependency: DependantProtocol[DependencyType],
+        tasks: Dict[DependantProtocol[Any], Tuple[DependantProtocol[Any], Task[Any]]],
+        state: ContainerState,
+    ) -> Task[DependencyType]:
 
-        if dependant in seen:
-            raise CircularDependencyError(f"Circular dependency detected including node {dependant}")
-        seen.add(dependant)
+        try:
+            stack = state.stacks[dependency.scope]
+        except KeyError:
+            raise UnknownScopeError(
+                f"The dependency {dependency} declares scope {dependency.scope}"
+                f" which is not amongst the known scopes {self.state.stacks.keys()}"
+            )
 
-        scope = self._resolve_scope(dependant.scope)
-        task_scope = scope
-
-        if dependant.call in self.state.binds:
-            dependant = self.state.binds[dependant.call]  # type: ignore
-
-        if scope is not False:
-            if dependant.call in call_cache:
-                dependant = call_cache[dependant.call]
+        async def call(**kwargs: Any) -> DependencyType:
+            assert dependency.call is not None
+            call = dependency.call
+            if dependency.scope is not False and state.cached_values.contains(call):
+                # use cached value
+                res = state.cached_values.get(call)
             else:
-                call_cache[dependant.call] = dependant  # type: ignore
+                if state.binds.contains(call):
+                    # use bind
+                    call = cast(
+                        DependencyProviderType[DependencyType], state.binds.get(call)
+                    )
+                res = await wrap_call(call, stack=stack)(**kwargs)
+                state.cached_values.set(call, res, scope=dependency.scope)
 
-        if dependant in task_cache:
-            return True, task_cache[dependant]  # type: ignore
+            return cast(DependencyType, res)
 
-        scope = self._resolve_scope(dependant.scope)
-        self._check_scope(scope)
-        call = wrap_call(
-            cast(Callable[..., DependencyProvider], dependant.call),
-            self.state.stacks[scope if scope is not False else self.state.scopes[-1]],
+        return Task(
+            call=call,
+            dependencies={
+                k: tasks[dep][1] for k, dep in dependency.dependencies.items()
+            },
         )
 
-        subtasks = {}
-        allow_cache = True
-        for param_name, sub_dependant in dependant.dependencies.items():
-            allow_cache, subtask = self._build_task(
-                dependant=sub_dependant, task_cache=task_cache, call_cache=call_cache, seen=seen
-            )
-            task_cache[sub_dependant] = subtask
-            subtasks[param_name] = subtask
+    async def execute(
+        self, dependency: DependantProtocol[DependencyType]
+    ) -> DependencyType:
+        self.resolve_dependency(dependency)
+        assert dependency.solved_dependencies is not None
+        tasks: Dict[
+            DependantProtocol[Any], Tuple[DependantProtocol[Any], Task[Any]]
+        ] = {}  # here we use the hash semantics defined by DependantProtocol
+        async with self.enter_local_scope(None):
+            for group in reversed(dependency.solved_dependencies):
+                for dep in group:
+                    if dep in tasks:
+                        task_dep, task = tasks[dep]
+                        if (
+                            dep.scope is not False
+                            and task_dep.scope is not False
+                            and dep.scope != task_dep.scope
+                        ):
+                            raise ScopeConflictError(
+                                f"The dependency {dep.call} is declared with two different scopes:"
+                                f" {dep.scope} and {task_dep.scope}"
+                            )
+                        continue
+                    tasks[dep] = (dep, self._build_task(dep, tasks, self.state))
+            ordered_tasks = [
+                [tasks[dep][1] for dep in group]
+                for group in dependency.solved_dependencies
+            ]
+            for task_group in reversed(ordered_tasks):
+                async with create_task_group() as tg:
+                    for task in task_group:
+                        tg.start_soon(task.compute)  # type: ignore
 
-        if allow_cache and scope is not False:
-            # try to get cached value
-            for cache_scope in reversed(self.state.scopes):
-                cached_values = self.state.cached_values[cache_scope]
-                if dependant.call in cached_values:
-                    value = cached_values[dependant.call]
-                    task = self._task_from_cached_value(dependant, value)
-                    task_cache[dependant] = task
-                    return True, task  # type: ignore
-
-        task = Task(dependant=dependant, call=call, dependencies=subtasks, scope=task_scope)  # type: ignore
-        task_cache[dependant] = task
-        return False, task  # type: ignore
-
-    async def execute(self, dependant: Dependant[DependencyType]) -> DependencyType:
-        task_cache: Dict[Dependant[DependencyProvider], Task[DependencyProvider]] = {}
-        _, task = self._build_task(dependant=dependant, task_cache=task_cache, call_cache={}, seen=set())
-        result = await task.result()
-        scope = self._resolve_scope(task.scope)
-        if scope is not False:
-            self.state.cached_values[scope][cast(DependencyProvider, task.dependant.call)] = result
-        for subtask in task_cache.values():
-            scope = self._resolve_scope(subtask.scope)
-            if scope is not False:
-                v = await subtask.result()
-                self.state.cached_values[scope][cast(DependencyProvider, subtask.dependant.call)] = v
-        return result
-
-    def get_flat_subdependants(self, dependant: Dependant) -> Set[Dependant]:
-        seen: Set[Dependant] = set()
-        to_visit: Deque[Dependant] = deque([dependant])
-        while to_visit:
-            dep = to_visit.popleft()
-            seen.add(dep)
-            for sub in dep.dependencies.values():
-                if sub not in seen:
-                    to_visit.append(sub)
-        return seen - set([dependant])
+        return tasks[dependency][1].get_result()

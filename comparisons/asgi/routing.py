@@ -1,10 +1,9 @@
 import typing
 
+from di.container import Container
+from di.models import Dependant
 from starlette.requests import Request
 from starlette.routing import Route as StarletteRoute
-
-from anydep.container import Container
-from anydep.models import Dependant
 
 
 def wrap_endpoint(endpoint: typing.Callable) -> typing.Callable:
@@ -33,4 +32,10 @@ class Route(StarletteRoute):
         name: str = None,
         include_in_schema: bool = True
     ) -> None:
-        super().__init__(path, wrap_endpoint(endpoint), methods=methods, name=name, include_in_schema=include_in_schema)
+        super().__init__(
+            path,
+            wrap_endpoint(endpoint),
+            methods=methods,
+            name=name,
+            include_in_schema=include_in_schema,
+        )

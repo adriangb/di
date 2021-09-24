@@ -21,7 +21,9 @@ async def collector(v1: int = Depends(coroutine1), v2: int = Depends(coroutine2)
 
 
 async def test(request: Request):
-    res = await solve_dependencies(request=request, dependant=get_dependant(path="/", call=collector))
+    res = await solve_dependencies(
+        request=request, dependant=get_dependant(path="/", call=collector)
+    )
     values, *_, cache = res
     await collector(**values)
 
@@ -29,7 +31,14 @@ async def test(request: Request):
 async def main():
     start = time()
     async with AsyncExitStack() as stack:
-        request = Request(scope={"type": "http", "fastapi_astack": stack, "query_string": None, "headers": {}})
+        request = Request(
+            scope={
+                "type": "http",
+                "fastapi_astack": stack,
+                "query_string": None,
+                "headers": {},
+            }
+        )
         await test(request=request)
     print(time() - start)
 

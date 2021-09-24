@@ -4,11 +4,10 @@ import typing
 from dataclasses import is_dataclass
 
 from dacite import from_dict  # type: ignore
+from di.models import Dependant, DependencyProvider, Parameter
+from di.params import Depends
 from pydantic import BaseModel
 from starlette.requests import Request
-
-from anydep.models import Dependant, DependencyProvider, Parameter
-from anydep.params import Depends
 
 T = typing.TypeVar("T")
 

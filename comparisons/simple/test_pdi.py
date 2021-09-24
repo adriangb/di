@@ -22,7 +22,9 @@ class Container(containers.DeclarativeContainer):
 
 
 @inject
-async def collector(v1: int = Provide[Container.coroutine1], v2: int = Provide[Container.coroutine2]):
+async def collector(
+    v1: int = Provide[Container.coroutine1], v2: int = Provide[Container.coroutine2]
+):
     return v1 + v2
 
 

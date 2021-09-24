@@ -2,12 +2,12 @@ import typing
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 
+from di.container import Container
+from di.params import Depends
 from pydantic import BaseModel
 from starlette.responses import Response
 from starlette.testclient import TestClient
 
-from anydep.container import Container
-from anydep.params import Depends
 from comparisons.asgi.application import App
 from comparisons.asgi.body import Body
 from comparisons.asgi.headers import Header
@@ -61,16 +61,22 @@ DBContainerDep: DBConnection = Depends(scope="lifespan")
 
 
 async def pydantic_endpoint(
-    body: PydanticBody = Body(), x_my_header: int = Header(), conn: DBConnection = DBContainerDep
+    body: PydanticBody = Body(),
+    x_my_header: int = Header(),
+    conn: DBConnection = DBContainerDep,
 ):
-    assert body == PydanticBody(submodel=PydanticNested(int_field=1, str_field_default="test"), param2=1234)
+    assert body == PydanticBody(
+        submodel=PydanticNested(int_field=1, str_field_default="test"), param2=1234
+    )
     assert x_my_header == 1234
     assert conn.state == "connected"
     return Response()
 
 
 async def dataclass_endpoint(
-    body: DataclassBody = Body(), x_my_header: int = Header(), conn: DBConnection = DBContainerDep
+    body: DataclassBody = Body(),
+    x_my_header: int = Header(),
+    conn: DBConnection = DBContainerDep,
 ):
     assert body == DataclassBody(DataclassNested(1, "test"), 1234)
     assert x_my_header == 1234
@@ -79,7 +85,7 @@ async def dataclass_endpoint(
 
 
 async def lifespan(container: Container):  # request the container to be injected
-    # bind in lifespan scope so that anydep will handle teardown automatically
+    # bind in lifespan scope so that di will handle teardown automatically
     async with create_connection() as conn:
         container.bind(DBConnection, lambda: conn)
         yield
@@ -111,7 +117,9 @@ with TestClient(app) as client:
     class FakeDBConnection:
         state = "disconnected"
 
-    app.container.bind(DBConnection, FakeDBConnection)  # maybe want a context manager here?
+    app.container.bind(
+        DBConnection, FakeDBConnection
+    )  # maybe want a context manager here?
     try:
         client.post("/pydantic", json=payload, headers=headers)
     except AssertionError:

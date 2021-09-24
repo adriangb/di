@@ -1,10 +1,9 @@
 import functools
 import typing
 
+from di.models import Dependant, DependencyProvider, Parameter
+from di.params import Depends
 from starlette.requests import Request
-
-from anydep.models import Dependant, DependencyProvider, Parameter
-from anydep.params import Depends
 
 T = typing.TypeVar("T")
 
@@ -17,7 +16,9 @@ class HeaderDependant(Dependant):
     @functools.lru_cache(maxsize=1)
     def infer_call_from_annotation(self, param: Parameter) -> DependencyProvider:
         def get_headers(request: Request = Depends()) -> typing.Any:
-            return param.annotation(request.headers.get(param.name.replace("_", "-"), self.default))
+            return param.annotation(
+                request.headers.get(param.name.replace("_", "-"), self.default)
+            )
 
         return get_headers
 

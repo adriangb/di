@@ -1,11 +1,10 @@
 from inspect import Parameter
 
 import anyio
+from di.container import Container
+from di.models import Dependant
 from fastapi import Request
 from pydantic import BaseModel
-
-from anydep.container import Container
-from anydep.models import Dependant
 
 # FastAPI code
 # This demonstrates (in a very rudimentary way) how FastAPI

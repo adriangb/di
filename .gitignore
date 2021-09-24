@@ -5,7 +5,7 @@
 !/.github/
 !/.flake8
 !/.pre-commit-config.yaml
-!/anydep/
+!/di/
 !/comparisons/
 !/docs/
 !/docs_src/

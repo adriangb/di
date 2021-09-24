@@ -24,7 +24,9 @@ final = eval(f"func_{f}")
 
 
 async def test(request: Request):
-    res = await solve_dependencies(request=request, dependant=get_dependant(path="/", call=final))
+    res = await solve_dependencies(
+        request=request, dependant=get_dependant(path="/", call=final)
+    )
     values, *_, cache = res
     r = await final(**values)
     assert r == 1
@@ -35,7 +37,14 @@ async def main():
     counter["counter"] = 0
     for _ in range(ITER):  # 10 incoming requests
         async with AsyncExitStack() as stack:
-            request = Request(scope={"type": "http", "fastapi_astack": stack, "query_string": None, "headers": {}})
+            request = Request(
+                scope={
+                    "type": "http",
+                    "fastapi_astack": stack,
+                    "query_string": None,
+                    "headers": {},
+                }
+            )
             start = time()
             await test(request=request)
         t.append(time() - start)

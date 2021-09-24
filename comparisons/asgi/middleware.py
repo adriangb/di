@@ -1,10 +1,9 @@
 import typing
 
+from di.container import Container
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
-
-from anydep.container import Container
 
 
 class DIMiddleware(BaseHTTPMiddleware):
@@ -15,7 +14,9 @@ class DIMiddleware(BaseHTTPMiddleware):
         self.container = container
 
     async def dispatch(
-        self, request: Request, call_next: typing.Callable[[Request], typing.Awaitable[Response]]
+        self,
+        request: Request,
+        call_next: typing.Callable[[Request], typing.Awaitable[Response]],
     ) -> Response:
         request.state.container = self.container  # type: ignore
         return await call_next(request)

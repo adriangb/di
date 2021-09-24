@@ -16,3 +16,7 @@ class DuplicatedDependencyError(RuntimeError):
 
 class CircularDependencyError(RuntimeError):
     pass
+
+
+class ScopeConflictError(RuntimeError):
+    pass

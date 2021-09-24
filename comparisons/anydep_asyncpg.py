@@ -3,18 +3,21 @@ from time import time
 from typing import AsyncGenerator
 
 import asyncpg
-
-from anydep.container import Container
-from anydep.models import Dependant
-from anydep.params import Depends
+from di.container import Container
+from di.models import Dependant
+from di.params import Depends
 
 
 async def db_conn_pool() -> AsyncGenerator[asyncpg.Connection, None]:
-    async with asyncpg.create_pool(user="postgres", password="mysecretpassword") as pool:
+    async with asyncpg.create_pool(
+        user="postgres", password="mysecretpassword"
+    ) as pool:
         yield pool
 
 
-async def db_conn(pool: asyncpg.Pool = Depends(db_conn_pool, scope="app")) -> AsyncGenerator[asyncpg.Connection, None]:
+async def db_conn(
+    pool: asyncpg.Pool = Depends(db_conn_pool, scope="app")
+) -> AsyncGenerator[asyncpg.Connection, None]:
     async with pool.acquire() as conn:
         yield conn
 

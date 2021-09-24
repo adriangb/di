@@ -1,10 +1,10 @@
 import typing
 
+from di.container import Container
+from di.models import Dependant
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 
-from anydep.container import Container
-from anydep.models import Dependant
 from comparisons.asgi.middleware import DIMiddleware
 
 

@@ -1,9 +1,9 @@
 import asyncio
 from time import time
 
-from anydep.container import Container
-from anydep.models import Dependant
-from anydep.params import Depends  # noqa
+from di.container import Container
+from di.models import Dependant
+from di.params import Depends  # noqa
 
 counter = {"counter": 0}
 
