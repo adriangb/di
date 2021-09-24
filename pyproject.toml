@@ -23,10 +23,10 @@ build-backend = "poetry.core.masonry.api"
 profile = "black"
 
 [tool.coverage.run]
-source = ["di"]
+source = ["di", "tests"]
 
 [tool.coverage.report]
-exclude_lines = ["pragma: no cover"]
+exclude_lines = ["pragma: no cover", "..."]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
