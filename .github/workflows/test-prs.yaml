@@ -41,3 +41,23 @@ jobs:
           flags: unittests
           env_vars: OS,PYTHON
           fail_ci_if_error: true
+  version-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v1
+        with:
+          ref: main
+          path: main-branch
+      - name: Install and configure Poetry
+        uses: snok/install-poetry@v1.2.0
+        with:
+          version: 1.2.0a2
+      - name: Check version bump
+        run: |
+          NEW_VERSION=$(poetry version -s)
+          cd main-branch
+          OLD_VERSION=$(poetry version -s)
+          python -c "from packaging import version;assert version.parse(\"${NEW_VERSION}\") < version.parse(\"${OLD_VERSION}\"), \"Bad version bump detected: you must bump the version in pyproject.toml\""
