@@ -30,8 +30,6 @@ jobs:
         with:
           version: 1.2.0a2
           virtualenvs-in-project: true
-      - name: Setup project
-        run: make init
       - name: Test
         run: make test
       - name: Export Coverage Report
