@@ -24,6 +24,9 @@ test: .init
 	poetry run pre-commit run --all-files
 	poetry run pytest -v  --cov --cov-report term
 
-docs:
-	@echo "serving docs at http://localhost:8008"
-	python -m http.server 8008
+docs-build: .init
+	rm -rf public && mkdir public
+	poetry run mkdocs build --site-dir public
+
+docs-serve: .init
+	poetry run mkdocs serve

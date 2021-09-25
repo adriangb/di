@@ -1,0 +1,92 @@
+name: Deploy Docs
+
+on:
+  workflow_run:
+    workflows:
+      - Build Docs
+    types:
+      - completed
+jobs:
+  deploy:
+    name: Deploy Docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v2
+
+      - name: Get GitHub Pages Data
+        uses: actions/github-script@v3
+        id: pages-data
+        with:
+          script: |
+            const result = await github.request('GET /repos/{owner}/{repo}/pages', {
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            })
+            return result.data
+      - name: Lock workflow
+        uses: softprops/turnstyle@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          poll-interval-seconds: 10
+
+      - name: Checkout docs branch
+        uses: actions/checkout@v2
+        with:
+          ref: refs/heads/${{ fromJSON(steps.pages-data.outputs.result).source.branch }}
+
+      - name: Download artifact
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          workflow: ${{ github.event.workflow_run.name }}
+          run_id: ${{ github.event.workflow_run.id }}
+          name: docs
+
+      - name: Update versions
+        run: |
+          pip install packaging
+          python update_versions.py
+      - name: Get SHA & ref
+        run: |
+          echo "GITHUB_SHA_SHORT=$(echo ${{ github.event.workflow_run.head_sha }} | cut -c 1-7)" >> $GITHUB_ENV
+          echo "REF=$(cat ref.txt)" >> $GITHUB_ENV
+          rm -f ref.txt
+      - name: Deploy docs
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          if ! git diff-index --quiet HEAD --; then
+            echo "Deploying changes"
+            git status
+            git commit -m "Deploy docs from ${{ github.event.workflow_run.head_branch }} @ ${{ env.GITHUB_SHA_SHORT }}"
+            git push -f
+          else
+            echo "No changes to deploy"
+            exit 0
+          fi
+      - name: Find Comment
+        if: ${{ contains(github.event.workflow_run.event, 'pull_request') }}
+        uses: peter-evans/find-comment@v1
+        id: fc
+        with:
+          issue-number: ${{ github.event.workflow_run.pull_requests[0].number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: Docs preview for commit
+
+      - name: Create comment
+        if: ${{ contains(github.event.workflow_run.event, 'pull_request') && steps.fc.outputs.comment-id == 0}}
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          issue-number: ${{ github.event.workflow_run.pull_requests[0].number }}
+          edit-mode: replace
+          body: |
+            📝 Docs preview for commit ${{ env.GITHUB_SHA_SHORT }} at: ${{ fromJSON(steps.pages-data.outputs.result).html_url }}${{ env.REF }}/
+      - name: Update comment
+        if: ${{ contains(github.event.workflow_run.event, 'pull_request') && steps.fc.outputs.comment-id != 0 }}
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          edit-mode: replace
+          body: |
+            📝 Docs preview for commit ${{ env.GITHUB_SHA_SHORT }} at: ${{ fromJSON(steps.pages-data.outputs.result).html_url }}${{ env.REF }}/

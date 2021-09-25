@@ -1,0 +1,38 @@
+name: Build Docs
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  release:
+    types:
+      - published
+
+jobs:
+  build:
+    name: Build Docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+
+      - name: Install pandoc
+        run: |
+          sudo apt-get install pandoc
+      - name: Install and configure Poetry
+        uses: snok/install-poetry@v1.2.0
+        with:
+          version: 1.2.0a2
+          virtualenvs-in-project: true
+      - name: Setup project
+        run: make init
+      - name: Build docs
+        run: make docs-build
+      - name: Save ref
+        run: echo "${{ github.ref }}" >> docs/_build/ref.txt
+      - name: Save docs artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: docs
+          path: public/*
