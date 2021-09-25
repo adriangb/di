@@ -2,6 +2,7 @@
 
 .install-poetry:
 	deactivate > /dev/null 2>&1 || true
+	pip install -U pip
 	poetry -V || pip install -U --pre poetry
 	touch .install-poetry
 
