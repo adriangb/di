@@ -13,6 +13,7 @@ black = ">=21.9b0,<22"
 flake8 = "~3"
 isort = "~5"
 mypy = ">=v0.910"
+pre-commit = "~2"
 
 [tool.poetry.group.test.dependencies]
 pytest = "~6"
