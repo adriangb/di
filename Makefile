@@ -10,8 +10,6 @@ install-poetry: .install-poetry
 .init: .install-poetry
 	rm -rf .venv
 	poetry install --default
-	git init .
-	poetry run pre-commit install --install-hooks
 	touch .init
 
 .docs: .init
@@ -24,6 +22,8 @@ install-poetry: .install-poetry
 
 .lint: .init
 	poetry install --with lint
+	git init .
+	poetry run pre-commit install --install-hooks
 	touch .lint
 
 .clear:
