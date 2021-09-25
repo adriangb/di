@@ -63,4 +63,5 @@ jobs:
           NEW_VERSION=$(poetry version -s)
           cd $GITHUB_WORKSPACE/main
           OLD_VERSION=$(poetry version -s)
-          python -c "from packaging import version;assert version.parse(\"${NEW_VERSION}\") > version.parse(\"${OLD_VERSION}\"), \"Bad version bump detected: you must bump the version in pyproject.toml\""
+          python -c "from packaging import version;assert version.parse(\"${NEW_VERSION}\") > version.parse(\"${OLD_VERSION}\"), \"❌ Bad version bump detected: you must bump the version in pyproject.toml\""
+          python -c "print(\"✅ Version will be bumped from ${OLD_VERSION} to ${NEW_VERSION}\")
