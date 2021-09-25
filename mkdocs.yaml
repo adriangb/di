@@ -1,0 +1,38 @@
+site_name: "DI: Python Dependency Injection"
+site_description: Simple pythonic dependency injection
+site_url: https://www.adriangb.com/di
+
+theme:
+  name: 'material'
+  custom_dir: docs/overrides
+  palette:
+    - scheme: 'default'
+      media: '(prefers-color-scheme: light)'
+      toggle:
+        icon: 'material/lightbulb'
+        name: "Switch to dark mode"
+    - scheme: 'slate'
+      media: '(prefers-color-scheme: dark)'
+      primary: 'blue'
+      toggle:
+        icon: 'material/lightbulb-outline'
+        name: 'Switch to light mode'
+
+repo_name: adriangb/di
+repo_url: https://github.com/adriangb/di
+edit_uri: "blob/main/docs/"
+
+nav:
+  - Introduction: 'readme.md'
+
+markdown_extensions:
+  - mkautodoc
+  - admonition
+  - pymdownx.highlight
+  - pymdownx.superfences
+
+extra_css:
+- css/termynal.css
+extra_javascript:
+  - https://unpkg.com/mermaid@8.4.6/dist/mermaid.min.js
+  - js/termynal.js

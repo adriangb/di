@@ -14,7 +14,9 @@
 !/pyproject.toml
 !/poetry.lock
 !/README.md
-!/.nojekyll
+!/mkdocs.yaml
+!/.mdlrc
+!/.markdown.style.rb
 
 **/__pycache__
 **/.DS_Store

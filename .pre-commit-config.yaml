@@ -29,3 +29,11 @@ repos:
       entry: poetry lock
       files: ^pyproject.toml$
       pass_filenames: false
+  - repo: https://github.com/executablebooks/mdformat
+    rev: "0.7.10"
+    hooks:
+    - id: mdformat
+  - repo: https://github.com/markdownlint/markdownlint
+    rev: "v0.11.0"
+    hooks:
+    - id: markdownlint

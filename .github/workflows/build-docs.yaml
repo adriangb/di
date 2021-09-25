@@ -6,6 +6,8 @@ on:
   release:
     types:
       - published
+  pull-request:
+
 
 jobs:
   build:
