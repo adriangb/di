@@ -17,4 +17,7 @@ jobs:
           version: 1.2.0a2
           virtualenvs-in-project: true
       - name: Deploy docs
-        run: make docs-deploy
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          make docs-deploy
