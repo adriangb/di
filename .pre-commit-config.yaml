@@ -28,3 +28,4 @@ repos:
       language: system
       entry: poetry lock
       files: ^pyproject.toml$
+      pass_filenames: false
