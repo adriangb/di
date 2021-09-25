@@ -17,7 +17,7 @@
 !/mkdocs.yml
 !/.mdlrc
 !/.markdown.style.rb
-!/codecov.yaml
+!/codecov.yml
 
 **/__pycache__
 **/.DS_Store
