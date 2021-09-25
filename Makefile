@@ -47,4 +47,4 @@ docs-serve: .docs
 	poetry run mike serve
 
 docs-deploy: .docs
-	poetry run mike deploy --push --update-aliases --branch gh-docs $(eval poetry version -s) latest
+	poetry run mike deploy --push --update-aliases --branch gh-docs $(shell poetry version -s) latest
