@@ -33,7 +33,7 @@ install-poetry: .install-poetry
 
 init: .clear .init
 
-lint: .lint
+lint: .lint .test  # need the tests deps for linting of test fils to work
 	poetry run pre-commit run --all-files
 
 test: .test
