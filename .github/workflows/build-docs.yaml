@@ -30,7 +30,7 @@ jobs:
       - name: Build docs
         run: make docs-build
       - name: Save ref
-        run: echo "${{ github.ref }}" >> docs/_build/ref.txt
+        run: echo "${{ github.ref }}" >> public/ref.txt
       - name: Save docs artifact
         uses: actions/upload-artifact@v2
         with:
