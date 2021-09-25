@@ -29,6 +29,7 @@ install-poetry: .install-poetry
 
 .clear:
 	rm -rf .init .docs .test .lint
+	poetry -V || rm -rf .install-poetry
 
 init: .clear .init
 
@@ -38,6 +39,12 @@ test: .lint .test
 
 docs-build: .docs
 	rm -rf public && mkdir public
+	poetry run mkdocs build --site-dir public
+
+.netlify-build-docs: .init
+	rm -rf public && mkdir public
+	poetry export -f requirements.txt --output requirements.txt --dev
+	pip install -r requirements.txt
 	poetry run mkdocs build --site-dir public
 
 docs-serve: .docs

@@ -4,7 +4,6 @@ site_url: https://www.adriangb.com/di
 
 theme:
   name: 'material'
-  custom_dir: docs/overrides
   palette:
     - scheme: 'default'
       media: '(prefers-color-scheme: light)'
@@ -23,7 +22,7 @@ repo_url: https://github.com/adriangb/di
 edit_uri: "blob/main/docs/"
 
 nav:
-  - Introduction: 'readme.md'
+  - Home: 'README.md'
 
 markdown_extensions:
   - mkautodoc
@@ -34,5 +33,4 @@ markdown_extensions:
 extra_css:
 - css/termynal.css
 extra_javascript:
-  - https://unpkg.com/mermaid@8.4.6/dist/mermaid.min.js
   - js/termynal.js
