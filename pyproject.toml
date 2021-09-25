@@ -8,16 +8,23 @@ authors = ["Adrian Garcia Badaracco <adrian@adriangb.com>"]
 python = ">=3.8.0,<4"
 anyio = "~3"
 
-[tool.poetry.group.dev.dependencies]
+[tool.poetry.group.lint.dependencies]
+black = ">=21.9b0,<22"
+flake8 = "~3"
+isort = "~5"
+mypy = ">=v0.910"
+
+[tool.poetry.group.test.dependencies]
 pytest = "~6"
 pre-commit = "~2"
 pytest-cov = { version = "~2", extras = ["toml"] }
 pytest-sugar = "~0"
 trio = "~0"
+
+[tool.poetry.group.docs.dependencies]
 mkdocs = "~1"
 mkdocs-material = "~7"
 mkautodoc = "~0"
-
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -34,3 +41,10 @@ exclude_lines = ["pragma: no cover", "\\.\\.\\.\n", "raise NotImplementedError"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.mypy]
+mypy_path = "$MYPY_CONFIG_FILE_DIR/di:$MYPY_CONFIG_FILE_DIR/tests"
+no_implicit_optional = true
+allow_redefinition = false
+implicit_reexport = false
+warn_unreachable = true

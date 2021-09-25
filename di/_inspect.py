@@ -12,6 +12,7 @@ from typing import (
     Generic,
     TypeVar,
     Union,
+    cast,
     get_type_hints,
 )
 
@@ -101,4 +102,4 @@ def infer_call_from_annotation(parameter: inspect.Parameter) -> DependencyProvid
         )
     if not callable(parameter.annotation):
         raise WiringError(f"Annotation for {parameter.name} is not callable")
-    return parameter.annotation
+    return cast(DependencyProvider, parameter.annotation)

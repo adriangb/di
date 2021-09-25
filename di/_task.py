@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Awaitable, Callable, Dict, Generic, List
+from typing import Any, Awaitable, Callable, Dict, Generic, List, cast
 
 from di._inspect import DependencyParameter, ParameterKind
 from di.dependency import Dependency, DependencyType
@@ -18,7 +18,7 @@ class Task(Generic[DependencyType]):
         self.dependencies = dependencies
         self._result: Any = _UNSET
 
-    async def compute(self):
+    async def compute(self) -> None:
         positional: List[Task[Dependency]] = []
         keyword: Dict[str, Task[Dependency]] = {}
         for k, v in self.dependencies.items():
@@ -28,9 +28,9 @@ class Task(Generic[DependencyType]):
                 keyword[k] = v.dependency.get_result()
         self._result = await self.call(*positional, **keyword)
 
-    def get_result(self):
+    def get_result(self) -> DependencyType:
         if self._result is _UNSET:
             raise ValueError(
                 "`compute()` must be called before `get_result()`; this is likely a bug!"
             )
-        return self._result
+        return cast(DependencyType, self._result)

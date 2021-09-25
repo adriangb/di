@@ -162,4 +162,4 @@ class Container:
                     for task in task_group:
                         tg.start_soon(task.compute)  # type: ignore
 
-        return tasks[dependency][1].get_result()
+        return tasks[dependency][1].get_result()  # type: ignore

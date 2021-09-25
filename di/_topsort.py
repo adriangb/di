@@ -32,7 +32,7 @@ def topsort(
 
     order: Dict[int, Tuple[int, T]] = {hash(dependency): (0, dependency)}
 
-    def util(dep: T, visited: Set[int], level: int):
+    def util(dep: T, visited: Set[int], level: int) -> None:
         dep_hash = hash(dep)
         if dep_hash in visited:
             raise CircularDependencyError("Found a cycle!")
