@@ -31,7 +31,7 @@ jobs:
       - name: Test
         run: make test
       - name: Export Coverage Report
-        run: pip install coverage && coverage xml
+        run: pip install "coverage[toml]" && coverage xml
       - name: Upload code coverage
         uses: codecov/codecov-action@v1.0.10
         with:

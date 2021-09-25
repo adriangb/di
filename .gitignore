@@ -12,7 +12,7 @@
 !/tests/
 !/Makefile
 !/pyproject.toml
-!/poetry.toml
+!/poetry.lock
 !/README.md
 !/.nojekyll
 
