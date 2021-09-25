@@ -5,6 +5,10 @@ on:
     branches: [ main ]
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -33,10 +37,11 @@ jobs:
       - name: Export Coverage Report
         run: pip install "coverage[toml]" && coverage xml
       - name: Upload code coverage
-        uses: codecov/codecov-action@v1.0.10
+        uses: codecov/codecov-action@v2.1.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./coverage.xml
           name: di
           flags: unittests
           env_vars: OS,PYTHON
+          fail_ci_if_error: true
