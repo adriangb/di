@@ -4,6 +4,8 @@ Autowiring dependency injection.
 
 This project is a generalization of FastAPI's dependency injection framework.
 
+This is a work in progress; there's probably bugs and rough edges. Docs coming soon.
+
 Sample:
 
 ```python
