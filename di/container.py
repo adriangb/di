@@ -30,6 +30,14 @@ from di.exceptions import DuplicateScopeError, ScopeConflictError, UnknownScopeE
 
 
 class SolvedDependency(NamedTuple):
+    """Representation of a fully solved dependency.
+
+    A fully solved dependency consists of:
+    - A DAG of sub-dependency paramters.
+    - A topologically sorted order of execution, where each sublist represents a
+    group of dependencies that can be executed in parallel.
+    """
+
     dependency: DependantProtocol[Any]
     dag: Dict[
         DependantProtocol[Any], Dict[str, DependencyParameter[DependantProtocol[Any]]]
@@ -50,6 +58,10 @@ class Container:
 
     @asynccontextmanager
     async def enter_global_scope(self, scope: Scope) -> AsyncGenerator[None, None]:
+        """Enter a global scope that is shared amongst threads and coroutines.
+
+        If you enter a global scope in one thread / coroutine, it will propagate to others.
+        """
         async with self._state.enter_scope(scope):
             # bind ourself so that dependencies can request the container
             if not self._state.cached_values.contains(Container):
@@ -58,6 +70,10 @@ class Container:
 
     @asynccontextmanager
     async def enter_local_scope(self, scope: Scope) -> AsyncGenerator[None, None]:
+        """Enter a local scope that is localized to the current thread or coroutine.
+
+        If you enter a global scope in one thread / coroutine, it will NOT propagate to others.
+        """
         if scope in self._state.stacks:
             raise DuplicateScopeError(f"Scope {scope} has already been entered!")
         current = self._state
@@ -78,9 +94,26 @@ class Container:
         dependency: DependencyProviderType[DependencyType],
         scope: Scope,
     ) -> ContextManager[None]:
+        """Bind a new dependency provider for a given dependency.
+
+        This can be used as a function (for a permanent bind, cleared when `scope` is exited)
+        or as a context manager (the bind will be cleared when the context manager exits).
+
+        Binds are only identified by the identity of the callable and do not take into account
+        the scope or any other data from the dependency they are replacing.
+
+        The `scope` parameter determines the scope for the bind itself.
+        The bind will be automatically cleared when that scope is exited.
+        """
         return self._state.bind(provider=provider, dependency=dependency, scope=scope)
 
     def solve(self, dependency: DependantProtocol[Any]) -> SolvedDependency:
+        """Solve a dependency.
+
+        This is done automatically when calling `execute`, but you can store the returned value
+        from this function and call `execute_solved` instead if you know that your binds
+        will not be changing between calls.
+        """
 
         dag: Dict[
             DependantProtocol[Any],
@@ -109,6 +142,9 @@ class Container:
     def get_flat_subdependants(
         self, dependency: DependantProtocol[Any]
     ) -> List[DependantProtocol[Any]]:
+        """Get an exhaustive list of all of the dependencies of this dependency,
+        in no particular order.
+        """
         return [
             dep
             for group in self.solve(dependency).topsort
@@ -164,6 +200,7 @@ class Container:
         return Task(call=bound_call, dependencies=task_dependencies)
 
     async def execute_solved(self, solved: SolvedDependency) -> Dependency:
+        """Execute an already solved dependency."""
         # this mapping uses the hash semantics defined by the implementation of DependantProtocol
         tasks: Dict[
             DependantProtocol[Any], Tuple[DependantProtocol[Any], Task[Any]]
@@ -190,14 +227,16 @@ class Container:
             ordered_tasks = [
                 [tasks[dep][1] for dep in group] for group in solved.topsort
             ]
+            tg = create_task_group()
             for task_group in reversed(ordered_tasks):
-                async with create_task_group() as tg:
+                async with tg:
                     for task in task_group:
                         tg.start_soon(task.compute)  # type: ignore
 
-        return tasks[solved.dependency][1].get_result()  # type: ignore
+        return tasks[solved.dependency][1].get_result()
 
     async def execute(
         self, dependency: DependantProtocol[DependencyType]
     ) -> DependencyType:
+        """Solve and execute a dependency"""
         return await self.execute_solved(self.solve(dependency))

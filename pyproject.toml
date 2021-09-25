@@ -45,7 +45,7 @@ exclude_lines = ["pragma: no cover", "\\.\\.\\.\n", "raise NotImplementedError"]
 testpaths = ["tests"]
 
 [tool.mypy]
-mypy_path = "$MYPY_CONFIG_FILE_DIR/di:$MYPY_CONFIG_FILE_DIR/tests"
+files = "di/*,tests/*"
 no_implicit_optional = true
 allow_redefinition = false
 implicit_reexport = false
