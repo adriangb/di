@@ -33,9 +33,11 @@ install-poetry: .install-poetry
 
 init: .clear .init
 
-test: .lint .test
+lint: .lint .test  # need the tests deps for linting of test fils to work
 	poetry run pre-commit run --all-files
-	poetry run pytest -v  --cov --cov-report term
+
+test: .test
+	poetry run pytest -v --cov --cov-report term
 
 .netlify-build-docs: .init
 	rm -rf public && mkdir public

@@ -1,0 +1,12 @@
+coverage:
+  status:
+    project:
+      default:
+        target: auto  # auto compares coverage to the previous base commit
+comment:
+  layout: "diff, files"
+  require_changes: true
+codecov:
+  require_ci_to_pass: true
+  notify:
+    wait_for_ci: true
