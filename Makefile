@@ -8,8 +8,7 @@
 install-poetry: .install-poetry
 
 .init: .install-poetry
-	rm -rf poetry.lock
-	rm -rf $(poetry env info -p) > /dev/null 2>&1 || true
+	rm -rf .venv
 	poetry install
 	git init .
 	poetry run pre-commit install --install-hooks
