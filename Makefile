@@ -50,7 +50,7 @@ test: .test
 
 docs-serve: .docs
 	@echo ---- 📝 Serving docs ----
-	poetry run mike serve
+	poetry run mkdocs serve
 
 docs-deploy: .docs
 	@echo ---- 📝 Deploying docs ----
