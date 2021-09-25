@@ -58,6 +58,6 @@ jobs:
       - name: Check version bump
         run: |
           NEW_VERSION=$(poetry version -s)
-          cd main-branch
+          cd $GITHUB_WORKSPACE/main-branch
           OLD_VERSION=$(poetry version -s)
           python -c "from packaging import version;assert version.parse(\"${NEW_VERSION}\") < version.parse(\"${OLD_VERSION}\"), \"Bad version bump detected: you must bump the version in pyproject.toml\""
