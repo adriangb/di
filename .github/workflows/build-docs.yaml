@@ -1,15 +1,11 @@
-name: Build Docs
+name: Deploy Docs
 on:
   push:
     branches: [ main ]
-  pull_request:
-  release:
-    types:
-      - published
 
 jobs:
   build:
-    name: Build Docs
+    name: Deploy Docs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -20,12 +16,5 @@ jobs:
         with:
           version: 1.2.0a2
           virtualenvs-in-project: true
-      - name: Build docs
-        run: make docs-build
-      - name: Save ref
-        run: echo "${{ github.ref }}" >> public/ref.txt
-      - name: Save docs artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: docs
-          path: public/*
+      - name: Deploy docs
+        run: make docs-deploy

@@ -34,3 +34,6 @@ extra_css:
 - css/termynal.css
 extra_javascript:
   - js/termynal.js
+
+plugins:
+  - mike:

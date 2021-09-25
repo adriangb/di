@@ -26,6 +26,7 @@ trio = "~0"
 mkdocs = "~1"
 mkdocs-material = "~7"
 mkautodoc = "~0"
+mike = "~1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

@@ -14,7 +14,7 @@
 !/pyproject.toml
 !/poetry.lock
 !/README.md
-!/mkdocs.yaml
+!/mkdocs.yml
 !/.mdlrc
 !/.markdown.style.rb
 

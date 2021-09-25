@@ -283,6 +283,24 @@ optional = false
 python-versions = ">=3.6"
 
 [[package]]
+name = "mike"
+version = "1.1.1"
+description = "Manage multiple versions of your MkDocs-powered documentation"
+category = "dev"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+jinja2 = "*"
+mkdocs = ">=1.0"
+pyyaml = ">=5.1"
+verspec = "*"
+
+[package.extras]
+dev = ["coverage", "flake8 (>=3.0)", "shtab"]
+test = ["coverage", "flake8 (>=3.0)", "shtab"]
+
+[[package]]
 name = "mkautodoc"
 version = "0.1.0"
 description = "AutoDoc for MarkDown"
@@ -660,6 +678,17 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "verspec"
+version = "0.1.0"
+description = "Flexible version handling"
+category = "dev"
+optional = false
+python-versions = "*"
+
+[package.extras]
+test = ["coverage", "flake8 (>=3.7)", "mypy", "pretend", "pytest"]
+
+[[package]]
 name = "virtualenv"
 version = "20.8.1"
 description = "Virtual Python Environment builder"
@@ -704,7 +733,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8.0,<4"
-content-hash = "1ed23f485a33dd15d531a309f41f845b7e79012c55d5a362b601d00a95713ed3"
+content-hash = "323ffd327d453cfb75bc5e39f9e26f21e142a8e1ad18084e80dca6188f99953e"
 
 [metadata.files]
 anyio = [
@@ -951,6 +980,10 @@ mergedeep = [
     {file = "mergedeep-1.3.4-py3-none-any.whl", hash = "sha256:70775750742b25c0d8f36c55aed03d24c3384d17c951b3175d898bd778ef0307"},
     {file = "mergedeep-1.3.4.tar.gz", hash = "sha256:0096d52e9dad9939c3d975a774666af186eda617e6ca84df4c94dec30004f2a8"},
 ]
+mike = [
+    {file = "mike-1.1.1-py3-none-any.whl", hash = "sha256:30d221ac6fca3d5820b333103d4086437cf4d16b122c188b3740c3852f3e4e1d"},
+    {file = "mike-1.1.1.tar.gz", hash = "sha256:93e0a3a904311ebb432d3210242cca38286fb1ff1944e08bb1e7b46c149ebce1"},
+]
 mkautodoc = [
     {file = "mkautodoc-0.1.0.tar.gz", hash = "sha256:7c2595f40276b356e576ce7e343338f8b4fa1e02ea904edf33fadf82b68ca67c"},
 ]
@@ -1175,6 +1208,10 @@ typing-extensions = [
     {file = "typing_extensions-3.10.0.2-py2-none-any.whl", hash = "sha256:d8226d10bc02a29bcc81df19a26e56a9647f8b0a6d4a83924139f4a8b01f17b7"},
     {file = "typing_extensions-3.10.0.2-py3-none-any.whl", hash = "sha256:f1d25edafde516b146ecd0613dabcc61409817af4766fbbcfb8d1ad4ec441a34"},
     {file = "typing_extensions-3.10.0.2.tar.gz", hash = "sha256:49f75d16ff11f1cd258e1b988ccff82a3ca5570217d7ad8c5f48205dd99a677e"},
+]
+verspec = [
+    {file = "verspec-0.1.0-py3-none-any.whl", hash = "sha256:741877d5633cc9464c45a469ae2a31e801e6dbbaa85b9675d481cda100f11c31"},
+    {file = "verspec-0.1.0.tar.gz", hash = "sha256:c4504ca697b2056cdb4bfa7121461f5a0e81809255b41c03dda4ba823637c01e"},
 ]
 virtualenv = [
     {file = "virtualenv-20.8.1-py2.py3-none-any.whl", hash = "sha256:10062e34c204b5e4ec5f62e6ef2473f8ba76513a9a617e873f1f8fb4a519d300"},

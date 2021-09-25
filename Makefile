@@ -37,10 +37,6 @@ test: .lint .test
 	poetry run pre-commit run --all-files
 	poetry run pytest -v  --cov --cov-report term
 
-docs-build: .docs
-	rm -rf public && mkdir public
-	poetry run mkdocs build --site-dir public
-
 .netlify-build-docs: .init
 	rm -rf public && mkdir public
 	poetry export -f requirements.txt --output requirements.txt --dev
@@ -48,4 +44,7 @@ docs-build: .docs
 	poetry run mkdocs build --site-dir public
 
 docs-serve: .docs
-	poetry run mkdocs serve
+	poetry run mike serve
+
+docs-deploy: .docs
+	poetry run mike deploy --update-aliases --branch gh-docs $(poetry version -s) latest
