@@ -21,3 +21,10 @@ repos:
     rev: "3.9.2"
     hooks:
     -   id: flake8
+  - repo: local
+    hooks:
+    - id: lockfile
+      name: relock poetry.lock
+      language: system
+      entry: poetry lock
+      files: ^pyproject.toml$
