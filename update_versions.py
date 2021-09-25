@@ -12,8 +12,9 @@ latest stable (released) version, or if no released versions
 exist, the the main branch's version.
 """
 
-from json import dumps
 import os
+from json import dumps
+
 from packaging.version import parse
 
 base = "refs"
