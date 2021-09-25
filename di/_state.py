@@ -4,13 +4,19 @@ from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
 from typing import Any, AsyncGenerator, ContextManager, Dict, Generator, Optional
 
 from di._scope_map import ScopeMap
-from di.dependency import DependencyProvider, Scope
+from di.dependency import (
+    DependantProtocol,
+    DependencyProvider,
+    DependencyProviderType,
+    DependencyType,
+    Scope,
+)
 from di.exceptions import DuplicateScopeError, UnknownScopeError
 
 
 class ContainerState:
     def __init__(self) -> None:
-        self.binds = ScopeMap[DependencyProvider, DependencyProvider]()
+        self.binds = ScopeMap[DependencyProvider, DependantProtocol[Any]]()
         self.cached_values = ScopeMap[DependencyProvider, Any]()
         self.stacks: Dict[Scope, AsyncExitStack] = {}
 
@@ -38,14 +44,17 @@ class ContainerState:
             self.cached_values.pop_scope(scope)
 
     def bind(
-        self, provider: DependencyProvider, dependency: DependencyProvider, scope: Scope
+        self,
+        provider: DependantProtocol[DependencyType],
+        dependency: DependencyProviderType[DependencyType],
+        scope: Scope,
     ) -> ContextManager[None]:
         if not self.binds.has_scope(scope):
             raise UnknownScopeError(
                 f"Scope {scope} is not a known scope. Did you forget to enter it?"
             )
         previous_scope: Optional[Scope]
-        previous_provider: Optional[DependencyProvider]
+        previous_provider: Optional[DependantProtocol[Any]]
         try:
             previous_provider = self.binds.get(dependency)
             previous_scope = self.binds.get_scope(dependency)
@@ -67,8 +76,3 @@ class ContainerState:
                     self.binds.set(dependency, previous_provider, scope=previous_scope)
 
         return unbind()
-
-    def get_bound_provider(
-        self, dependency: DependencyProvider
-    ) -> Optional[DependencyProvider]:
-        return self.binds.get(dependency)

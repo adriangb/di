@@ -9,7 +9,6 @@ from typing import (
     Dict,
     Generator,
     Hashable,
-    List,
     Optional,
     Protocol,
     TypeVar,
@@ -84,14 +83,6 @@ class DependantProtocol(Protocol[DependencyType]):
     def dependencies(
         self, dependencies: Dict[str, DependencyParameter[DependantProtocol[Any]]]
     ) -> None:
-        raise NotImplementedError
-
-    @property
-    def solved_dependencies(self) -> Optional[List[List[DependantProtocol[Any]]]]:
-        raise NotImplementedError
-
-    @solved_dependencies.setter
-    def solved_dependencies(self, solved: List[List[DependantProtocol[Any]]]) -> None:
         raise NotImplementedError
 
     def __hash__(self) -> int:
@@ -225,7 +216,6 @@ class Dependant(DependantProtocol[DependencyType]):
     ) -> None:
         self._call = call
         self._scope = scope
-        self._solved_dependencies: Optional[List[List[DependantProtocol[Any]]]] = None
         self._dependencies: Optional[
             Dict[str, DependencyParameter[DependantProtocol[Any]]]
         ] = None
@@ -241,14 +231,6 @@ class Dependant(DependantProtocol[DependencyType]):
     @call.setter
     def call(self, call: Optional[DependencyProvider]) -> None:
         self._call = call
-
-    @property
-    def solved_dependencies(self) -> Optional[List[List[DependantProtocol[Any]]]]:
-        return self._solved_dependencies
-
-    @solved_dependencies.setter
-    def solved_dependencies(self, solved: List[List[DependantProtocol[Any]]]) -> None:
-        self._solved_dependencies = solved
 
     @property
     def dependencies(
@@ -267,3 +249,6 @@ class Dependant(DependantProtocol[DependencyType]):
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(call={self.call}, scope={self.scope})"
+
+    def copy(self) -> DependantProtocol[DependencyType]:
+        return Dependant[DependencyType](call=self.call, scope=self.scope)

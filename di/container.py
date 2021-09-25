@@ -1,6 +1,15 @@
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
-from typing import Any, AsyncGenerator, ContextManager, Dict, List, Tuple, cast
+from typing import (
+    Any,
+    AsyncGenerator,
+    ContextManager,
+    Dict,
+    List,
+    NamedTuple,
+    Tuple,
+    cast,
+)
 
 from anyio import create_task_group
 
@@ -11,12 +20,21 @@ from di._task import Task
 from di._topsort import topsort
 from di.dependency import (
     DependantProtocol,
+    Dependency,
     DependencyProvider,
     DependencyProviderType,
     DependencyType,
     Scope,
 )
 from di.exceptions import DuplicateScopeError, ScopeConflictError, UnknownScopeError
+
+
+class SolvedDependency(NamedTuple):
+    dependency: DependantProtocol[Any]
+    dag: Dict[
+        DependantProtocol[Any], Dict[str, DependencyParameter[DependantProtocol[Any]]]
+    ]
+    topsort: List[List[DependantProtocol[Any]]]
 
 
 class Container:
@@ -55,31 +73,45 @@ class Container:
             self._context.reset(token)
 
     def bind(
-        self, provider: DependencyProvider, dependency: DependencyProvider, scope: Scope
+        self,
+        provider: DependantProtocol[DependencyType],
+        dependency: DependencyProviderType[DependencyType],
+        scope: Scope,
     ) -> ContextManager[None]:
         return self._state.bind(provider=provider, dependency=dependency, scope=scope)
 
-    def resolve_dependency(
-        self, dependency: DependantProtocol[Any]
-    ) -> List[List[DependantProtocol[Any]]]:
-        if dependency.solved_dependencies is None:
-            # use id() as a hash, NOT the hash defined by DependantProtocol
-            # so that we can build a static graph based on code alone
-            topsorted_deps = topsort(
-                dependency,
-                lambda dep: [p.dependency for p in dep.get_dependencies().values()],
-                hash=id,
-            )
-            dependency.solved_dependencies = topsorted_deps
-        assert dependency.solved_dependencies is not None
-        return dependency.solved_dependencies
+    def solve(self, dependency: DependantProtocol[Any]) -> SolvedDependency:
+
+        dag: Dict[
+            DependantProtocol[Any],
+            Dict[str, DependencyParameter[DependantProtocol[Any]]],
+        ] = {}
+
+        def get_sub_dependencies(
+            dep: DependantProtocol[Any],
+        ) -> List[DependantProtocol[Any]]:
+            if dep not in dag:
+                params = dep.get_dependencies().copy()
+                for keyword, param in params.items():
+                    assert param.dependency.call is not None
+                    if self._state.binds.contains(param.dependency.call):
+                        params[keyword] = DependencyParameter(
+                            dependency=self._state.binds.get(param.dependency.call),
+                            kind=param.kind,
+                        )
+                dag[dep] = params
+            return [d.dependency for d in dag[dep].values()]
+
+        ordered = topsort(dependency, get_sub_dependencies, hash=id)
+
+        return SolvedDependency(dependency=dependency, dag=dag, topsort=ordered)
 
     def get_flat_subdependants(
         self, dependency: DependantProtocol[Any]
     ) -> List[DependantProtocol[Any]]:
         return [
             dep
-            for group in self.resolve_dependency(dependency)
+            for group in self.solve(dependency).topsort
             for dep in group
             if dependency not in group
         ]
@@ -89,6 +121,10 @@ class Container:
         dependency: DependantProtocol[DependencyType],
         tasks: Dict[DependantProtocol[Any], Tuple[DependantProtocol[Any], Task[Any]]],
         state: ContainerState,
+        dag: Dict[
+            DependantProtocol[Any],
+            Dict[str, DependencyParameter[DependantProtocol[Any]]],
+        ],
     ) -> Task[DependencyType]:
         if dependency.scope is False:
             stack = state.stacks[None]
@@ -103,42 +139,37 @@ class Container:
 
         async def bound_call(*args: Any, **kwargs: Any) -> DependencyType:
             assert dependency.call is not None
-            call = dependency.call
-            if dependency.scope is not False and state.cached_values.contains(call):
+            if dependency.scope is not False and state.cached_values.contains(
+                dependency.call
+            ):
                 # use cached value
-                res = state.cached_values.get(call)
+                res = state.cached_values.get(dependency.call)
             else:
-                if state.binds.contains(call):
-                    # use bind
-                    call = cast(
-                        DependencyProviderType[DependencyType], state.binds.get(call)
-                    )
-                res = await wrap_call(call, stack=stack)(*args, **kwargs)
+                res = await wrap_call(dependency.call, stack=stack)(*args, **kwargs)
                 if dependency.scope is not False:
                     # caching is allowed, now that we have a value we can save it and start using the cache
-                    state.cached_values.set(call, res, scope=dependency.scope)
+                    state.cached_values.set(
+                        dependency.call, res, scope=dependency.scope
+                    )
 
             return cast(DependencyType, res)
 
         task_dependencies: Dict[str, DependencyParameter[Task[DependencyProvider]]] = {}
 
-        for k, v in dependency.get_dependencies().items():
-            task_dependencies[k] = DependencyParameter(
-                dependency=tasks[v.dependency][1], kind=v.kind
+        for keyword, param in dag[dependency].items():
+            task_dependencies[keyword] = DependencyParameter(
+                dependency=tasks[param.dependency][1], kind=param.kind
             )
 
         return Task(call=bound_call, dependencies=task_dependencies)
 
-    async def execute(
-        self, dependency: DependantProtocol[DependencyType]
-    ) -> DependencyType:
-        self.resolve_dependency(dependency)
-        assert dependency.solved_dependencies is not None
+    async def execute_solved(self, solved: SolvedDependency) -> Dependency:
+        # this mapping uses the hash semantics defined by the implementation of DependantProtocol
         tasks: Dict[
             DependantProtocol[Any], Tuple[DependantProtocol[Any], Task[Any]]
-        ] = {}  # here we use the hash semantics defined by DependantProtocol
+        ] = {}
         async with self.enter_local_scope(None):
-            for group in reversed(dependency.solved_dependencies):
+            for group in reversed(solved.topsort):
                 for dep in group:
                     if dep in tasks:
                         task_dep, task = tasks[dep]
@@ -152,14 +183,21 @@ class Container:
                                 f" {dep.scope} and {task_dep.scope}"
                             )
                     else:
-                        tasks[dep] = (dep, self._build_task(dep, tasks, self._state))
+                        tasks[dep] = (
+                            dep,
+                            self._build_task(dep, tasks, self._state, solved.dag),
+                        )
             ordered_tasks = [
-                [tasks[dep][1] for dep in group]
-                for group in dependency.solved_dependencies
+                [tasks[dep][1] for dep in group] for group in solved.topsort
             ]
             for task_group in reversed(ordered_tasks):
                 async with create_task_group() as tg:
                     for task in task_group:
                         tg.start_soon(task.compute)  # type: ignore
 
-        return tasks[dependency][1].get_result()  # type: ignore
+        return tasks[solved.dependency][1].get_result()  # type: ignore
+
+    async def execute(
+        self, dependency: DependantProtocol[DependencyType]
+    ) -> DependencyType:
+        return await self.execute_solved(self.solve(dependency))
