@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
-from typing import Any, AsyncGenerator, ContextManager, Dict, Generator, List, Optional
+from typing import Any, AsyncGenerator, ContextManager, Dict, Generator, Optional
 
-from di._cache_policy import CachePolicy
-from di._identity_containers import IdentityMapping
 from di._scope_map import ScopeMap
-from di.dependency import DependantProtocol, DependencyProvider, Scope
+from di.dependency import DependencyProvider, Scope
 from di.exceptions import DuplicateScopeError, UnknownScopeError
 
 
@@ -15,19 +13,11 @@ class ContainerState:
         self.binds = ScopeMap[DependencyProvider, DependencyProvider]()
         self.cached_values = ScopeMap[DependencyProvider, Any]()
         self.stacks: Dict[Scope, AsyncExitStack] = {}
-        self.cache_policy: IdentityMapping[
-            DependantProtocol[Any], CachePolicy
-        ] = IdentityMapping()
-
-    @property
-    def scopes(self) -> List[Scope]:
-        return list(self.stacks.keys())
 
     def copy(self) -> "ContainerState":
         new = ContainerState()
         new.binds = self.binds.copy()
         new.stacks = self.stacks.copy()
-        new.cache_policy = self.cache_policy
         new.cached_values = self.cached_values.copy()
         return new
 
@@ -37,14 +27,14 @@ class ContainerState:
             raise DuplicateScopeError(f"Scope {scope} has already been entered!")
         stack = AsyncExitStack()
         self.stacks[scope] = stack
-        self.binds.append_scope(scope)
-        self.cached_values.append_scope(scope)
+        if not self.binds.has_scope(scope):
+            self.binds.add_scope(scope)
+        self.cached_values.add_scope(scope)
         try:
             yield
         finally:
             await stack.aclose()
             self.stacks.pop(scope)
-            self.binds.pop_scope(scope)
             self.cached_values.pop_scope(scope)
 
     def bind(
@@ -73,8 +63,6 @@ class ContainerState:
                 yield
             finally:
                 self.binds.pop(dependency)
-                if self.cached_values.contains(dependency):
-                    self.cached_values.pop(dependency)
                 if previous_provider is not None:
                     self.binds.set(dependency, previous_provider, scope=previous_scope)
 

@@ -1,8 +1,10 @@
+import typing
+
 import anyio
 import pytest
 
 from di.container import Container
-from di.dependency import Dependant
+from di.dependency import Dependant, Scope
 from di.exceptions import DuplicateScopeError, UnknownScopeError
 from di.params import Depends
 
@@ -36,35 +38,32 @@ def default_scope(v: int = Depends(dep1)):
 
 
 @pytest.mark.anyio
-async def test_scoped():
+async def test_scoped_execute():
     container = Container()
     async with container.enter_global_scope("app"):
         dep1.value = 1
         r = await container.execute(Dependant(app_scoped))
         assert r == 1, r
+        # we change the value to 2, but we should still get back 1
+        # since the value is cached
         dep1.value = 2
         r = await container.execute(Dependant(app_scoped))
         assert r == 1, r
+        # but if we execute with no scope, we get the current value
         r = await container.execute(Dependant(no_scope))
         assert r == 2, r
+        # the default scope is None, which gives us the value cached
+        # in the app scope since the app scope is outside of the None scope
         r = await container.execute(Dependant(default_scope))
         assert r == 1, r
-    r = await container.execute(Dependant(no_scope))
-    assert r == 2, r
+    # now that we exited the app scope the cache was cleared
+    # and so the default scope gives us the new value
     r = await container.execute(Dependant(default_scope))
     assert r == 2, r
-
-
-@pytest.mark.anyio
-async def test_transient():
-    container = Container()
-    async with container.enter_global_scope("app"):
-        dep1.value = 1
-        r = await container.execute(Dependant(app_scoped))
-        assert r == 1
-        dep1.value = 2
-        r = await container.execute(Dependant(no_scope))
-        assert r == 2  # not cached
+    # and it gets refreshed every call to execute()
+    dep1.value = 3
+    r = await container.execute(Dependant(default_scope))
+    assert r == 3, r
 
 
 @pytest.mark.anyio
@@ -79,87 +78,95 @@ async def test_unknown_scope():
 
 
 @pytest.mark.anyio
-async def test_no_scopes():
-    def bad_dep(v: int = Depends(dep1, scope="abcde")) -> int:
-        return v
+@pytest.mark.parametrize("outer", ("global", "local"))
+@pytest.mark.parametrize("inner", ("global", "local"))
+async def test_duplicate_global_scope(outer: Scope, inner: Scope):
+    """Cannot enter the same global scope twice"""
 
     container = Container()
-    with pytest.raises(UnknownScopeError):
-        await container.execute(Dependant(bad_dep))
 
+    fn: typing.Dict[
+        Scope, typing.Callable[[Scope], typing.AsyncContextManager[None]]
+    ] = {
+        "global": container.enter_global_scope,
+        "local": container.enter_local_scope,
+    }  # type: ignore
 
-@pytest.mark.anyio
-async def test_duplicate_scope():
-
-    container = Container()
-    async with container.enter_global_scope("app"):
+    async with fn[outer]("app"):
         with pytest.raises(DuplicateScopeError):
-            async with container.enter_global_scope("app"):
+            async with fn[inner]("app"):
                 ...
 
 
 @pytest.mark.anyio
-async def test_nested_scopes():
-    container = Container()
-    async with container.enter_global_scope("app"):
-        dep1.value = 1
-        r = await container.execute(Dependant(app_scoped))
-        assert r == 1
-        dep1.value = 2
-        async with container.enter_local_scope("request"):
-            dep1.value = 2
-            r = await container.execute(Dependant(request_scoped))
-            assert r == 1  # cached from app scope
-            r = await container.execute(Dependant(no_scope))
-            assert r == 2  # not cached
-
-
-@pytest.mark.anyio
 async def test_nested_caching():
+
+    holder: typing.List[str] = ["A", "B", "C"]
+
+    def A() -> str:
+        return holder[0]
+
+    def B(a: str = Depends(A, scope="lifespan")) -> str:
+        return a + holder[1]
+
+    def C(b: str = Depends(B, scope="request")) -> str:
+        return b + holder[2]
+
+    def endpoint(c: str = Depends(C, scope="request")) -> str:
+        return c
+
     container = Container()
-    async with container.enter_global_scope("app"):
+    async with container.enter_local_scope("lifespan"):
         async with container.enter_local_scope("request"):
-            dep1.value = 1
-            r = await container.execute(Dependant(request_scoped))
-            assert r == 1
-            dep1.value = 2
-            r = await container.execute(Dependant(app_scoped))
-            assert r == 1  # uses the request scoped cache
-        r = await container.execute(Dependant(app_scoped))
-        assert r == 2  # not cached anymore
+            res = await container.execute(Dependant(endpoint))
+            assert res == "ABC"
+            # values should be cached as long as we're within the request scope
+            holder[:] = "DEF"
+            assert (await container.execute(Dependant(endpoint))) == "ABC"
+            assert (await container.execute(Dependant(C))) == "ABC"
+            assert (await container.execute(Dependant(B))) == "AB"
+            assert (await container.execute(Dependant(A))) == "A"
+        # A is still cached for B because it is lifespan scoped
+        assert (await container.execute(Dependant(B))) == "AE"
 
 
 @pytest.mark.anyio
-async def test_nested_caching_outlive():
-    def app_scoped(v: int = Depends(dep1, scope="app")):
-        return v
+async def test_nested_lifecycle():
 
-    def request_scoped(v: int = Depends(dep2, scope="request")):
-        return v
+    state: typing.Dict[str, str] = dict.fromkeys(("A", "B", "C"), "uninitialized")
+
+    def A() -> typing.Generator[None, None, None]:
+        state["A"] = "initialized"
+        yield
+        state["A"] = "destroyed"
+
+    def B(a: None = Depends(A, scope="lifespan")) -> typing.Generator[None, None, None]:
+        state["B"] = "initialized"
+        yield
+        state["B"] = "destroyed"
+
+    def C(b: None = Depends(B, scope="request")) -> typing.Generator[None, None, None]:
+        state["C"] = "initialized"
+        yield
+        state["C"] = "destroyed"
+
+    def endpoint(c: None = Depends(C, scope="request")) -> None:
+        return
 
     container = Container()
-    async with container.enter_global_scope("app"):
+    async with container.enter_local_scope("lifespan"):
         async with container.enter_local_scope("request"):
-            dep1.value = 1
-            dep2.value = 1
-            # since dep hasn't been cached yet, it gets cached
-            # because it is marked as app scoped, it gets cached in the app scope
-            # even if it is first initialized in a request scope
-            r = await container.execute(Dependant(app_scoped))
-            assert r == 1
-            r = await container.execute(Dependant(request_scoped))
-            assert r == 1
-        dep1.value = 2
-        dep2.value = 2
-        r = await container.execute(Dependant(app_scoped))
-        assert r == 1  # still cached because it's app scoped
-        async with container.enter_local_scope("request"):
-            r = await container.execute(Dependant(request_scoped))
-            assert r == 2  # not cached anymore since we're in a different request scope
+            assert list(state.values()) == ["uninitialized"] * 3
+            await container.execute(Dependant(endpoint))
+            assert list(state.values()) == ["initialized"] * 3
+        assert list(state.values()) == ["initialized", "destroyed", "destroyed"]
+    assert list(state.values()) == ["destroyed", "destroyed", "destroyed"]
 
 
 @pytest.mark.anyio
 async def test_concurrent_local_scopes():
+    """We can enter the same local scope from two different concurrent tasks"""
+
     container = Container()
 
     async def endpoint() -> None:

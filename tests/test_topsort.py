@@ -1,5 +1,4 @@
 import typing
-from collections import defaultdict
 
 import pytest
 
@@ -30,19 +29,3 @@ def test_cycles(dag: typing.Dict[int, typing.Set[int]]):
     for start in dag:
         with pytest.raises(CircularDependencyError):
             topsort(start, lambda dep: list(dag[dep]), hash=lambda dep: dep)
-
-
-def test_parent_callback():
-    dag: typing.Dict[int, typing.Set[int]] = {0: set(), 1: {0}, 2: {1, 0}}
-    parents: typing.DefaultDict[int, typing.Set[int]] = defaultdict(set)
-
-    def parent_callback(dep: int, parent: int) -> None:
-        parents[dep].add(parent)
-
-    topsort(
-        2,
-        lambda dep: list(dag[dep]),
-        hash=lambda dep: dep,
-        parent_callback=parent_callback,
-    )
-    assert parents == {0: {1, 2}, 1: {2}}

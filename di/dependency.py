@@ -19,7 +19,6 @@ from typing import (
     runtime_checkable,
 )
 
-from di._identity_containers import IdentitySet
 from di._inspect import (
     DependencyParameter,
     ParameterKind,
@@ -95,10 +94,6 @@ class DependantProtocol(Protocol[DependencyType]):
     def solved_dependencies(self, solved: List[List[DependantProtocol[Any]]]) -> None:
         raise NotImplementedError
 
-    @property
-    def parents(self) -> IdentitySet[DependantProtocol[Any]]:
-        raise NotImplementedError
-
     def __hash__(self) -> int:
         """A unique identifier for this dependency.
 
@@ -161,9 +156,9 @@ class DependantProtocol(Protocol[DependencyType]):
                     call=self.infer_call_from_annotation(param)
                 )
             else:
-                continue  # use default value
-            if param.kind in (param.kind.VAR_KEYWORD, param.kind.VAR_KEYWORD):
-                raise TypeError(
+                continue  # pragma: no cover
+            if param.kind in (param.kind.VAR_POSITIONAL, param.kind.VAR_KEYWORD):
+                raise WiringError(
                     "Dependencies may not use variable positional or keyword arguments"
                 )
             if param.kind is param.POSITIONAL_ONLY:
@@ -231,7 +226,6 @@ class Dependant(DependantProtocol[DependencyType]):
         self._call = call
         self._scope = scope
         self._solved_dependencies: Optional[List[List[DependantProtocol[Any]]]] = None
-        self._parents: IdentitySet[DependantProtocol[Any]] = IdentitySet()
         self._dependencies: Optional[
             Dict[str, DependencyParameter[DependantProtocol[Any]]]
         ] = None
@@ -255,10 +249,6 @@ class Dependant(DependantProtocol[DependencyType]):
     @solved_dependencies.setter
     def solved_dependencies(self, solved: List[List[DependantProtocol[Any]]]) -> None:
         self._solved_dependencies = solved
-
-    @property
-    def parents(self) -> IdentitySet[DependantProtocol[Any]]:
-        return self._parents
 
     @property
     def dependencies(

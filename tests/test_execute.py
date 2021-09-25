@@ -1,3 +1,5 @@
+from typing import Any, AsyncGenerator, Generator
+
 import pytest
 
 from di.container import Container
@@ -72,41 +74,56 @@ async def test_execute():
     assert res.three.zero is res.zero
 
 
+def sync_callable_func() -> int:
+    return 1
+
+
+async def async_callable_func() -> int:
+    return 1
+
+
+def sync_gen_func() -> Generator[int, None, None]:
+    yield 1
+
+
+async def async_gen_func() -> AsyncGenerator[int, None]:
+    yield 1
+
+
+class SyncCallableCls:
+    def __call__(self) -> int:
+        return 1
+
+
+class AsyncCallableCls:
+    async def __call__(self) -> int:
+        return 1
+
+
+class SyncGenCls:
+    def __call__(self) -> Generator[int, None, None]:
+        yield 1
+
+
+class AsyncGenCls:
+    async def __call__(self) -> AsyncGenerator[int, None]:
+        yield 1
+
+
+@pytest.mark.parametrize(
+    "dep",
+    [
+        sync_callable_func,
+        async_callable_func,
+        sync_gen_func,
+        async_gen_func,
+        SyncCallableCls(),
+        AsyncCallableCls(),
+        SyncGenCls(),
+        AsyncGenCls(),
+    ],
+)
 @pytest.mark.anyio
-async def test_bind():
+async def test_dependency_types(dep: Any):
     container = Container()
-    async with container.enter_global_scope("something"):
-        v3placeholder = object()
-        v0placeholder = object()
-        with container.bind(lambda **kwargs: v3placeholder, v3, scope="something"):
-            with container.bind(lambda **kwargs: v0placeholder, v0, scope="something"):
-                res = await container.execute(Dependant(v5))
-                assert res.zero is v0placeholder
-                assert res.three is v3placeholder
-    res = await container.execute(Dependant(v5))
-    assert res.zero is v0
-    assert res.three is v3
-    assert res.three.zero is res.zero
-
-
-async def return_zero() -> int:
-    return 0
-
-
-async def bind(container: Container) -> None:
-    container.bind(lambda: 10, return_zero, scope="something")
-
-
-async def return_one(zero: int = Depends(return_zero)) -> int:
-    return zero + 1
-
-
-@pytest.mark.anyio
-async def test_bind_within_execution():
-    container = Container()
-    async with container.enter_global_scope("something"):
-        await container.execute(Dependant(bind))
-        res = await container.execute(Dependant(return_one))
-        assert res == 11
-    res = await container.execute(Dependant(return_one))
-    assert res == 1
+    assert (await container.execute(Dependant(dep))) == 1

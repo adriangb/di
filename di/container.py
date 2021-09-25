@@ -4,7 +4,6 @@ from typing import Any, AsyncGenerator, ContextManager, Dict, List, Tuple, cast
 
 from anyio import create_task_group
 
-from di._cache_policy import CachePolicy, forbid_caching, invalidate_caches
 from di._concurrency import wrap_call
 from di._inspect import DependencyParameter
 from di._state import ContainerState
@@ -70,10 +69,7 @@ class Container:
                 dependency,
                 lambda dep: [p.dependency for p in dep.get_dependencies().values()],
                 hash=id,
-                parent_callback=lambda dep, parent: dep.parents.add(parent),
             )
-            if dependency.scope is False:
-                forbid_caching(dependency, policies=self._state.cache_policy)
             dependency.solved_dependencies = topsorted_deps
         assert dependency.solved_dependencies is not None
         return dependency.solved_dependencies
@@ -95,7 +91,6 @@ class Container:
         state: ContainerState,
     ) -> Task[DependencyType]:
         if dependency.scope is False:
-            state.cache_policy[dependency] = CachePolicy.forbid
             stack = state.stacks[None]
         else:
             try:
@@ -105,32 +100,23 @@ class Container:
                     f"The dependency {dependency} declares scope {dependency.scope}"
                     f" which is not amongst the known scopes {self._state.stacks.keys()}"
                 )
-        if dependency not in state.cache_policy:
-            state.cache_policy[dependency] = CachePolicy.invalidate
-
-        if dependency.scope is False:
-            forbid_caching(dependency, state.cache_policy)
 
         async def bound_call(*args: Any, **kwargs: Any) -> DependencyType:
             assert dependency.call is not None
             call = dependency.call
-            if state.cache_policy[
-                dependency
-            ] is not CachePolicy.forbid and state.cached_values.contains(call):
+            if dependency.scope is not False and state.cached_values.contains(call):
                 # use cached value
                 res = state.cached_values.get(call)
             else:
-                invalidate_caches(dependency, state.cache_policy)
                 if state.binds.contains(call):
                     # use bind
                     call = cast(
                         DependencyProviderType[DependencyType], state.binds.get(call)
                     )
                 res = await wrap_call(call, stack=stack)(*args, **kwargs)
-                if state.cache_policy[dependency] is not CachePolicy.forbid:
+                if dependency.scope is not False:
                     # caching is allowed, now that we have a value we can save it and start using the cache
                     state.cached_values.set(call, res, scope=dependency.scope)
-                    state.cache_policy[dependency] = CachePolicy.use
 
             return cast(DependencyType, res)
 
@@ -138,7 +124,7 @@ class Container:
 
         for k, v in dependency.get_dependencies().items():
             task_dependencies[k] = DependencyParameter(
-                tasks[v.dependency][1], kind=v.kind
+                dependency=tasks[v.dependency][1], kind=v.kind
             )
 
         return Task(call=bound_call, dependencies=task_dependencies)

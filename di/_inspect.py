@@ -88,7 +88,7 @@ def get_parameters(call: DependencyProvider) -> Dict[str, inspect.Parameter]:
             name=param.name,
             kind=param.kind,  # type: ignore
             default=param.default,
-            annotation=annotations[param_name],
+            annotation=annotations.get(param_name, param.annotation),
         )
 
     return processed_params

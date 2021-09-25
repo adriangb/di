@@ -8,31 +8,31 @@ from di.params import Depends
 
 
 def call1():
-    return
+    ...
 
 
 def call2(c1: None = Depends(call1)):
-    return
+    ...
 
 
 def call3():
-    return
+    ...
 
 
 def call4(c2: None = Depends(call2), *, c3: None = Depends(call3)):
-    return
+    ...
 
 
 def call5(*, c4: None = Depends(call4)):
-    return
+    ...
 
 
 def call6(c4: None = Depends(call4)):
-    return
+    ...
 
 
 def call7(c6: None = Depends(call6)):
-    return
+    ...
 
 
 def assert_compare_call(

@@ -78,7 +78,7 @@ class ScopeMap(Generic[KT, VT]):
                 return scope
         raise KeyError(key)
 
-    def append_scope(self, scope: Scope) -> None:
+    def add_scope(self, scope: Scope) -> None:
         if scope in self.mappings:
             raise DuplicateScopeError(f"The scope {scope} already exists!")
         self.mappings[scope] = {}
@@ -98,7 +98,7 @@ class ScopeMap(Generic[KT, VT]):
         new.mappings = self.mappings.copy()
         return new
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover, used only for debugging
         values: List[str] = []
         for scope, mapping in self.mappings.items():
             for k, v in mapping.items():
