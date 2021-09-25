@@ -49,15 +49,19 @@ jobs:
     steps:
       - uses: actions/checkout@v1
         with:
+          path: current
+      - uses: actions/checkout@v1
+        with:
           ref: main
-          path: main-branch
+          path: main
       - name: Install and configure Poetry
         uses: snok/install-poetry@v1.2.0
         with:
           version: 1.2.0a2
       - name: Check version bump
         run: |
+          cd $GITHUB_WORKSPACE/current
           NEW_VERSION=$(poetry version -s)
-          cd $GITHUB_WORKSPACE/main-branch
+          cd $GITHUB_WORKSPACE/main
           OLD_VERSION=$(poetry version -s)
           python -c "from packaging import version;assert version.parse(\"${NEW_VERSION}\") < version.parse(\"${OLD_VERSION}\"), \"Bad version bump detected: you must bump the version in pyproject.toml\""
