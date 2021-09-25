@@ -32,11 +32,14 @@ install-poetry: .install-poetry
 	poetry -V || rm -rf .install-poetry
 
 init: .clear .init
+	@echo ---- 🔧 Initializing project ----
 
 lint: .lint .test  # need the tests deps for linting of test fils to work
+	@echo ---- ✅ Running linters ----
 	poetry run pre-commit run --all-files
 
 test: .test
+	@echo ---- ✅ Running tests ----
 	poetry run pytest -v --cov --cov-report term
 
 .netlify-build-docs: .init
@@ -46,7 +49,9 @@ test: .test
 	poetry run mkdocs build --site-dir public
 
 docs-serve: .docs
+	@echo ---- 📝 Serving docs ----
 	poetry run mike serve
 
 docs-deploy: .docs
+	@echo ---- 📝 Deploying docs ----
 	poetry run mike deploy --push --update-aliases --branch gh-docs $(shell poetry version -s) latest
