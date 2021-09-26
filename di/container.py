@@ -1,9 +1,11 @@
+from collections import deque
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from typing import (
     Any,
     AsyncGenerator,
     ContextManager,
+    Deque,
     Dict,
     List,
     NamedTuple,
@@ -120,28 +122,30 @@ class Container:
         will not be changing between calls.
         """
 
-        dag: Dict[
+        param_graph: Dict[
             DependantProtocol[Any],
             Dict[str, DependencyParameter[DependantProtocol[Any]]],
         ] = {}
 
         dep_registry: Dict[DependantProtocol[Any], DependantProtocol[Any]] = {}
 
-        def get_sub_dependencies(
+        dep_dag: Dict[DependantProtocol[Any], List[DependantProtocol[Any]]] = {}
+
+        def get_params(
             dep: DependantProtocol[Any],
-        ) -> List[DependantProtocol[Any]]:
-            if dep not in dag:
-                params = dep.get_dependencies().copy()
-                for keyword, param in params.items():
-                    assert param.dependency.call is not None
-                    if self._state.binds.contains(param.dependency.call):
-                        params[keyword] = DependencyParameter[Any](
-                            dependency=self._state.binds.get(param.dependency.call),
-                            kind=param.kind,
-                        )
-                dag[dep] = params
-                dep_registry[dep] = dep
-            elif not dep.is_equivalent(dep_registry[dep]):
+        ) -> Dict[str, DependencyParameter[DependantProtocol[Any]]]:
+            params = dep.get_dependencies().copy()
+            for keyword, param in params.items():
+                assert param.dependency.call is not None
+                if self._state.binds.contains(param.dependency.call):
+                    params[keyword] = DependencyParameter[Any](
+                        dependency=self._state.binds.get(param.dependency.call),
+                        kind=param.kind,
+                    )
+            return params
+
+        def check_equivalent(dep: DependantProtocol[Any]):
+            if not dep.is_equivalent(dep_registry[dep]):
                 raise DependencyRegistryError(
                     f"The dependencies {dep} and {dep_registry[dep]}"
                     " have the same hash but are not equal."
@@ -152,11 +156,29 @@ class Container:
                     " Alternatively, you may provide an implementation of DependencyProtocol"
                     " that uses custom __hash__ and __eq__ semantics."
                 )
-            return [d.dependency for d in dag[dep].values()]
 
-        ordered = topsort(dependency, get_sub_dependencies, hash=id)
+        q: Deque[DependantProtocol[Any]] = deque([dependency])
+        while q:
+            dep = q.popleft()
+            if dep in dep_registry:
+                check_equivalent(dep)
+                continue
+            else:
+                dep_registry[dep] = dep
+                params = get_params(dep)
+                param_graph[dep] = params
+                dep_dag[dep] = []
+            for param in params.values():
+                subdep = param.dependency
+                dep_dag[dep].append(subdep)
+                if subdep not in dep_registry:
+                    q.append(subdep)
 
-        return SolvedDependency(dependency=dependency, dag=dag, topsort=ordered)
+        groups = topsort(dependency, dep_dag)
+
+        print(len(dep_dag))
+
+        return SolvedDependency(dependency=dependency, dag=param_graph, topsort=groups)
 
     def get_flat_subdependants(
         self, dependency: DependantProtocol[Any]

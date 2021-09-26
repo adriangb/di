@@ -1,5 +1,5 @@
-from collections import defaultdict
-from typing import Callable, DefaultDict, Dict, List, Set, Tuple, TypeVar
+from collections import deque
+from typing import Deque, Dict, Iterable, List, Mapping, TypeVar
 
 from di.exceptions import CircularDependencyError
 
@@ -7,36 +7,33 @@ T = TypeVar("T")
 
 
 def topsort(
-    dependency: T,
-    gather_sub_dependants: Callable[[T], List[T]],
-    hash: Callable[[T], int],
+    root: T,
+    dag: Mapping[T, Iterable[T]],
 ) -> List[List[T]]:
-    """Topological sort with grouping.
-
-    The base function accepts parameters for gathering sub dependencies and hasing (identifying) dependencies
-    such that the same algorithm can be used for a DAG of integers as well as more complex types simply by
-    changing the semantics of a hash or how sub dependencies are gathered.
-
-    Note that we use recursive DFS solution here because we don't have an a priori list of all dependencies.
-    Otherwise, Kahn's or other solutions could be used.
-
-    Additionally, we do not assume that each dependency has a unique hash, instead we force hashing
-    to go through the `hash` parameter so that the semantics can be easily changed.
-    """
-
-    order: Dict[int, Tuple[int, T]] = {hash(dependency): (0, dependency)}
-
-    def util(dep: T, visited: Set[int], level: int) -> None:
-        dep_hash = hash(dep)
-        if dep_hash in visited:
-            raise CircularDependencyError("Found a cycle!")
-        visited = visited | {dep_hash}
-        for subdep in gather_sub_dependants(dep):
-            util(subdep, visited, level + 1)
-        order[dep_hash] = (max(order.get(dep_hash, (-1, dep))[0], level), dep)
-
-    util(dependency, set(), 0)
-    res: DefaultDict[int, List[T]] = defaultdict(list)
-    for val in sorted(order.values(), key=lambda v: v[0]):
-        res[val[0]].append(val[1])
-    return list(res.values())
+    """Topological sort with grouping."""
+    groups: List[List[T]] = []
+    dependant_count: Dict[T, int] = dict.fromkeys(dag, 0)
+    for subdeps in dag.values():
+        for subdep in subdeps:
+            dependant_count[subdep] += 1
+    q: Deque[T] = deque([root])
+    while q:
+        group = list(q)
+        q.clear()
+        for dependant in group:
+            for dependency in dag[dependant]:
+                try:
+                    dependant_count[dependency] -= 1
+                except KeyError:
+                    raise CircularDependencyError
+                if dependant_count[dependency] == 0:
+                    dependant_count.pop(dependency)
+                    q.append(dependency)
+        for dependant in group:
+            if dependant_count.pop(dependant, 0) == 0:
+                dependant_count.pop(dependant, None)
+        groups.append(group)
+    for indegree in dependant_count.values():
+        if indegree != 0:
+            raise CircularDependencyError
+    return groups
