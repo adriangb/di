@@ -29,6 +29,7 @@ nav:
   - Dependants: 'dependants.md'
   - Solving: 'solving.md'
   - Callable classes: 'callable-classes.md'
+  - Contributing: 'contributing.md'
 
 markdown_extensions:
   - mkautodoc
