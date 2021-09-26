@@ -1,15 +1,9 @@
 from collections import defaultdict
-from typing import Callable, DefaultDict, Dict, List, Protocol, Set, Tuple, TypeVar
+from typing import Callable, DefaultDict, Dict, List, Set, Tuple, TypeVar
 
 from di.exceptions import CircularDependencyError
 
 T = TypeVar("T")
-T_contra = TypeVar("T_contra", contravariant=True)
-
-
-class ParentCallback(Protocol[T_contra]):
-    def __call__(self, dep: T_contra, parent: T_contra) -> None:
-        ...
 
 
 def topsort(

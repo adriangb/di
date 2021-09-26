@@ -56,16 +56,14 @@ def is_coroutine_callable(call: DependencyProvider) -> bool:
         return inspect.iscoroutinefunction(call)
     if inspect.isclass(call):
         return False
-    call = getattr(call, "__call__", None)  # type: ignore
-    return inspect.iscoroutinefunction(call)
+    return inspect.iscoroutinefunction(getattr(call, "__call__", None))
 
 
 @lru_cache(maxsize=4096)
 def is_async_gen_callable(call: DependencyProvider) -> bool:
     if inspect.isasyncgenfunction(call):
         return True
-    call = getattr(call, "__call__", None)  # type: ignore
-    return inspect.isasyncgenfunction(call)
+    return inspect.isasyncgenfunction(getattr(call, "__call__", None))
 
 
 @lru_cache(maxsize=4096)
@@ -97,7 +95,7 @@ def get_parameters(call: DependencyProvider) -> Dict[str, inspect.Parameter]:
     for param_name, param in params.items():
         processed_params[param_name] = inspect.Parameter(
             name=param.name,
-            kind=param.kind,  # type: ignore
+            kind=param.kind,
             default=param.default,
             annotation=annotations.get(param_name, param.annotation),
         )

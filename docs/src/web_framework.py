@@ -1,5 +1,4 @@
-from di.container import Container
-from di.dependency import Dependant
+from di import Container, Dependant
 
 
 class Request:
