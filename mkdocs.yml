@@ -22,13 +22,20 @@ repo_url: https://github.com/adriangb/di
 edit_uri: "blob/main/docs/"
 
 nav:
-  - Home: 'README.md'
+  - Intro: 'README.md'
+  - Scopes: 'scopes.md'
+  - Binds: 'binds.md'
+  - Caching: 'caching.md'
+  - Dependants: 'dependants.md'
+  - Solving: 'solving.md'
+  - Callable classes: 'callable-classes.md'
 
 markdown_extensions:
   - mkautodoc
   - admonition
   - pymdownx.highlight
   - pymdownx.superfences
+  - pymdownx.snippets
 
 extra_css:
   - css/termynal.css
@@ -39,3 +46,4 @@ extra_javascript:
 
 plugins:
   - mike:
+  - search:

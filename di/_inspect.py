@@ -2,6 +2,7 @@ import inspect
 import types
 from dataclasses import dataclass
 from enum import Enum, auto
+from functools import lru_cache
 from typing import (
     Any,
     AsyncGenerator,
@@ -39,12 +40,17 @@ class ParameterKind(Enum):
     keyword = auto()
 
 
-@dataclass  # this should be a NamedTuple but https://github.com/python/mypy/issues/685
+# this should be a NamedTuple
+# but https://github.com/python/mypy/issues/685
+# we need the generic type
+# so we can use it for DependantProtocol and Task
+@dataclass
 class DependencyParameter(Generic[T]):
     dependency: T
     kind: ParameterKind
 
 
+@lru_cache(maxsize=4096)
 def is_coroutine_callable(call: DependencyProvider) -> bool:
     if inspect.isroutine(call):
         return inspect.iscoroutinefunction(call)
@@ -54,6 +60,7 @@ def is_coroutine_callable(call: DependencyProvider) -> bool:
     return inspect.iscoroutinefunction(call)
 
 
+@lru_cache(maxsize=4096)
 def is_async_gen_callable(call: DependencyProvider) -> bool:
     if inspect.isasyncgenfunction(call):
         return True
@@ -61,6 +68,7 @@ def is_async_gen_callable(call: DependencyProvider) -> bool:
     return inspect.isasyncgenfunction(call)
 
 
+@lru_cache(maxsize=4096)
 def is_gen_callable(call: Any) -> bool:
     if inspect.isgeneratorfunction(call):
         return True
@@ -68,6 +76,7 @@ def is_gen_callable(call: Any) -> bool:
     return inspect.isgeneratorfunction(call)
 
 
+@lru_cache(maxsize=1024)
 def get_annotations(call: DependencyProvider) -> Dict[str, Any]:
     types_from: DependencyProvider
     if inspect.isclass(call):
@@ -80,6 +89,7 @@ def get_annotations(call: DependencyProvider) -> Dict[str, Any]:
     return get_type_hints(types_from)
 
 
+@lru_cache(maxsize=1024)
 def get_parameters(call: DependencyProvider) -> Dict[str, inspect.Parameter]:
     params = inspect.signature(call).parameters
     annotations = get_annotations(call)
@@ -95,6 +105,7 @@ def get_parameters(call: DependencyProvider) -> Dict[str, inspect.Parameter]:
     return processed_params
 
 
+@lru_cache(maxsize=1024)
 def infer_call_from_annotation(parameter: inspect.Parameter) -> DependencyProvider:
     if parameter.annotation is None:
         raise WiringError(

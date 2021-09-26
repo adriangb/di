@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "di"
 version = "0.1.1"
-description = "Dependency Injection, backed by AnyIO"
+description = "Autowiring dependency injection"
 authors = ["Adrian Garcia Badaracco <adrian@adriangb.com>"]
 
 [tool.poetry.dependencies]
@@ -45,7 +45,7 @@ exclude_lines = ["pragma: no cover", "\\.\\.\\.\n", "raise NotImplementedError"]
 testpaths = ["tests"]
 
 [tool.mypy]
-files = "di/*,tests/*"
+files = "di/*,tests/*,docs/*"
 no_implicit_optional = true
 allow_redefinition = false
 implicit_reexport = false
