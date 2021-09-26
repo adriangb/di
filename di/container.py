@@ -181,14 +181,7 @@ class Container:
             Dict[str, DependencyParameter[DependantProtocol[Any]]],
         ],
     ) -> Task[DependencyType]:
-        try:
-            stack = state.stacks[dependency.scope]
-        except KeyError:
-            raise UnknownScopeError(
-                f"The dependency {dependency} declares scope {dependency.scope}"
-                f" which is not amongst the known scopes {self._state.scopes}."
-                f" Did you forget to enter the scope {dependency.scope}?"
-            )
+        stack = state.stacks[dependency.scope]
 
         async def bound_call(*args: Any, **kwargs: Any) -> DependencyType:
             assert dependency.call is not None
