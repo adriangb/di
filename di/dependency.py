@@ -61,29 +61,10 @@ class DependantProtocol(Protocol[DependencyType]):
     - The dependants that correspond to the keyword arguments of that callable
     """
 
-    @property
-    def scope(self) -> Scope:
-        raise NotImplementedError
-
-    @property
-    def call(self) -> Optional[DependencyProviderType[DependencyType]]:
-        raise NotImplementedError
-
-    @call.setter
-    def call(self, call: Optional[DependencyProvider]) -> None:
-        raise NotImplementedError
-
-    @property
-    def dependencies(
-        self,
-    ) -> Optional[Dict[str, DependencyParameter[DependantProtocol[Any]]]]:
-        raise NotImplementedError
-
-    @dependencies.setter
-    def dependencies(
-        self, dependencies: Dict[str, DependencyParameter[DependantProtocol[Any]]]
-    ) -> None:
-        raise NotImplementedError
+    call: Optional[DependencyProviderType[DependencyType]]
+    dependencies: Optional[Dict[str, DependencyParameter[DependantProtocol[Any]]]]
+    scope: Scope
+    shared: bool
 
     def __hash__(self) -> int:
         """A unique identifier for this dependency.
@@ -98,7 +79,7 @@ class DependantProtocol(Protocol[DependencyType]):
         self,
     ) -> Dict[str, DependencyParameter[DependantProtocol[Any]]]:
         """A cache on top of `gather_dependencies()`"""
-        if self.dependencies is None:
+        if self.dependencies is None:  # type: ignore
             self.dependencies = self.gather_dependencies()
         return self.dependencies
 
@@ -212,37 +193,15 @@ class Dependant(DependantProtocol[DependencyType]):
     def __init__(
         self,
         call: Optional[DependencyProviderType[DependencyType]] = None,
-        scope: Optional[Scope] = None,
+        scope: Scope = None,
+        shared: bool = True,
     ) -> None:
-        self._call = call
-        self._scope = scope
-        self._dependencies: Optional[
+        self.call = call
+        self.scope = scope
+        self.dependencies: Optional[
             Dict[str, DependencyParameter[DependantProtocol[Any]]]
         ] = None
-
-    @property
-    def scope(self) -> Scope:
-        return self._scope
-
-    @property
-    def call(self) -> Optional[DependencyProviderType[DependencyType]]:
-        return self._call
-
-    @call.setter
-    def call(self, call: Optional[DependencyProvider]) -> None:
-        self._call = call
-
-    @property
-    def dependencies(
-        self,
-    ) -> Optional[Dict[str, DependencyParameter[DependantProtocol[Any]]]]:
-        return self._dependencies
-
-    @dependencies.setter
-    def dependencies(
-        self, dependencies: Dict[str, DependencyParameter[DependantProtocol[Any]]]
-    ) -> None:
-        self._dependencies = dependencies
+        self.shared = shared
 
     def create_sub_dependant(self, call: DependencyProvider) -> DependantProtocol[Any]:
         return Dependant[Any](call=call)
