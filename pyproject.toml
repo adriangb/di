@@ -39,7 +39,7 @@ profile = "black"
 source = ["di", "tests"]
 
 [tool.coverage.report]
-exclude_lines = ["pragma: no cover", "\\.\\.\\.\n", "raise NotImplementedError"]
+exclude_lines = ["pragma: no cover", '\.\.\.', "raise NotImplementedError"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

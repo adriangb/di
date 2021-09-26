@@ -41,16 +41,16 @@ async def test_bind():
         assert r == 0  # back to the default value
 
 
-def inject1():
-    return -1
+def inject1() -> int:
+    return 1  # pragma: no cover
 
 
-def inject2():
-    return -2
+def inject2() -> int:
+    return 2  # pragma: no cover
 
 
-def inject3():
-    return -2
+def inject3() -> int:
+    return 3  # pragma: no cover
 
 
 async def endpoint2(
@@ -82,7 +82,7 @@ async def test_concurrent_binds():
 
 
 async def return_zero() -> int:
-    return 0
+    return 0  # pragma: no cover
 
 
 async def bind(container: Container) -> None:

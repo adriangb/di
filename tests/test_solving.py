@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Callable, Dict, Literal
 
 import pytest
 
@@ -57,6 +57,26 @@ async def test_default_argument():
 
     res = await container.execute(Dependant(default_func))  # type: ignore
     assert res == 2
+
+
+def func1(value: Literal[1] = Depends()) -> int:
+    return value
+
+
+def func2(value: 1 = Depends()) -> int:  # type: ignore
+    return value
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("function", [func1, func2])
+async def test_non_callable_annotation(function: Callable[[int], int]):
+    """No type annotations are required if default values are provided"""
+
+    container = Container()
+
+    match = "Annotation for value is not a callable class or function"
+    with pytest.raises(WiringError, match=match):
+        await container.execute(Dependant(function))
 
 
 @pytest.mark.anyio

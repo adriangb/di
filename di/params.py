@@ -8,8 +8,7 @@ from di.dependency import (
     CallableProvider,
     CoroutineProvider,
     Dependant,
-    Dependency,
-    DependencyProvider,
+    DependencyProviderType,
     DependencyType,
     GeneratorProvider,
     Scope,
@@ -57,9 +56,9 @@ def Depends(
 
 
 def Depends(
-    call: Optional[DependencyProvider] = None,
+    call: Optional[DependencyProviderType[DependencyType]] = None,
     *,
     scope: Optional[Scope] = None,
     shared: bool = True
-) -> Dependency:
+) -> DependencyType:
     return Dependant(call=call, scope=scope, shared=shared)  # type: ignore

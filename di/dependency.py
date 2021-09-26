@@ -135,6 +135,14 @@ class DependantProtocol(Protocol[DependencyType]):
         ), "Container should have assigned call; this is a bug!"
         res: Dict[str, DependencyParameter[DependantProtocol[Any]]] = {}
         for param_name, param in self.gather_parameters().items():
+            if param.kind in (param.kind.VAR_POSITIONAL, param.kind.VAR_KEYWORD):
+                raise WiringError(
+                    "Dependencies may not use variable positional or keyword arguments"
+                )
+            if param.kind is param.POSITIONAL_ONLY:
+                kind = ParameterKind.positional
+            else:
+                kind = ParameterKind.keyword
             if isinstance(param.default, DependantProtocol):
                 sub_dependant = cast(DependantProtocol[Any], param.default)
                 if sub_dependant.call is None:
@@ -145,14 +153,6 @@ class DependantProtocol(Protocol[DependencyType]):
                 )
             else:
                 continue  # pragma: no cover
-            if param.kind in (param.kind.VAR_POSITIONAL, param.kind.VAR_KEYWORD):
-                raise WiringError(
-                    "Dependencies may not use variable positional or keyword arguments"
-                )
-            if param.kind is param.POSITIONAL_ONLY:
-                kind = ParameterKind.positional
-            else:
-                kind = ParameterKind.keyword
             res[param_name] = DependencyParameter(dependency=sub_dependant, kind=kind)
         return res
 
