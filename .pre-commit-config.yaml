@@ -11,7 +11,7 @@ repos:
   - repo: local
     hooks:
     - id: lockfile
-      name: relock poetry.lock
+      name: check poetry.lock
       language: system
       entry: poetry lock --check
       files: ^pyproject.toml$
