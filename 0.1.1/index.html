@@ -73,7 +73,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#di-simple-python-dependency-injection" class="md-skip">
+        <a href="#di-pythonic-dependency-injection" class="md-skip">
           Skip to content
         </a>
       
@@ -384,6 +384,21 @@
   
 
     
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="contributing/" class="md-nav__link">
+        Contributing
+      </a>
+    </li>
+  
+
+    
   </ul>
 </nav>
                   </div>
@@ -440,7 +455,7 @@
                   </a>
                 
                 
-                <h1 id="di-simple-python-dependency-injection"><code>di</code>: simple, python dependency injection</h1>
+                <h1 id="di-pythonic-dependency-injection"><code>di</code>: pythonic dependency injection</h1>
 <p><code>di</code> is a modern dependency injection system, modeled around the simplicity of FastAPI's dependency injection.</p>
 <p>Key features:</p>
 <ul>
@@ -465,7 +480,8 @@
 <h2 id="example">Example</h2>
 <p>In this example, we'll look at what it would take for a web framework to provide dependecy injection to it's users via <code>di</code>.</p>
 <p>First we declare a dependency.
-We'll call it <code>Request</code> like if it were an incoming HTTP request.</p>
+We'll call it <code>Request</code> like if it were an incoming HTTP request.
+This is something the web framework would provide and manage.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">di.container</span> <span class="kn">import</span> <span class="n">Container</span>
 <span class="kn">from</span> <span class="nn">di.dependency</span> <span class="kn">import</span> <span class="n">Dependant</span>
 
@@ -488,7 +504,8 @@ We'll call it <code>Request</code> like if it were an incoming HTTP request.</p>
         <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">container</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">))</span>
         <span class="k">assert</span> <span class="n">res</span> <span class="o">==</span> <span class="mi">2</span>
 </code></pre></div>
-<p>Next, we'll declare a controller / endpoint that uses the request:</p>
+<p>Next, we'll declare a controller / endpoint that uses the request.
+This is the only code the user would have to write.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">di.container</span> <span class="kn">import</span> <span class="n">Container</span>
 <span class="kn">from</span> <span class="nn">di.dependency</span> <span class="kn">import</span> <span class="n">Dependant</span>
 
@@ -511,9 +528,9 @@ We'll call it <code>Request</code> like if it were an incoming HTTP request.</p>
         <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">container</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">))</span>
         <span class="k">assert</span> <span class="n">res</span> <span class="o">==</span> <span class="mi">2</span>
 </code></pre></div>
-<p>So far, all of the code would have been written by an end user.
-Now we'll define what the web framework needs to do.
-For simple use cases (when they don't need access to the container), users don't need to know about this part.</p>
+<p>Now we'll define what the web framework needs to do to glue everything together.
+This part can get a bit complex, but it's okay because it's written once, in a library.
+Users don't need to interact with the container or entering/exiting scopes (although they can if they want to).</p>
 <p>We start by creating a container.
 This would happen when the app / framework in initialized.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">di.container</span> <span class="kn">import</span> <span class="n">Container</span>
