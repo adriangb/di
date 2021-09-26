@@ -1,4 +1,4 @@
-# `di`: simple, python dependency injection
+# `di`: pythonic dependency injection
 
 `di` is a modern dependency injection system, modeled around the simplicity of FastAPI's dependency injection.
 
