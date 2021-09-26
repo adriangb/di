@@ -162,17 +162,16 @@ class Container:
             dep = q.popleft()
             if dep in dep_registry:
                 check_equivalent(dep)
-                continue
             else:
                 dep_registry[dep] = dep
                 params = get_params(dep)
                 param_graph[dep] = params
                 dep_dag[dep] = []
-            for param in params.values():
-                subdep = param.dependency
-                dep_dag[dep].append(subdep)
-                if subdep not in dep_registry:
-                    q.append(subdep)
+                for param in params.values():
+                    subdep = param.dependency
+                    dep_dag[dep].append(subdep)
+                    if subdep not in dep_registry:
+                        q.append(subdep)
 
         groups = topsort(dependency, dep_dag)
 
