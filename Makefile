@@ -36,12 +36,12 @@ init: .clear .init
 
 lint: .lint .test  # need the tests deps for linting of test fils to work
 	@echo ---- ⏳ Running linters ----
-	poetry run pre-commit run --all-files || echo ---- ❌ Linting failed ----
+	@poetry run pre-commit run --all-files || echo ---- ❌ Linting failed ----
 	@echo ---- ✅ Linting passed ----
 
 test: .test
 	@echo ---- ⏳ Running tests ----
-	poetry run pytest -v --cov --cov-report term || echo ---- ❌ Tests failed ----
+	@poetry run pytest -v --cov --cov-report term || echo ---- ❌ Tests failed ----
 	@echo ---- ✅ Tests passed ----
 
 .netlify-build-docs: .init
@@ -52,8 +52,8 @@ test: .test
 
 docs-serve: .docs
 	@echo ---- 📝 Serving docs ----
-	poetry run mkdocs serve
+	@poetry run mkdocs serve
 
 docs-deploy: .docs
 	@echo ---- 📝 Deploying docs ----
-	poetry run mike deploy --push --update-aliases --branch gh-docs $(shell poetry version -s) latest
+	@poetry run mike deploy --push --update-aliases --branch gh-docs $(shell poetry version -s) latest
