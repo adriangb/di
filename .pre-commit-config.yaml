@@ -13,7 +13,7 @@ repos:
     - id: lockfile
       name: relock poetry.lock
       language: system
-      entry: poetry lock --no-update
+      entry: poetry lock --check
       files: ^pyproject.toml$
       pass_filenames: false
     - id: flake8
