@@ -35,12 +35,14 @@ init: .clear .init
 	@echo ---- 🔧 Initializing project ----
 
 lint: .lint .test  # need the tests deps for linting of test fils to work
-	@echo ---- ✅ Running linters ----
-	poetry run pre-commit run --all-files
+	@echo ---- ⏳ Running linters ----
+	poetry run pre-commit run --all-files || echo ---- ❌ Linting failed ----
+	@echo ---- ✅ Linting passed ----
 
 test: .test
-	@echo ---- ✅ Running tests ----
-	poetry run pytest -v --cov --cov-report term
+	@echo ---- ⏳ Running tests ----
+	poetry run pytest -v --cov --cov-report term || echo ---- ❌ Tests failed ----
+	@echo ---- ✅ Tests passed ----
 
 .netlify-build-docs: .init
 	rm -rf public && mkdir public

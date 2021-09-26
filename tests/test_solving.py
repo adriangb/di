@@ -8,6 +8,8 @@ from di.exceptions import WiringError
 
 @pytest.mark.anyio
 async def test_no_annotations():
+    """Dependencies must provide annotations or a default value"""
+
     def badfunc(value):  # type: ignore
         ...
 
@@ -22,6 +24,8 @@ async def test_no_annotations():
 
 @pytest.mark.anyio
 async def test_variable_arguments():
+    """Dependencies cannot use *args or **kwargs, even with type annotations"""
+
     def args_func(*args: str):
         ...
 
@@ -44,6 +48,8 @@ async def test_variable_arguments():
 
 @pytest.mark.anyio
 async def test_default_argument():
+    """No type annotations are required if default values are provided"""
+
     def default_func(value=2) -> int:  # type: ignore
         return value  # type: ignore
 
