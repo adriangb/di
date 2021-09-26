@@ -3,7 +3,7 @@ from typing import Callable, Dict, Literal
 import pytest
 
 from di import Container, Dependant, Depends
-from di.exceptions import ScopeViolationError, WiringError
+from di.exceptions import DependencyRegistryError, ScopeViolationError, WiringError
 
 
 @pytest.mark.anyio
@@ -95,3 +95,25 @@ async def test_dissalow_depending_on_inner_scope():
             match = r"scope \(inner\) is narrower than .+'s scope \(outer\)"
             with pytest.raises(ScopeViolationError, match=match):
                 await container.execute(Dependant(B, scope="outer"))
+
+
+@pytest.mark.anyio
+async def test_dependency_with_multiple_scopes():
+    def A() -> None:
+        ...
+
+    def B(a: None = Depends(A, scope="app")):
+        ...
+
+    def C(a: None = Depends(A, scope="request")):
+        ...
+
+    def D(b: None = Depends(B), c: None = Depends(C)):
+        ...
+
+    container = Container()
+    async with container.enter_local_scope("app"):
+        async with container.enter_local_scope("request"):
+            match = r"dependency in two different scopes"
+            with pytest.raises(DependencyRegistryError, match=match):
+                await container.execute(Dependant(D))

@@ -76,6 +76,15 @@ class DependantProtocol(Protocol[DependencyType]):
         return hash(self.call)
 
     def __eq__(self, o: object) -> bool:
+        """Used in conjunction with __hash__ for mapping lookups of dependencies.
+        Generally, this should have the same semantics as __hash__ but can check for object identity.
+        """
+        if type(self) != type(o):
+            return False
+        assert isinstance(o, type(self))
+        return self.call is o.call
+
+    def is_equivalent(self, other: DependantProtocol[Any]) -> bool:
         """Copare two DependantProtocol implementers for equality.
 
         By default, the two are equal only if they share the same callable and scope.
@@ -86,10 +95,7 @@ class DependantProtocol(Protocol[DependencyType]):
         To remedy this, you can either wrap the callable to give it two different hashes/ids,
         or you can create a DependantProtocol implementation that overrides __hash__ and/or __eq__.
         """
-        if type(self) != type(o):
-            return False
-        assert isinstance(o, type(self))
-        return self.call is o.call and o.scope == self.scope
+        return self.call is other.call and other.scope == self.scope
 
     def get_dependencies(
         self,
