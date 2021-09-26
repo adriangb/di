@@ -32,11 +32,11 @@ install-poetry: .install-poetry
 	poetry run pre-commit install --install-hooks
 	touch .lint
 
-.clear:
-	rm -rf .init .docs .test .lint
+.clean:
+	rm -rf .init .docs .test .lint .mypy_cache .pytest_cache
 	poetry -V || rm -rf .install-poetry
 
-init: .clear .init
+init: .clean .init
 	@echo ---- 🔧 Re-initializing project ----
 
 lint: .lint .test  # need the tests deps for linting of test fils to work
