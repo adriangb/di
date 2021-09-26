@@ -445,8 +445,8 @@
 <p>Key features:</p>
 <ul>
 <li><strong>Intuitive</strong>: simple things are easy, complex things are possible.</li>
-<li><strong>Succinct</strong>: you only need to declare what you want, and <code>di</code> figures out how to assmble it using type annotations.</li>
-<li><strong>Correct</strong>: tested with MyPy. If you declare <code>value: int = Depends(returns_str)</code> you'll get an error.</li>
+<li><strong>Succinct</strong>: declare what you want, and <code>di</code> figures out how to assmble it using type annotations.</li>
+<li><strong>Correct</strong>: tested with MyPy: <code>value: int = Depends(returns_str)</code> gives an error.</li>
 <li><strong>Flexible</strong>: with no fixed scopes, <code>di</code> can work within any framework, web or otherwise.</li>
 <li><strong>Lifespans</strong>: <code>di</code> manages lifespans for dependencies by binding them to scopes.</li>
 <li><strong>Caching</strong>: <code>di</code> caches values from dependencies to avoid duplicate computation.</li>
