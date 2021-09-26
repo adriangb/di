@@ -30,20 +30,22 @@ In this example, we'll look at what it would take for a web framework to provide
 
 First we declare a dependency.
 We'll call it `Request` like if it were an incoming HTTP request.
+This is something the web framework would provide and manage.
 
 ```Python hl_lines="5-7"
 --8<-- "docs/src/web_framework.py"
 ```
 
-Next, we'll declare a controller / endpoint that uses the request:
+Next, we'll declare a controller / endpoint that uses the request.
+This is the only code the user would have to write.
 
 ```Python hl_lines="10-11"
 --8<-- "docs/src/web_framework.py"
 ```
 
-So far, all of the code would have been written by an end user.
-Now we'll define what the web framework needs to do.
-For simple use cases (when they don't need access to the container), users don't need to know about this part.
+Now we'll define what the web framework needs to do to glue everything together.
+This part can get a bit complex, but it's okay because it's written once, in a library.
+Users don't need to interact with the container or entering/exiting scopes (although they can if they want to).
 
 We start by creating a container.
 This would happen when the app / framework in initialized.
