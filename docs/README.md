@@ -5,8 +5,8 @@
 Key features:
 
 - **Intuitive**: simple things are easy, complex things are possible.
-- **Succinct**: you only need to declare what you want, and `di` figures out how to assmble it using type annotations.
-- **Correct**: tested with MyPy. If you declare `value: int = Depends(returns_str)` you'll get an error.
+- **Succinct**: declare what you want, and `di` figures out how to assmble it using type annotations.
+- **Correct**: tested with MyPy: `value: int = Depends(returns_str)` gives an error.
 - **Flexible**: with no fixed scopes, `di` can work within any framework, web or otherwise.
 - **Lifespans**: `di` manages lifespans for dependencies by binding them to scopes.
 - **Caching**: `di` caches values from dependencies to avoid duplicate computation.
