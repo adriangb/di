@@ -29,7 +29,7 @@ def request_scoped(v: int = Depends(dep1, scope="request")):
     return v
 
 
-def no_scope(v: int = Depends(dep1, scope=False)):
+def not_shared(v: int = Depends(dep1, scope=None, shared=False)):
     return v
 
 
@@ -49,8 +49,8 @@ async def test_scoped_execute():
         dep1.value = 2
         r = await container.execute(Dependant(app_scoped))
         assert r == 1, r
-        # but if we execute with no scope, we get the current value
-        r = await container.execute(Dependant(no_scope))
+        # but if we execute a non-shared dependency, we get the current value
+        r = await container.execute(Dependant(not_shared))
         assert r == 2, r
         # the default scope is None, which gives us the value cached
         # in the app scope since the app scope is outside of the None scope

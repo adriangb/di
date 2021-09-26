@@ -12,11 +12,15 @@ def return_1() -> int:
     return 1
 
 
+def return_2() -> int:
+    return 2
+
+
 class Dependency:
     def __init__(self, value: int = Depends(return_1)) -> None:
         self.value = value
 
-    def __call__(self: "Dependency", value: int = Depends(return_1)) -> "Dependency":
+    def __call__(self: "Dependency", value: int = Depends(return_2)) -> "Dependency":
         self.call_value = self.value + value
         return self
 
@@ -25,15 +29,15 @@ class Dependency:
 async def test_callable_class():
     container = Container()
     res = await container.execute(Dependant(Dependency.__call__))
-    assert res.call_value == 2
+    assert res.call_value == 3
 
 
 class ScopedDependency:
-    def __init__(self, value: int = Depends(return_1)) -> None:
+    def __init__(self, value: int = Depends(return_1, scope="app")) -> None:
         self.value = value
 
     def __call__(
-        self: "ScopedDependency" = Depends(scope="app"), value: int = Depends(return_1)
+        self: "ScopedDependency" = Depends(scope="app"), value: int = Depends(return_2)
     ) -> "ScopedDependency":
         self.call_value = self.value + value
         return self
@@ -44,8 +48,8 @@ async def test_callable_class_instance_scoped():
     container = Container()
     async with container.enter_global_scope("app"):
         d1 = await container.execute(Dependant(ScopedDependency.__call__))
-        assert d1.call_value == 2
+        assert d1.call_value == 3
         d1.value = 10
         d2 = await container.execute(Dependant(ScopedDependency.__call__))
         assert d2 is d1
-        assert d2.call_value == 11
+        assert d2.call_value == 12

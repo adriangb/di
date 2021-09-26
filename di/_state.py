@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
-from typing import Any, AsyncGenerator, ContextManager, Dict, Generator, Optional
+from typing import Any, AsyncGenerator, ContextManager, Dict, Generator, List, Optional
 
 from di._scope_map import ScopeMap
 from di.dependency import (
@@ -42,6 +42,10 @@ class ContainerState:
             await stack.aclose()
             self.stacks.pop(scope)
             self.cached_values.pop_scope(scope)
+
+    @property
+    def scopes(self) -> List[Scope]:
+        return list(self.stacks.keys())
 
     def bind(
         self,

@@ -2,8 +2,8 @@ from typing import Dict
 
 import pytest
 
-from di import Container, Dependant
-from di.exceptions import WiringError
+from di import Container, Dependant, Depends
+from di.exceptions import ScopeViolationError, WiringError
 
 
 @pytest.mark.anyio
@@ -57,3 +57,21 @@ async def test_default_argument():
 
     res = await container.execute(Dependant(default_func))  # type: ignore
     assert res == 2
+
+
+@pytest.mark.anyio
+async def test_dissalow_depending_on_inner_scope():
+    """A dependency cannot depend on sub-dependencies that are scoped to a narrower scope"""
+
+    def A() -> None:
+        ...
+
+    def B(a: None = Depends(A, scope="inner")):
+        ...
+
+    container = Container()
+    async with container.enter_local_scope("outer"):
+        async with container.enter_local_scope("inner"):
+            match = r"scope \(inner\) is narrower than .+'s scope \(outer\)"
+            with pytest.raises(ScopeViolationError, match=match):
+                await container.execute(Dependant(B, scope="outer"))

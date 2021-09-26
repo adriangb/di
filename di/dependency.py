@@ -75,6 +75,22 @@ class DependantProtocol(Protocol[DependencyType]):
         """
         return hash(self.call)
 
+    def __eq__(self, o: object) -> bool:
+        """Copare two DependantProtocol implementers for equality.
+
+        By default, the two are equal only if they share the same callable and scope.
+
+        If two dependencies share the same hash but are not equal, the Container will
+        report an error.
+        This is commonly caused by using the same callable under two different scopes.
+        To remedy this, you can either wrap the callable to give it two different hashes/ids,
+        or you can create a DependantProtocol implementation that overrides __hash__ and/or __eq__.
+        """
+        if type(self) != type(o):
+            return False
+        assert isinstance(o, type(self))
+        return self.call is o.call and o.scope == self.scope
+
     def get_dependencies(
         self,
     ) -> Dict[str, DependencyParameter[DependantProtocol[Any]]]:

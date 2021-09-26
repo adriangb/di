@@ -37,7 +37,7 @@ install-poetry: .install-poetry
 	poetry -V || rm -rf .install-poetry
 
 init: .clean .init
-	@echo ---- 🔧 Re-initializing project ----
+	@echo ---- 🔧 Re-initialized project ----
 
 lint: .lint .test  # need the tests deps for linting of test fils to work
 	@echo ---- ⏳ Running linters ----

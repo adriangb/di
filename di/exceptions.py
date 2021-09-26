@@ -6,17 +6,25 @@ class UnknownScopeError(Exception):
     pass
 
 
-class DuplicateScopeError(ValueError):
+class DuplicateScopeError(Exception):
     pass
 
 
-class DuplicatedDependencyError(RuntimeError):
+class DuplicatedDependencyError(Exception):
     pass
 
 
-class CircularDependencyError(RuntimeError):
+class CircularDependencyError(Exception):
     pass
 
 
-class ScopeConflictError(RuntimeError):
+class ScopeConflictError(Exception):
+    pass
+
+
+class ScopeViolationError(Exception):
+    pass
+
+
+class DependencyRegistryError(Exception):
     pass

@@ -26,7 +26,13 @@ from di.dependency import (
     DependencyType,
     Scope,
 )
-from di.exceptions import DuplicateScopeError, ScopeConflictError, UnknownScopeError
+from di.exceptions import (
+    DependencyRegistryError,
+    DuplicateScopeError,
+    ScopeConflictError,
+    ScopeViolationError,
+    UnknownScopeError,
+)
 
 
 class SolvedDependency(NamedTuple):
@@ -115,24 +121,63 @@ class Container:
         will not be changing between calls.
         """
 
+        scopes: Dict[Scope, int] = {
+            scope: idx
+            for idx, scope in enumerate(reversed(self._state.scopes + [None]))
+        }
+
         dag: Dict[
             DependantProtocol[Any],
             Dict[str, DependencyParameter[DependantProtocol[Any]]],
         ] = {}
 
+        dep_registry: Dict[DependantProtocol[Any], DependantProtocol[Any]] = {}
+
+        def check_is_inner(
+            dep: DependantProtocol[Any], subdep: DependantProtocol[Any]
+        ) -> None:
+            if scopes[dep.scope] > scopes[subdep.scope]:
+                raise ScopeViolationError(
+                    f"{dep} cannot depend on {subdep} because {subdep}'s"
+                    f" scope ({subdep.scope}) is narrower than {dep}'s scope ({dep.scope})"
+                )
+
+        def check_scope(dep: DependantProtocol[Any]) -> None:
+            if dep.scope not in scopes:
+                raise UnknownScopeError(
+                    f"Dependency{dep} has an unknown scope {dep.scope}."
+                    f" Did you forget to enter the {dep.scope} scope?"
+                )
+
         def get_sub_dependencies(
             dep: DependantProtocol[Any],
         ) -> List[DependantProtocol[Any]]:
             if dep not in dag:
+                check_scope(dep)
                 params = dep.get_dependencies().copy()
                 for keyword, param in params.items():
                     assert param.dependency.call is not None
+                    check_scope(param.dependency)
                     if self._state.binds.contains(param.dependency.call):
-                        params[keyword] = DependencyParameter(
+                        params[keyword] = DependencyParameter[Any](
                             dependency=self._state.binds.get(param.dependency.call),
                             kind=param.kind,
                         )
+                    check_is_inner(dep, params[keyword].dependency)
                 dag[dep] = params
+                dep_registry[dep] = dep
+            else:
+                if dep in dep_registry and dep_registry[dep] != dep:
+                    raise DependencyRegistryError(
+                        f"The dependencies {dep} and {dep_registry[dep]}"
+                        " have the same hash but are not equal."
+                        " This can be cause by using the same callable / class as a dependency in"
+                        " two different scopes, which is usually a mistake"
+                        " To work around this, you can subclass or wrap the function so that it"
+                        " does not have the same hash/id."
+                        " Alternatively, you may provide an implementation of DependencyProtocol"
+                        " that uses custom __hash__ and __eq__ semantics."
+                    )
             return [d.dependency for d in dag[dep].values()]
 
         ordered = topsort(dependency, get_sub_dependencies, hash=id)
@@ -170,19 +215,18 @@ class Container:
             except KeyError:
                 raise UnknownScopeError(
                     f"The dependency {dependency} declares scope {dependency.scope}"
-                    f" which is not amongst the known scopes {self._state.stacks.keys()}"
+                    f" which is not amongst the known scopes {self._state.scopes}."
+                    f" Did you forget to enter the scope {dependency.scope}?"
                 )
 
         async def bound_call(*args: Any, **kwargs: Any) -> DependencyType:
             assert dependency.call is not None
-            if dependency.scope is not False and state.cached_values.contains(
-                dependency.call
-            ):
+            if dependency.shared and state.cached_values.contains(dependency.call):
                 # use cached value
                 res = state.cached_values.get(dependency.call)
             else:
                 res = await wrap_call(dependency.call, stack=stack)(*args, **kwargs)
-                if dependency.scope is not False:
+                if dependency.shared:
                     # caching is allowed, now that we have a value we can save it and start using the cache
                     state.cached_values.set(
                         dependency.call, res, scope=dependency.scope
