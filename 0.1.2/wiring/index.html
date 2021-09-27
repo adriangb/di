@@ -559,9 +559,9 @@ In this example we'll load a config from the environment:</p>
         <span class="k">return</span> <span class="bp">self</span>
 
 
-<span class="hll"><span class="k">async</span> <span class="k">def</span> <span class="nf">controller</span><span class="p">(</span>
-</span>    <span class="n">conn</span><span class="p">:</span> <span class="n">DBConn</span><span class="p">,</span> <span class="n">conn_executed</span><span class="p">:</span> <span class="n">DBConn</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">DBConn</span><span class="o">.</span><span class="fm">__call__</span><span class="p">)</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">controller</span><span class="p">(</span>
+<span class="hll">    <span class="n">conn</span><span class="p">:</span> <span class="n">DBConn</span><span class="p">,</span> <span class="n">conn_executed</span><span class="p">:</span> <span class="n">DBConn</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">DBConn</span><span class="o">.</span><span class="fm">__call__</span><span class="p">)</span>
+</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="k">assert</span> <span class="n">conn</span> <span class="ow">is</span> <span class="n">conn_executed</span>
 
 
@@ -609,30 +609,30 @@ Instead, only some basic checks on scopes are done and the dependencies are exec
     <span class="o">...</span>
 
 
-<span class="n">request_ctx</span> <span class="o">=</span> <span class="n">ContextVar</span><span class="p">[</span><span class="n">Request</span><span class="p">](</span><span class="s2">&quot;request_ctx&quot;</span><span class="p">)</span>
-
-
-<span class="k">def</span> <span class="nf">get_request</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Request</span><span class="p">:</span>
-    <span class="k">return</span> <span class="n">request_ctx</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
-
-
-<span class="k">async</span> <span class="k">def</span> <span class="nf">execute_request</span><span class="p">(</span>
-    <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">container</span><span class="p">:</span> <span class="n">Container</span><span class="p">,</span> <span class="n">solved</span><span class="p">:</span> <span class="n">SolvedDependency</span><span class="p">[</span><span class="n">T</span><span class="p">]</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">T</span><span class="p">:</span>
-    <span class="k">async</span> <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">enter_local_scope</span><span class="p">(</span><span class="s2">&quot;request&quot;</span><span class="p">):</span>
-        <span class="n">token</span> <span class="o">=</span> <span class="n">request_ctx</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="k">return</span> <span class="k">await</span> <span class="n">container</span><span class="o">.</span><span class="n">execute_solved</span><span class="p">(</span><span class="n">solved</span><span class="p">)</span>
-        <span class="k">finally</span><span class="p">:</span>
-            <span class="n">request_ctx</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="n">token</span><span class="p">)</span>
-
+<span class="hll"><span class="n">request_ctx</span> <span class="o">=</span> <span class="n">ContextVar</span><span class="p">[</span><span class="n">Request</span><span class="p">](</span><span class="s2">&quot;request_ctx&quot;</span><span class="p">)</span>
+</span><span class="hll">
+</span><span class="hll">
+</span><span class="hll"><span class="k">def</span> <span class="nf">get_request</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Request</span><span class="p">:</span>
+</span><span class="hll">    <span class="k">return</span> <span class="n">request_ctx</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+</span><span class="hll">
+</span><span class="hll">
+</span><span class="hll"><span class="k">async</span> <span class="k">def</span> <span class="nf">execute_request</span><span class="p">(</span>
+</span><span class="hll">    <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">container</span><span class="p">:</span> <span class="n">Container</span><span class="p">,</span> <span class="n">solved</span><span class="p">:</span> <span class="n">SolvedDependency</span><span class="p">[</span><span class="n">T</span><span class="p">]</span>
+</span><span class="hll"><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">T</span><span class="p">:</span>
+</span><span class="hll">    <span class="k">async</span> <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">enter_local_scope</span><span class="p">(</span><span class="s2">&quot;request&quot;</span><span class="p">):</span>
+</span><span class="hll">        <span class="n">token</span> <span class="o">=</span> <span class="n">request_ctx</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+</span><span class="hll">        <span class="k">try</span><span class="p">:</span>
+</span><span class="hll">            <span class="k">return</span> <span class="k">await</span> <span class="n">container</span><span class="o">.</span><span class="n">execute_solved</span><span class="p">(</span><span class="n">solved</span><span class="p">)</span>
+</span><span class="hll">        <span class="k">finally</span><span class="p">:</span>
+</span><span class="hll">            <span class="n">request_ctx</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="n">token</span><span class="p">)</span>
+</span>
 
 <span class="k">async</span> <span class="k">def</span> <span class="nf">framework</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
     <span class="n">request_log</span> <span class="o">=</span> <span class="n">RequestLog</span><span class="p">()</span>
     <span class="n">container</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">request_log</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">&quot;app&quot;</span><span class="p">),</span> <span class="n">RequestLog</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">&quot;app&quot;</span><span class="p">)</span>
-    <span class="n">container</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">get_request</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">&quot;request&quot;</span><span class="p">),</span> <span class="n">Request</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">&quot;app&quot;</span><span class="p">)</span>
-    <span class="n">solved</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">&quot;request&quot;</span><span class="p">))</span>
+<span class="hll">    <span class="n">container</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">get_request</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">&quot;request&quot;</span><span class="p">),</span> <span class="n">Request</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">&quot;app&quot;</span><span class="p">)</span>
+</span>    <span class="n">solved</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">&quot;request&quot;</span><span class="p">))</span>
     <span class="k">async</span> <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">enter_global_scope</span><span class="p">(</span><span class="s2">&quot;app&quot;</span><span class="p">):</span>
         <span class="c1"># simulate concurrent requests</span>
         <span class="n">n_requests</span> <span class="o">=</span> <span class="mi">25</span>
