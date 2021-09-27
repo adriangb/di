@@ -19,26 +19,7 @@ def endpoint(r: Request) -> int:
 
 @pytest.mark.anyio
 async def test_bind():
-    container = Container()
-    async with container.enter_global_scope("app"):
-        r = await container.execute(Dependant(endpoint))
-        assert r == 0  # just the default value
-        async with container.enter_local_scope("request"):
-            request = Request(1)  # build a request
-            # bind the request
-            container.bind(Dependant(lambda: request), Request, scope="request")
-            r = await container.execute(Dependant(endpoint))
-            assert r == 1  # bound value
-            with container.bind(
-                Dependant(lambda: Request(2)), Request, scope="request"
-            ):
-                r = await container.execute(Dependant(endpoint))
-                assert r == 2
-            r = await container.execute(Dependant(endpoint))
-            assert r == 1
-        # when we exit the request scope, the bind of value=1 gets cleared
-        r = await container.execute(Dependant(endpoint))
-        assert r == 0  # back to the default value
+    raise Exception
 
 
 def inject1() -> int:
