@@ -43,7 +43,7 @@ This is something the web framework would provide and manage.
 Next, we'll declare a controller / endpoint that uses the request.
 This is the only code the user would have to write.
 
-```Python hl_lines="9-11"
+```Python hl_lines="9-10"
 --8<-- "docs/src/web_framework.py"
 ```
 
