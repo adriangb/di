@@ -80,6 +80,8 @@ To preview the docs locally as you edit them, run
 $ make docs-serve
 ```
 
+</div>
+
 All of the code fragments in the docs are stored as `.py` files in `docs/src`.
 These code fragments are tested as part of unit tests to ensure that the documentation stays up to date with the API.
 
@@ -93,8 +95,6 @@ The project version is stored in our [pyproject.toml] and uses semantic versioni
 As part of your pull request, you should propose what type of change is being made and determine the right version bump appropriately.
 
 Once your change is merged, the new docs and PyPi package will be released automatically.
-
-</div>
 
 [make]: https://www.gnu.org/software/make/
 [makefile]: https://github.com/adriangb/di/blob/main/Makefile
