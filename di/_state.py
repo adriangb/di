@@ -11,7 +11,7 @@ from di.dependency import (
     DependencyType,
     Scope,
 )
-from di.exceptions import DuplicateScopeError, UnknownScopeError
+from di.exceptions import DuplicateScopeError
 
 
 class ContainerState:
@@ -54,9 +54,7 @@ class ContainerState:
         scope: Scope,
     ) -> ContextManager[None]:
         if not self.binds.has_scope(scope):
-            raise UnknownScopeError(
-                f"Scope {scope} is not a known scope. Did you forget to enter it?"
-            )
+            self.binds.add_scope(scope)
         previous_scope: Optional[Scope]
         previous_provider: Optional[DependantProtocol[Any]]
         try:
