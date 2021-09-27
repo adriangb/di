@@ -47,10 +47,23 @@ DependencyProvider = Union[
 ]
 
 
-VARIABLE_PARAMETER_KINDS = (
+_VARIABLE_PARAMETER_KINDS = (
     inspect.Parameter.VAR_POSITIONAL,
     inspect.Parameter.VAR_KEYWORD,
 )
+
+
+_expected_attributes = ("call", "scope", "shared", "get_dependencies", "is_equivalent")
+
+
+def _is_dependant_protocol_instance(o: object) -> bool:
+    # run cheap attribute checks before running isinstance
+    # isinstace is expensive since runs reflection on methods
+    # to check argument types, etc.
+    for attr in _expected_attributes:
+        if not hasattr(o, attr):
+            return False
+    return isinstance(o, DependantProtocol)
 
 
 @runtime_checkable
@@ -144,11 +157,11 @@ class DependantProtocol(Protocol[DependencyType]):
         ), "Container should have assigned call; this is a bug!"
         res: Dict[str, DependencyParameter[DependantProtocol[Any]]] = {}
         for param_name, param in self.gather_parameters().items():
-            if param.kind in VARIABLE_PARAMETER_KINDS:
+            if param.kind in _VARIABLE_PARAMETER_KINDS:
                 raise WiringError(
                     "Dependencies may not use variable positional or keyword arguments"
                 )
-            if isinstance(param.default, DependantProtocol):
+            if _is_dependant_protocol_instance(param.default):
                 sub_dependant = cast(DependantProtocol[Any], param.default)
                 if sub_dependant.call is None:
                     sub_dependant.call = sub_dependant.infer_call_from_annotation(param)
