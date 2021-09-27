@@ -58,5 +58,5 @@ docs-serve: .docs
 	@poetry run mkdocs serve
 
 docs-deploy: .docs
-	@echo ---- 📝 Deploying docs ----
-	@poetry run mike deploy --push --update-aliases --branch gh-docs $(shell poetry version -s) latest
+	@echo ---- 🚀 Deploying docs ----
+	@(poetry run mike deploy --push --update-aliases --branch gh-docs $(shell poetry version -s) latest && echo "---- ✅ Deploy succeeded ----" && exit 0 || echo "---- ❌ Deploy failed ----" && exit 1)
