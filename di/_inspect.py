@@ -11,7 +11,7 @@ from typing import (
     Generator,
     Generic,
     Mapping,
-    Protocol,
+    Optional,
     TypeVar,
     Union,
     cast,
@@ -102,20 +102,16 @@ def get_parameters(call: DependencyProvider) -> Dict[str, inspect.Parameter]:
         params.pop(next(iter(params.keys())))  # first parameter to __init__ is self
     else:
         params = inspect.signature(call).parameters
-    annotations = get_annotations(call)
+    annotations: Optional[Dict[str, Any]] = None
     processed_params: Dict[str, inspect.Parameter] = {}
     for param_name, param in params.items():
-        if param.kind in VARIABLE_ARGS and type(call) is type(Protocol):
-            # protocol __init__'s come with *args and **kwargs for error handling
-            # but these are fake: protocols can't be instantiated anyway
-            continue  # pragma: no cover
-        processed_params[param_name] = inspect.Parameter(
-            name=param.name,
-            kind=param.kind,
-            default=param.default,
-            annotation=annotations.get(param_name, param.annotation),
-        )
-
+        if isinstance(param.annotation, str) or param_name == "self":
+            if annotations is None:
+                annotations = get_annotations(call)
+            param = param.replace(
+                annotation=annotations.get(param_name, param.annotation)
+            )
+        processed_params[param_name] = param
     return processed_params
 
 
