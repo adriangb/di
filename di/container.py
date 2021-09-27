@@ -196,17 +196,12 @@ class Container:
         )
 
     def get_flat_subdependants(
-        self, dependency: DependantProtocol[Any]
+        self, solved: SolvedDependency[Any]
     ) -> List[DependantProtocol[Any]]:
         """Get an exhaustive list of all of the dependencies of this dependency,
         in no particular order.
         """
-        return [
-            dep
-            for group in self.solve(dependency).topsort
-            for dep in group
-            if dependency not in group
-        ]
+        return [dep for group in solved.topsort[1:] for dep in group]
 
     def _build_task(
         self,
