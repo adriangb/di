@@ -18,6 +18,7 @@ from typing import (
     runtime_checkable,
 )
 
+from di._docstrings import join_docstring_from
 from di._inspect import DependencyParameter, get_parameters, infer_call_from_annotation
 from di.exceptions import WiringError
 
@@ -138,16 +139,6 @@ class DependantProtocol(Protocol[DependencyType]):
         """
         raise NotImplementedError
 
-    def gather_dependencies(
-        self,
-    ) -> Dict[str, DependencyParameter[DependantProtocol[Any]]]:
-        """Collect this dependencies sub dependencies.
-
-        The returned dict corresponds to keyword arguments that will be passed
-        to this dependencies `call` after all sub-dependencies are themselves resolved.
-        """
-        raise NotImplementedError
-
     def infer_call_from_annotation(
         self, param: inspect.Parameter
     ) -> DependencyProvider:
@@ -211,6 +202,7 @@ class Dependant(DependantProtocol[DependencyType]):
         ] = None
         self.shared = shared
 
+    @join_docstring_from(DependantProtocol[Any].create_sub_dependant)
     def create_sub_dependant(
         self, call: DependencyProvider, scope: Scope, shared: bool
     ) -> DependantProtocol[Any]:
@@ -219,52 +211,43 @@ class Dependant(DependantProtocol[DependencyType]):
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(call={self.call}, scope={self.scope})"
 
+    @join_docstring_from(DependantProtocol[Any].__hash__)
     def __hash__(self) -> int:
-        """A unique identifier for this dependency.
-
-        By default, dependencies are identified by their call attribute.
-        This can be overriden to introduce other semantics, e.g. to involve the scope or custom attrbiutes
-        in dependency identification.
-        """
         return hash(self.call)
 
+    @join_docstring_from(DependantProtocol[Any].__eq__)
     def __eq__(self, o: object) -> bool:
-        """Used in conjunction with __hash__ for mapping lookups of dependencies.
-        Generally, this should have the same semantics as __hash__ but can check for object identity.
-        """
         if type(self) != type(o):
             return False
         assert isinstance(o, type(self))
         return self.call is o.call
 
+    @join_docstring_from(DependantProtocol[Any].is_equivalent)
     def is_equivalent(self, other: DependantProtocol[Any]) -> bool:
-        """Copare two DependantProtocol implementers for equality.
-
-        By default, the two are equal only if they share the same callable and scope.
-
-        If two dependencies share the same hash but are not equal, the Container will
-        report an error.
-        This is commonly caused by using the same callable under two different scopes.
-        To remedy this, you can either wrap the callable to give it two different hashes/ids,
-        or you can create a DependantProtocol implementation that overrides __hash__ and/or __eq__.
-        """
         return self.call is other.call and other.scope == self.scope
 
+    @join_docstring_from(DependantProtocol[Any].get_dependencies)
     def get_dependencies(
         self,
     ) -> Dict[str, DependencyParameter[DependantProtocol[Any]]]:
-        """A cache on top of `gather_dependencies()`"""
         if self.dependencies is None:  # type: ignore
             self.dependencies = self.gather_dependencies()
         return self.dependencies
 
+    @join_docstring_from(DependantProtocol[Any].gather_parameters)
     def gather_parameters(self) -> Dict[str, inspect.Parameter]:
-        """Collect parameters that this dependency needs to construct itself.
-
-        Generally, this means introspecting into this dependencies own callable.
-        """
         assert self.call is not None, "Cannot gather parameters without a bound call"
         return get_parameters(self.call)
+
+    @join_docstring_from(DependantProtocol[Any].infer_call_from_annotation)
+    def infer_call_from_annotation(
+        self, param: inspect.Parameter
+    ) -> DependencyProvider:
+        if param.annotation is param.empty:
+            raise WiringError(
+                "Cannot wire a parameter with no default and no type annotation"
+            )
+        return infer_call_from_annotation(param)
 
     def gather_dependencies(
         self,
@@ -299,19 +282,3 @@ class Dependant(DependantProtocol[DependencyType]):
                 dependency=sub_dependant, parameter=param
             )
         return res
-
-    def infer_call_from_annotation(
-        self, param: inspect.Parameter
-    ) -> DependencyProvider:
-        """Called when the dependency was not explicitly passed a callable.
-
-        It is important to note that param in this context refers to the parameter in this
-        Dependant's parent.
-        For example, in the case of `def func(thing: Something = Dependency())` this method
-        will be called with a Parameter corresponding to Something.
-        """
-        if param.annotation is param.empty:
-            raise WiringError(
-                "Cannot wire a parameter with no default and no type annotation"
-            )
-        return infer_call_from_annotation(param)
