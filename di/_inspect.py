@@ -10,6 +10,7 @@ from typing import (
     Dict,
     Generator,
     Generic,
+    Mapping,
     Protocol,
     TypeVar,
     Union,
@@ -85,9 +86,22 @@ def get_annotations(call: DependencyProvider) -> Dict[str, Any]:
     return get_type_hints(types_from)
 
 
-@lru_cache(maxsize=1024)
+# @lru_cache(maxsize=1024)
 def get_parameters(call: DependencyProvider) -> Dict[str, inspect.Parameter]:
-    params = inspect.signature(call).parameters
+    params: Mapping[str, inspect.Parameter]
+    if (
+        inspect.isclass(call)
+        and hasattr(call, "__new__")
+        and call.__new__ is not object.__new__
+        and hasattr(call, "__init__")
+    ):
+        # classes overriding __new__, including some generic metaclasses, result in __new__ getting read
+        # instead of __init__
+        params = inspect.signature(call.__init__).parameters  # type: ignore
+        params = dict(params)
+        params.pop(next(iter(params.keys())))
+    else:
+        params = inspect.signature(call).parameters
     annotations = get_annotations(call)
     processed_params: Dict[str, inspect.Parameter] = {}
     for param_name, param in params.items():
