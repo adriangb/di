@@ -25,7 +25,7 @@ Every dependency and bind is linked to a scope.
 When a scope exits, all dependencies linked to it are destroyed (if they have cleanup, the cleanup is run) and their value is no longer available as a shared value.
 This means that dependencies scoped to an outer scope cannot depend on dependencies scoped to an inner scope:
 
-```Python hl_lines="10 18"
+```Python hl_lines="13 22"
 --8<-- "docs/src/invalid_scope_dependance.py"
 ```
 
