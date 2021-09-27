@@ -487,20 +487,20 @@ This means that dependencies scoped to an outer scope cannot depend on dependenc
 
 <span class="k">class</span> <span class="nc">DBConnection</span><span class="p">:</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="hll">        <span class="o">...</span>
-</span>
+        <span class="o">...</span>
 
-<span class="k">def</span> <span class="nf">controller</span><span class="p">(</span><span class="n">conn</span><span class="p">:</span> <span class="n">DBConnection</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s2">&quot;app&quot;</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="o">...</span>
+
+<span class="hll"><span class="k">def</span> <span class="nf">controller</span><span class="p">(</span><span class="n">conn</span><span class="p">:</span> <span class="n">DBConnection</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s2">&quot;app&quot;</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span>    <span class="o">...</span>
 
 
 <span class="k">async</span> <span class="k">def</span> <span class="nf">framework</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="hll">    <span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
-</span>    <span class="k">async</span> <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">enter_global_scope</span><span class="p">(</span><span class="s2">&quot;app&quot;</span><span class="p">):</span>
+    <span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">enter_global_scope</span><span class="p">(</span><span class="s2">&quot;app&quot;</span><span class="p">):</span>
         <span class="k">async</span> <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">enter_local_scope</span><span class="p">(</span><span class="s2">&quot;request&quot;</span><span class="p">):</span>
             <span class="n">request</span> <span class="o">=</span> <span class="n">Request</span><span class="p">()</span>
-            <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">&quot;request&quot;</span><span class="p">),</span> <span class="n">Request</span><span class="p">):</span>
-                <span class="k">await</span> <span class="n">container</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">))</span>
+<span class="hll">            <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">&quot;request&quot;</span><span class="p">),</span> <span class="n">Request</span><span class="p">):</span>
+</span>                <span class="k">await</span> <span class="n">container</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">))</span>
 </code></pre></div>
 <p>This example will fail with <code>di.exceptions.ScopeViolationError</code> because an <code>"app"</code> scoped dependency (<code>conn</code>, as requested by <code>controller</code> via <code>Depends(scope="app")</code>) depends on a request scope dependency (in <code>framework</code>, we specify <code>Dependant(..., scope="request"</code>).
 This is because dependencies and scopes behave much a stack and references in general purpose langauges: you can't reference a function local once you exit that function.
