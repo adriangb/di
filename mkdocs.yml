@@ -26,10 +26,9 @@ nav:
   - Scopes: 'scopes.md'
   - Binds: 'binds.md'
   - Wiring: 'wiring.md'
-  - Caching: 'caching.md'
+  - Sharing: 'sharing.md'
   - Dependants: 'dependants.md'
   - Solving: 'solving.md'
-  - Callable classes: 'callable-classes.md'
   - Contributing: 'contributing.md'
 
 markdown_extensions:

@@ -36,14 +36,14 @@ First we declare a dependency.
 We'll call it `Request` like if it were an incoming HTTP request.
 This is something the web framework would provide and manage.
 
-```Python hl_lines="5-7"
+```Python hl_lines="4-6"
 --8<-- "docs/src/web_framework.py"
 ```
 
 Next, we'll declare a controller / endpoint that uses the request.
 This is the only code the user would have to write.
 
-```Python hl_lines="10-11"
+```Python hl_lines="9-11"
 --8<-- "docs/src/web_framework.py"
 ```
 
@@ -54,14 +54,14 @@ Users don't need to interact with the container or entering/exiting scopes (alth
 We start by creating a container.
 This would happen when the app / framework in initialized.
 
-```Python hl_lines="15"
+```Python hl_lines="14"
 --8<-- "docs/src/web_framework.py"
 ```
 
 Next, we enter a `"request"` scope.
 This would happen for each incoming request.
 
-```Python hl_lines="16"
+```Python hl_lines="15"
 --8<-- "docs/src/web_framework.py"
 ```
 
@@ -83,7 +83,7 @@ Finally, we also pass `scope="request"` to `bind()` to signify that we want to r
 
 Now we can execute the user's controller / endpoint:
 
-```Python hl_lines="20-21"
+```Python hl_lines="19-20"
 --8<-- "docs/src/web_framework.py"
 ```
 

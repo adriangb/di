@@ -80,6 +80,20 @@ To preview the docs locally as you edit them, run
 $ make docs-serve
 ```
 
+All of the code fragments in the docs are stored as `.py` files in `docs/src`.
+These code fragments are tested as part of unit tests to ensure that the documentation stays up to date with the API.
+
+## Releases
+
+This project uses continious integration and continious delivery (CI/CD) and a trunk based workflow.
+We do not want any long lived feature branches (although we won't stop you from making them in your fork),
+and every merge into `main` should be fully functional code in a releasable state.
+Because we intend to release every merge into `main` automatically, pull requests will check that you bump the project version.
+The project version is stored in our [pyproject.toml] and uses semantic versioning.
+As part of your pull request, you should propose what type of change is being made and determine the right version bump appropriately.
+
+Once your change is merged, the new docs and PyPi package will be released automatically.
+
 </div>
 
 [make]: https://www.gnu.org/software/make/
