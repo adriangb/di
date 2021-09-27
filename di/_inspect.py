@@ -86,7 +86,7 @@ def get_annotations(call: DependencyProvider) -> Dict[str, Any]:
     return get_type_hints(types_from)
 
 
-# @lru_cache(maxsize=1024)
+@lru_cache(maxsize=1024)
 def get_parameters(call: DependencyProvider) -> Dict[str, inspect.Parameter]:
     params: Mapping[str, inspect.Parameter]
     if (
