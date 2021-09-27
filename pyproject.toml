@@ -1,8 +1,21 @@
 [tool.poetry]
 name = "di"
-version = "0.2.6"
+version = "0.2.7"
 description = "Autowiring dependency injection"
 authors = ["Adrian Garcia Badaracco <adrian@adriangb.com>"]
+readme = "README.md"
+repository = "https://github.com/adriangb/di"
+documentation = "https://www.adriangb.com/di"
+keywords = ["dependency-injection", "inversion-of-control", "SOLID", "IoC", "DI"]
+classifiers=[
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "OSI Approved :: MIT License",
+    "Framework :: AsyncIO",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 
 [tool.poetry.dependencies]
 python = ">=3.8.0,<4"
