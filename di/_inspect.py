@@ -99,7 +99,7 @@ def get_parameters(call: DependencyProvider) -> Dict[str, inspect.Parameter]:
         # instead of __init__
         params = inspect.signature(call.__init__).parameters  # type: ignore
         params = dict(params)
-        params.pop(next(iter(params.keys())))
+        params.pop(next(iter(params.keys())))  # first parameter to __init__ is self
     else:
         params = inspect.signature(call).parameters
     annotations = get_annotations(call)
