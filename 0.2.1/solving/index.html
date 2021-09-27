@@ -300,8 +300,8 @@
   
   
     <li class="md-nav__item">
-      <a href="../caching/" class="md-nav__link">
-        Caching
+      <a href="../sharing/" class="md-nav__link">
+        Sharing
       </a>
     </li>
   
@@ -343,21 +343,6 @@
         Solving
       </a>
       
-    </li>
-  
-
-    
-      
-      
-      
-
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../callable-classes/" class="md-nav__link">
-        Callable classes
-      </a>
     </li>
   
 
@@ -412,6 +397,11 @@
                 
                 
                 <h1 id="solving">Solving</h1>
+<p>Solving a dependency consists of 2 steps:</p>
+<ol>
+<li>Locate all sub dependencies from binds or autowiring.</li>
+<li>Topologically sort sub dependencies and group them such that subdependencies that do not depend on eachother can be executed in parallel.</li>
+</ol>
                 
               
               
@@ -447,13 +437,13 @@
       
       
         
-        <a href="../callable-classes/" class="md-footer__link md-footer__link--next" aria-label="Next: Callable classes" rel="next">
+        <a href="../contributing/" class="md-footer__link md-footer__link--next" aria-label="Next: Contributing" rel="next">
           <div class="md-footer__title">
             <div class="md-ellipsis">
               <span class="md-footer__direction">
                 Next
               </span>
-              Callable classes
+              Contributing
             </div>
           </div>
           <div class="md-footer__button md-icon">

@@ -11,14 +11,14 @@
       
       
       
-        <link rel="canonical" href="https://www.adriangb.com/di/0.2.1/callable-classes/">
+        <link rel="canonical" href="https://www.adriangb.com/di/0.2.1/sharing/">
       
       <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.2.2, mkdocs-material-7.3.0">
     
     
       
-        <title>Callable classes - DI: Python Dependency Injection</title>
+        <title>Sharing - DI: Python Dependency Injection</title>
       
     
     
@@ -73,7 +73,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#callable-classes" class="md-skip">
+        <a href="#dependency-sharing" class="md-skip">
           Skip to content
         </a>
       
@@ -105,7 +105,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Callable classes
+              Sharing
             
           </span>
         </div>
@@ -298,11 +298,58 @@
 
   
   
+    
   
-    <li class="md-nav__item">
-      <a href="../caching/" class="md-nav__link">
-        Caching
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Sharing
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        Sharing
       </a>
+      
+        
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-sharing-works" class="md-nav__link">
+    How sharing works
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sharing-and-scopes" class="md-nav__link">
+    Sharing and scopes
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -343,31 +390,6 @@
 
   
   
-    
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
-        Callable classes
-      </a>
-      
-    </li>
-  
-
-    
-      
-      
-      
-
-  
-  
   
     <li class="md-nav__item">
       <a href="../contributing/" class="md-nav__link">
@@ -396,6 +418,28 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-sharing-works" class="md-nav__link">
+    How sharing works
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sharing-and-scopes" class="md-nav__link">
+    Sharing and scopes
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -406,12 +450,40 @@
             <article class="md-content__inner md-typeset">
               
                 
-                  <a href="https://github.com/adriangb/di/blob/main/docs/callable-classes.md" title="Edit this page" class="md-content__button md-icon">
+                  <a href="https://github.com/adriangb/di/blob/main/docs/sharing.md" title="Edit this page" class="md-content__button md-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25z"/></svg>
                   </a>
                 
                 
-                <h1 id="callable-classes">Callable classes</h1>
+                <h1 id="dependency-sharing">Dependency sharing</h1>
+<p>Often, you will have dependencies that share a sub dependency.
+For example, you probably only want to load your configuration from enviroment variables <em>once</em> and then re-use the same object in multiple dependencies.
+In <code>di</code>, we call this concept <em>dependency sharing</em>.</p>
+<h2 id="how-sharing-works">How sharing works</h2>
+<p>Dependencies are identfied by their callable provider.
+This could be the constructor for a type or an arbitrary callable encapsulated using <code>Depends(...)</code>.
+By default, dependencies are shared, but this behavior can be changed on a per-dependency basis using the <code>shared=False</code> parameter.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">random</span> <span class="kn">import</span> <span class="n">random</span>
+
+<span class="kn">from</span> <span class="nn">di</span> <span class="kn">import</span> <span class="n">Container</span><span class="p">,</span> <span class="n">Dependant</span><span class="p">,</span> <span class="n">Depends</span>
+
+
+<span class="k">def</span> <span class="nf">controller</span><span class="p">(</span>
+<span class="hll">    <span class="n">v1</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span>  <span class="c1"># no marker is equivalent to Depends(object)</span>
+</span><span class="hll">    <span class="n">v2</span><span class="p">:</span> <span class="nb">object</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="nb">object</span><span class="p">),</span>  <span class="c1"># the default value is shared=True</span>
+</span><span class="hll">    <span class="n">v3</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">random</span><span class="p">,</span> <span class="n">shared</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>  <span class="c1"># but you can set shared=False</span>
+</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">assert</span> <span class="n">v1</span> <span class="ow">is</span> <span class="n">v2</span>
+    <span class="k">assert</span> <span class="n">v1</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">v3</span> <span class="ow">and</span> <span class="n">v2</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">v3</span>
+
+
+<span class="k">async</span> <span class="k">def</span> <span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+    <span class="k">await</span> <span class="n">container</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">))</span>
+</code></pre></div>
+<h2 id="sharing-and-scopes">Sharing and scopes</h2>
+<p>Dependencies are shared within their scope and any innner scopes.
+Once a dependency's scope exits, it's shared value is discareded and the next time the scope is entered a fresh value will be computed.</p>
                 
               
               
@@ -431,7 +503,7 @@
     <nav class="md-footer__inner md-grid" aria-label="Footer">
       
         
-        <a href="../solving/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Solving" rel="prev">
+        <a href="../wiring/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Wiring" rel="prev">
           <div class="md-footer__button md-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
           </div>
@@ -440,20 +512,20 @@
               <span class="md-footer__direction">
                 Previous
               </span>
-              Solving
+              Wiring
             </div>
           </div>
         </a>
       
       
         
-        <a href="../contributing/" class="md-footer__link md-footer__link--next" aria-label="Next: Contributing" rel="next">
+        <a href="../dependants/" class="md-footer__link md-footer__link--next" aria-label="Next: Dependants" rel="next">
           <div class="md-footer__title">
             <div class="md-ellipsis">
               <span class="md-footer__direction">
                 Next
               </span>
-              Contributing
+              Dependants
             </div>
           </div>
           <div class="md-footer__button md-icon">

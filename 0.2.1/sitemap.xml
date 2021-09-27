@@ -11,16 +11,6 @@
          <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://www.adriangb.com/di/0.2.1/caching/</loc>
-         <lastmod>2021-09-27</lastmod>
-         <changefreq>daily</changefreq>
-    </url>
-    <url>
-         <loc>https://www.adriangb.com/di/0.2.1/callable-classes/</loc>
-         <lastmod>2021-09-27</lastmod>
-         <changefreq>daily</changefreq>
-    </url>
-    <url>
          <loc>https://www.adriangb.com/di/0.2.1/contributing/</loc>
          <lastmod>2021-09-27</lastmod>
          <changefreq>daily</changefreq>
@@ -37,6 +27,11 @@
     </url>
     <url>
          <loc>https://www.adriangb.com/di/0.2.1/scopes/</loc>
+         <lastmod>2021-09-27</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://www.adriangb.com/di/0.2.1/sharing/</loc>
          <lastmod>2021-09-27</lastmod>
          <changefreq>daily</changefreq>
     </url>
