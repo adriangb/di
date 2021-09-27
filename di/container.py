@@ -174,9 +174,6 @@ class Container:
                         q.append(subdep)
 
         groups = topsort(dependency, dep_dag)
-
-        print(len(dep_dag))
-
         return SolvedDependency(dependency=dependency, dag=param_graph, topsort=groups)
 
     def get_flat_subdependants(
