@@ -72,6 +72,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#scopes" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -256,10 +261,42 @@
       <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
       
       
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Scopes
+          <span class="md-nav__icon md-icon"></span>
+        </label>
       
       <a href="./" class="md-nav__link md-nav__link--active">
         Scopes
       </a>
+      
+        
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#local-vs-global-scopes" class="md-nav__link">
+    Local vs. global scopes
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -275,6 +312,21 @@
     <li class="md-nav__item">
       <a href="../binds/" class="md-nav__link">
         Binds
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wiring/" class="md-nav__link">
+        Wiring
       </a>
     </li>
   
@@ -362,6 +414,38 @@
               </div>
             
             
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#local-vs-global-scopes" class="md-nav__link">
+    Local vs. global scopes
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
           
           <div class="md-content" data-md-component="content">
             <article class="md-content__inner md-typeset">
@@ -372,9 +456,69 @@
                   </a>
                 
                 
-                  <h1>Scopes</h1>
-                
-                
+                <h1 id="scopes">Scopes</h1>
+<p>Scopes are one of the fundamental concepts in dependency injection.
+Some dependency injection frameworks provide fixes scopes, for example:</p>
+<ul>
+<li>Singleton: only one instance is created</li>
+<li>Request: in web frameworks, this could be the lifetime of a request</li>
+<li>Prototype: re-initialized every time it is needed</li>
+</ul>
+<p><code>di</code> generalizes this concept by putting control of scopes into the hands of the users / implementers: a scope in <code>di</code> is identified by any hashable value (a string, enum, int, etc.) and entering / exiting scopes is handled via context managers:</p>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">enter_global_scope</span><span class="p">(</span><span class="s2">&quot;app&quot;</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">enter_local_scope</span><span class="p">(</span><span class="mi">123</span><span class="p">):</span>
+        <span class="o">...</span>
+</code></pre></div>
+<p>Scopes provide a framework for several other important features:</p>
+<ul>
+<li>Dependency lifespans</li>
+<li>Dependency value sharing</li>
+<li>Bind lifespans</li>
+</ul>
+<p>Every dependency and bind is linked to a scope.
+When a scope exits, all dependencies linked to it are destroyed (if they have cleanup, the cleanup is run) and their value is no longer available as a shared value.
+This means that dependencies scoped to an outer scope cannot depend on dependencies scoped to an inner scope:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">di</span> <span class="kn">import</span> <span class="n">Container</span><span class="p">,</span> <span class="n">Dependant</span><span class="p">,</span> <span class="n">Depends</span>
+
+
+<span class="k">class</span> <span class="nc">Request</span><span class="p">:</span>
+    <span class="o">...</span>
+
+
+<span class="k">class</span> <span class="nc">DBConnection</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="hll">        <span class="o">...</span>
+</span>
+
+<span class="k">def</span> <span class="nf">controller</span><span class="p">(</span><span class="n">conn</span><span class="p">:</span> <span class="n">DBConnection</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s2">&quot;app&quot;</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="o">...</span>
+
+
+<span class="k">async</span> <span class="k">def</span> <span class="nf">framework</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="hll">    <span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+</span>    <span class="k">async</span> <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">enter_global_scope</span><span class="p">(</span><span class="s2">&quot;app&quot;</span><span class="p">):</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">enter_local_scope</span><span class="p">(</span><span class="s2">&quot;request&quot;</span><span class="p">):</span>
+            <span class="n">request</span> <span class="o">=</span> <span class="n">Request</span><span class="p">()</span>
+            <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">&quot;request&quot;</span><span class="p">),</span> <span class="n">Request</span><span class="p">):</span>
+                <span class="k">await</span> <span class="n">container</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">))</span>
+</code></pre></div>
+<p>This example will fail with <code>di.exceptions.ScopeViolationError</code> because an <code>"app"</code> scoped dependency (<code>conn</code>, as requested by <code>controller</code> via <code>Depends(scope="app")</code>) depends on a request scope dependency (in <code>framework</code>, we specify <code>Dependant(..., scope="request"</code>).
+This is because dependencies and scopes behave much a stack and references in general purpose langauges: you can't reference a function local once you exit that function.
+Even if we could hold onto the value once we exit the scope, that value could be a reference to an object that already had it's destructor run, for example a database connection that was closed.</p>
+<p>Scopes also control bind lifespans.
+In the example above, we established a bind using a context manager (<code>with container.bind(...)</code>).
+Binds also support a <code>scope</code> parameter.
+When this is passed, the bind will be cleared when the scope exits.
+This parameter deafaults to the current scope, but you can override it to create a bind that persists after that outlive the scope they are declared in.
+When using a context manager, the bind is cleared when the context manager exits, which always overrides the <code>scope</code> parameter because the bind's context manager necessarily exits before even the current scope is done.</p>
+<h2 id="local-vs-global-scopes">Local vs. global scopes</h2>
+<p>There are two types of scopes in <code>di</code>:</p>
+<ul>
+<li>Local: localized to the current thread/coroutine via <a href="https://docs.python.org/3/library/contextvars.html">contextvars</a>.</li>
+<li>Global: applied to the <code>Container</code> object itself, and hence shared by any threads or coroutines that share the same <code>Container</code> object.</li>
+</ul>
+<p>You can enter a local scope via <code>Container.enter_local_scope</code> and a global one via <code>Container.enter_global_scope</code>.</p>
+<p>This can be useful to share a database connection between requests (global scope) but have each request have it's own local state (local scope), even if multiple requests are handled concurrently.</p>
                 
               
               

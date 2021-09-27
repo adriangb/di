@@ -72,6 +72,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#binds" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -271,11 +276,28 @@
       <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
       
       
+        
+      
       
       <a href="./" class="md-nav__link md-nav__link--active">
         Binds
       </a>
       
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wiring/" class="md-nav__link">
+        Wiring
+      </a>
     </li>
   
 
@@ -362,6 +384,23 @@
               </div>
             
             
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
           
           <div class="md-content" data-md-component="content">
             <article class="md-content__inner md-typeset">
@@ -372,9 +411,57 @@
                   </a>
                 
                 
-                  <h1>Binds</h1>
-                
-                
+                <h1 id="binds">Binds</h1>
+<p>Binds provide two important functions:</p>
+<ul>
+<li>A way to tell the container how to assemble things that can't be autowired, for example interfaces.</li>
+<li>A way to override dependencies in tests.</li>
+</ul>
+<p>Every bind in <code>di</code> consists of:</p>
+<ul>
+<li>A target callable: this can be a function, an interface / protocol or a concrete class</li>
+<li>A substitute dependency: an object implementing the <code>DependencyProtocol</code>, usually just an instance of <code>Dependant</code></li>
+</ul>
+<p>This means that binds are themselves dependencies:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Protocol</span>
+
+<span class="kn">from</span> <span class="nn">di</span> <span class="kn">import</span> <span class="n">Container</span><span class="p">,</span> <span class="n">Dependant</span>
+
+
+<span class="k">class</span> <span class="nc">DBProtocol</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sql</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="o">...</span>
+
+
+<span class="k">async</span> <span class="k">def</span> <span class="nf">controller</span><span class="p">(</span><span class="n">db</span><span class="p">:</span> <span class="n">DBProtocol</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT *&quot;</span><span class="p">)</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span> <span class="nc">DBConfig</span><span class="p">:</span>
+    <span class="n">host</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;localhost&quot;</span>
+
+
+<span class="k">class</span> <span class="nc">Postgres</span><span class="p">(</span><span class="n">DBProtocol</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">DBConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">host</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">host</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sql</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sql</span><span class="p">)</span>
+
+
+<span class="k">async</span> <span class="k">def</span> <span class="nf">framework</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">enter_local_scope</span><span class="p">(</span><span class="s2">&quot;app&quot;</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">Postgres</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">&quot;app&quot;</span><span class="p">),</span> <span class="n">DBProtocol</span><span class="p">):</span>  <span class="c1"># type: ignore</span>
+            <span class="k">await</span> <span class="n">container</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">))</span>
+            <span class="n">db</span> <span class="o">=</span> <span class="k">await</span> <span class="n">container</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">DBProtocol</span><span class="p">))</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">Postgres</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="n">db</span><span class="o">.</span><span class="n">log</span> <span class="o">==</span> <span class="p">[</span><span class="s2">&quot;SELECT *&quot;</span><span class="p">]</span>
+</code></pre></div>
+<p>In this example we bind a concrete <code>Postgres</code> instance to <code>DBProtocol</code>, and we can see that <code>di</code> autowires <code>Postgres</code> as well!</p>
                 
               
               
@@ -410,13 +497,13 @@
       
       
         
-        <a href="../caching/" class="md-footer__link md-footer__link--next" aria-label="Next: Caching" rel="next">
+        <a href="../wiring/" class="md-footer__link md-footer__link--next" aria-label="Next: Wiring" rel="next">
           <div class="md-footer__title">
             <div class="md-ellipsis">
               <span class="md-footer__direction">
                 Next
               </span>
-              Caching
+              Wiring
             </div>
           </div>
           <div class="md-footer__button md-icon">

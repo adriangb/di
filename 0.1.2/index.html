@@ -286,6 +286,13 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#project-aims" class="md-nav__link">
+    Project Aims
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -319,6 +326,21 @@
     <li class="md-nav__item">
       <a href="binds/" class="md-nav__link">
         Binds
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="wiring/" class="md-nav__link">
+        Wiring
       </a>
     </li>
   
@@ -434,6 +456,13 @@
         <li class="md-nav__item">
   <a href="#example" class="md-nav__link">
     Example
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#project-aims" class="md-nav__link">
+    Project Aims
   </a>
   
 </li>
@@ -626,6 +655,9 @@ But in this case we want to use the same <code>Request</code> instance everywher
 <span class="hll">        <span class="k">assert</span> <span class="n">res</span> <span class="o">==</span> <span class="mi">2</span>
 </span></code></pre></div>
 <p>When we called <code>execute()</code>, <code>di</code> checked <code>controller</code> and saw that it needed a <code>Request</code>. Then it looked at the binds, found the bound provider and injected that.</p>
+<h2 id="project-aims">Project Aims</h2>
+<p>This project is primarily geared for enviroments that already use inversion of control (think web frameworks, CLI frameworks or anything else where you define functions and "it calls you").</p>
+<p>It particularly excels in async / concurrent environments, since the DI system has first class support for async dependencies and can gather dependencies concurrently.</p>
                 
               
               
