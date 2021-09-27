@@ -35,7 +35,7 @@ When you have a mostly static graph, but with a single dependency changing (e.g.
 
 This can be used in conjunction with custom classes implementing the `DependantProtocol` to determine what headers or scopes an HTTP endpoint needs, amongst other uses:
 
-```Python hl_lines="30-35 41-46"
+```Python hl_lines="25-30 36-41"
 --8<-- "docs/src/gather_deps_example.py"
 ```
 
