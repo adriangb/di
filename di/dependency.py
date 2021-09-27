@@ -18,12 +18,7 @@ from typing import (
     runtime_checkable,
 )
 
-from di._inspect import (
-    DependencyParameter,
-    ParameterKind,
-    get_parameters,
-    infer_call_from_annotation,
-)
+from di._inspect import DependencyParameter, get_parameters, infer_call_from_annotation
 from di.exceptions import WiringError
 
 DependencyType = TypeVar("DependencyType")
@@ -50,6 +45,12 @@ DependencyProvider = Union[
     GeneratorProvider[Dependency],
     CallableProvider[Dependency],
 ]
+
+
+VARIABLE_PARAMETER_KINDS = (
+    inspect.Parameter.VAR_POSITIONAL,
+    inspect.Parameter.VAR_KEYWORD,
+)
 
 
 @runtime_checkable
@@ -113,7 +114,9 @@ class DependantProtocol(Protocol[DependencyType]):
         assert self.call is not None, "Cannot gather parameters without a bound call"
         return get_parameters(self.call)
 
-    def create_sub_dependant(self, call: DependencyProvider) -> DependantProtocol[Any]:
+    def create_sub_dependant(
+        self, call: DependencyProvider, scope: Scope, shared: bool
+    ) -> DependantProtocol[Any]:
         """Create a Dependant instance from a sub-dependency of this Dependency.
 
         This is used in the scenario where a transient dependency is inferred from a type hint.
@@ -141,25 +144,25 @@ class DependantProtocol(Protocol[DependencyType]):
         ), "Container should have assigned call; this is a bug!"
         res: Dict[str, DependencyParameter[DependantProtocol[Any]]] = {}
         for param_name, param in self.gather_parameters().items():
-            if param.kind in (param.kind.VAR_POSITIONAL, param.kind.VAR_KEYWORD):
+            if param.kind in VARIABLE_PARAMETER_KINDS:
                 raise WiringError(
                     "Dependencies may not use variable positional or keyword arguments"
                 )
-            if param.kind is param.POSITIONAL_ONLY:
-                kind = ParameterKind.positional
-            else:
-                kind = ParameterKind.keyword
             if isinstance(param.default, DependantProtocol):
                 sub_dependant = cast(DependantProtocol[Any], param.default)
                 if sub_dependant.call is None:
                     sub_dependant.call = sub_dependant.infer_call_from_annotation(param)
             elif param.default is param.empty:
                 sub_dependant = self.create_sub_dependant(
-                    call=self.infer_call_from_annotation(param)
+                    call=self.infer_call_from_annotation(param),
+                    scope=self.scope,
+                    shared=self.shared,
                 )
             else:
                 continue  # pragma: no cover
-            res[param_name] = DependencyParameter(dependency=sub_dependant, kind=kind)
+            res[param_name] = DependencyParameter(
+                dependency=sub_dependant, parameter=param
+            )
         return res
 
     def infer_call_from_annotation(
@@ -185,6 +188,7 @@ class Dependant(DependantProtocol[DependencyType]):
         self,
         call: Optional[AsyncGeneratorProvider[DependencyType]] = None,
         scope: Optional[Scope] = None,
+        shared: bool = True,
     ) -> None:
         ...
 
@@ -193,6 +197,7 @@ class Dependant(DependantProtocol[DependencyType]):
         self,
         call: Optional[CoroutineProvider[DependencyType]] = None,
         scope: Optional[Scope] = None,
+        shared: bool = True,
     ) -> None:
         ...
 
@@ -201,6 +206,7 @@ class Dependant(DependantProtocol[DependencyType]):
         self,
         call: Optional[GeneratorProvider[DependencyType]] = None,
         scope: Optional[Scope] = None,
+        shared: bool = True,
     ) -> None:
         ...
 
@@ -209,6 +215,7 @@ class Dependant(DependantProtocol[DependencyType]):
         self,
         call: Optional[CallableProvider[DependencyType]] = None,
         scope: Optional[Scope] = None,
+        shared: bool = True,
     ) -> None:
         ...
 
@@ -225,8 +232,10 @@ class Dependant(DependantProtocol[DependencyType]):
         ] = None
         self.shared = shared
 
-    def create_sub_dependant(self, call: DependencyProvider) -> DependantProtocol[Any]:
-        return Dependant[Any](call=call)
+    def create_sub_dependant(
+        self, call: DependencyProvider, scope: Scope, shared: bool
+    ) -> DependantProtocol[Any]:
+        return Dependant[Any](call=call, scope=scope, shared=shared)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(call={self.call}, scope={self.scope})"

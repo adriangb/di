@@ -1,7 +1,6 @@
 import inspect
 import types
 from dataclasses import dataclass
-from enum import Enum, auto
 from functools import lru_cache
 from typing import (
     Any,
@@ -11,6 +10,7 @@ from typing import (
     Dict,
     Generator,
     Generic,
+    Protocol,
     TypeVar,
     Union,
     cast,
@@ -35,9 +35,7 @@ DependencyProvider = Union[
 T = TypeVar("T")
 
 
-class ParameterKind(Enum):
-    positional = auto()
-    keyword = auto()
+VARIABLE_ARGS = (inspect.Parameter.VAR_KEYWORD, inspect.Parameter.VAR_POSITIONAL)
 
 
 # this should be a NamedTuple
@@ -47,7 +45,7 @@ class ParameterKind(Enum):
 @dataclass
 class DependencyParameter(Generic[T]):
     dependency: T
-    kind: ParameterKind
+    parameter: inspect.Parameter
 
 
 @lru_cache(maxsize=4096)
@@ -93,6 +91,10 @@ def get_parameters(call: DependencyProvider) -> Dict[str, inspect.Parameter]:
     annotations = get_annotations(call)
     processed_params: Dict[str, inspect.Parameter] = {}
     for param_name, param in params.items():
+        if param.kind in VARIABLE_ARGS and type(call) is type(Protocol):
+            # protocol __init__'s come with *args and **kwargs for error handling
+            # but these are fake: protocols can't be instantiated anyway
+            continue  # pragma: no cover
         processed_params[param_name] = inspect.Parameter(
             name=param.name,
             kind=param.kind,

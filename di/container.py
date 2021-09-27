@@ -1,14 +1,16 @@
 from collections import deque
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
+from dataclasses import dataclass
 from typing import (
     Any,
     AsyncGenerator,
     ContextManager,
     Deque,
     Dict,
+    Generic,
     List,
-    NamedTuple,
+    Optional,
     Tuple,
     cast,
 )
@@ -35,8 +37,11 @@ from di.exceptions import (
     UnknownScopeError,
 )
 
+_UNSET_SCOPE: Scope = object()
 
-class SolvedDependency(NamedTuple):
+
+@dataclass
+class SolvedDependency(Generic[DependencyType]):
     """Representation of a fully solved dependency.
 
     A fully solved dependency consists of:
@@ -45,7 +50,7 @@ class SolvedDependency(NamedTuple):
     group of dependencies that can be executed in parallel.
     """
 
-    dependency: DependantProtocol[Any]
+    dependency: DependantProtocol[DependencyType]
     dag: Dict[
         DependantProtocol[Any], Dict[str, DependencyParameter[DependantProtocol[Any]]]
     ]
@@ -99,7 +104,7 @@ class Container:
         self,
         provider: DependantProtocol[DependencyType],
         dependency: DependencyProviderType[DependencyType],
-        scope: Scope,
+        scope: Optional[Scope] = _UNSET_SCOPE,
     ) -> ContextManager[None]:
         """Bind a new dependency provider for a given dependency.
 
@@ -111,16 +116,28 @@ class Container:
 
         The `scope` parameter determines the scope for the bind itself.
         The bind will be automatically cleared when that scope is exited.
+        If no scope is provided, the current scope is used.
         """
+        if scope is _UNSET_SCOPE:
+            if len(self._state.scopes) == 0:
+                raise ValueError(
+                    "If there is no active scope, you MUST supply the `scope` parameter"
+                )
+            scope = self._state.scopes[-1]  # current scope
         return self._state.bind(provider=provider, dependency=dependency, scope=scope)
 
-    def solve(self, dependency: DependantProtocol[Any]) -> SolvedDependency:
+    def solve(
+        self, dependency: DependantProtocol[DependencyType]
+    ) -> SolvedDependency[DependencyType]:
         """Solve a dependency.
 
         This is done automatically when calling `execute`, but you can store the returned value
         from this function and call `execute_solved` instead if you know that your binds
         will not be changing between calls.
         """
+
+        if self._state.binds.contains(dependency.call):  # type: ignore
+            dependency = self._state.binds.get(dependency.call)  # type: ignore
 
         param_graph: Dict[
             DependantProtocol[Any],
@@ -140,7 +157,7 @@ class Container:
                 if self._state.binds.contains(param.dependency.call):
                     params[keyword] = DependencyParameter[Any](
                         dependency=self._state.binds.get(param.dependency.call),
-                        kind=param.kind,
+                        parameter=param.parameter,
                     )
             return params
 
@@ -218,14 +235,14 @@ class Container:
 
         task_dependencies: Dict[str, DependencyParameter[Task[DependencyProvider]]] = {}
 
-        for keyword, param in dag[dependency].items():
-            task_dependencies[keyword] = DependencyParameter(
-                dependency=tasks[param.dependency][1], kind=param.kind
+        for param_name, param in dag[dependency].items():
+            task_dependencies[param_name] = DependencyParameter(
+                dependency=tasks[param.dependency][1], parameter=param.parameter
             )
 
         return Task(call=bound_call, dependencies=task_dependencies)
 
-    def _validate_scopes(self, solved: SolvedDependency) -> None:
+    def _validate_scopes(self, solved: SolvedDependency[Dependency]) -> None:
         """Validate that dependencies all have a valid scope and
         that dependencies only depend on outer scopes or their own scope.
         """
@@ -257,7 +274,9 @@ class Container:
                 check_scope(subdep)
                 check_is_inner(dep, subdep)
 
-    async def execute_solved(self, solved: SolvedDependency) -> Dependency:
+    async def execute_solved(
+        self, solved: SolvedDependency[DependencyType]
+    ) -> DependencyType:
         """Execute an already solved dependency."""
         # this mapping uses the hash semantics defined by the implementation of DependantProtocol
         tasks: Dict[

@@ -84,3 +84,9 @@ Now we can execute the user's controller / endpoint:
 ```
 
 When we called `execute()`, `di` checked `controller` and saw that it needed a `Request`. Then it looked at the binds, found the bound provider and injected that.
+
+## Project Aims
+
+This project is primarily geared for enviroments that already use inversion of control (think web frameworks, CLI frameworks or anything else where you define functions and "it calls you").
+
+It particularly excels in async / concurrent environments, since the DI system has first class support for async dependencies and can gather dependencies concurrently.

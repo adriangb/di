@@ -25,6 +25,7 @@ nav:
   - Intro: 'README.md'
   - Scopes: 'scopes.md'
   - Binds: 'binds.md'
+  - Wiring: 'wiring.md'
   - Caching: 'caching.md'
   - Dependants: 'dependants.md'
   - Solving: 'solving.md'

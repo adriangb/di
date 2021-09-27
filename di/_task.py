@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Awaitable, Callable, Dict, Generic, List, cast
 
-from di._inspect import DependencyParameter, ParameterKind
+from di._inspect import DependencyParameter
 from di.dependency import Dependency, DependencyType
 
 _UNSET = object()
@@ -21,11 +21,11 @@ class Task(Generic[DependencyType]):
     async def compute(self) -> None:
         positional: List[Task[Dependency]] = []
         keyword: Dict[str, Task[Dependency]] = {}
-        for k, v in self.dependencies.items():
-            if v.kind is ParameterKind.positional:
-                positional.append(v.dependency.get_result())
+        for param_name, dep in self.dependencies.items():
+            if dep.parameter.kind is dep.parameter.kind.POSITIONAL_ONLY:
+                positional.append(dep.dependency.get_result())
             else:
-                keyword[k] = v.dependency.get_result()
+                keyword[param_name] = dep.dependency.get_result()
         self._result = await self.call(*positional, **keyword)
 
     def get_result(self) -> DependencyType:
