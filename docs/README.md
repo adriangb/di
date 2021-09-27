@@ -25,8 +25,9 @@ $ pip install di
 </div>
 
 !!! warning
-This project is a work in progress.
-Until there is 1.X.Y release, expect breaking changes.
+    This project is a work in progress.
+    Until there is 1.X.Y release, expect breaking changes.
+
 
 ## Example
 
