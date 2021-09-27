@@ -35,7 +35,7 @@ Notice that we actually have two dependencies here:
 
 Since we added a type annotation to `DBConn.__call__`'s `self` parameter, `di` will know to inject the instance, but we do have to use `Depends` to declare the dependency explicitly since `DBConn.__call__` is not a valid type annotation.
 
-```Python hl_lines="21"
+```Python hl_lines="22"
 --8<-- "docs/src/wiring.py"
 ```
 
@@ -69,7 +69,7 @@ We achieve this by:
 This means that `di` does *not* do any reflection for each request, nor does it have to do dependency resolution.
 Instead, only some basic checks on scopes are done and the dependencies are executed with almost no overhead.
 
-```Python
+```Python hl_lines="20-35 42"
 --8<-- "docs/src/solved_dependant.py"
 ```
 
