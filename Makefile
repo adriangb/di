@@ -1,5 +1,8 @@
 .PHONY: install-poetry .clear test docs-build docs-serve
 
+GIT_SHA = $(shell git rev-parse --short HEAD)
+PACKAGE_VERSION = $(shell poetry version -s | cut -d+ -f1)
+
 .install-poetry:
 	@echo "---- 👷 Installing build dependencies ----"
 	deactivate > /dev/null 2>&1 || true
@@ -47,7 +50,12 @@ test: .test
 	@echo ---- ⏳ Running tests ----
 	@(poetry run pytest -v --cov --cov-report term && echo "---- ✅ Tests passed ----" && exit 0 || echo "---- ❌ Tests failed ----" && exit 1)
 
-.netlify-build-docs: .init
+version-sync: .init
+	@echo --- Setting version ---
+	poetry version $(PACKAGE_VERSION)+$(GIT_SHA)
+	@echo --- Version set to $(PACKAGE_VERSION)+$(GIT_SHA) ---
+
+.netlify-build-docs: .init version-sync
 	rm -rf public && mkdir public
 	poetry export -f requirements.txt --output requirements.txt --dev
 	pip install -r requirements.txt
@@ -57,6 +65,6 @@ docs-serve: .docs
 	@echo ---- 📝 Serving docs ----
 	@poetry run mkdocs serve
 
-docs-deploy: .docs
+docs-deploy: .docs version-sync
 	@echo ---- 🚀 Deploying docs ----
 	@(poetry run mike deploy --push --update-aliases --branch gh-docs $(shell poetry version -s) latest && echo "---- ✅ Deploy succeeded ----" && exit 0 || echo "---- ❌ Deploy failed ----" && exit 1)

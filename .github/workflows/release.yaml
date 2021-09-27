@@ -87,5 +87,6 @@ jobs:
           virtualenvs-in-project: true
       - name: Release on PyPi
         run: |
+          make version-sync
           poetry config pypi-token.pypi "${{ secrets.PYPI_TOKEN }}"
           poetry publish --build
