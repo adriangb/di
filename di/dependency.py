@@ -239,6 +239,3 @@ class Dependant(DependantProtocol[DependencyType]):
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(call={self.call}, scope={self.scope})"
-
-    def copy(self) -> DependantProtocol[DependencyType]:
-        return Dependant[DependencyType](call=self.call, scope=self.scope)
