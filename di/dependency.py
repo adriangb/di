@@ -220,6 +220,8 @@ class Dependant(DependantProtocol[DependencyType]):
         if type(self) != type(o):
             return False
         assert isinstance(o, type(self))
+        if self.shared is False or o.shared is False:
+            return False
         return self.call is o.call
 
     @join_docstring_from(DependantProtocol[Any].is_equivalent)
