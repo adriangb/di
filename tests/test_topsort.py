@@ -11,6 +11,7 @@ from di.exceptions import CircularDependencyError
     [
         ({4: {3}, 3: {0, 1, 2}, 2: {0}, 1: {0}, 0: set()}, 4),
         ({5: {3, 4}, 4: {2}, 3: {2}, 2: {0, 1}, 1: set(), 0: set()}, 5),
+        ({3: {1, 2}, 2: set(), 1: {0}, 0: set()}, 3),
     ],
 )
 def test_topsort(dag: typing.Dict[int, typing.Set[int]], root: int):

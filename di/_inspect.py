@@ -117,13 +117,7 @@ def get_parameters(call: DependencyProvider) -> Dict[str, inspect.Parameter]:
 
 @lru_cache(maxsize=1024)
 def infer_call_from_annotation(parameter: inspect.Parameter) -> DependencyProvider:
-    if not (
-        callable(parameter.annotation)
-        and (
-            inspect.isclass(parameter.annotation)
-            or inspect.isfunction(parameter.annotation)
-        )
-    ):
+    if not callable(parameter.annotation):
         raise WiringError(
             f"Annotation for {parameter.name} is not a callable class or function and so we cannot autowire it."
             " You must explicity provide a default value implementing the DependencyProtocol"

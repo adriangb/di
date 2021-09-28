@@ -164,7 +164,9 @@ def sync_callable_func_slow(counter: Counter) -> None:
     with counter.acquire():
         while counter.counter < 2:
             if time.time() - start > 10:
-                raise TimeoutError("Tasks did not execute concurrently")
+                raise TimeoutError(
+                    "Tasks did not execute concurrently"
+                )  # pragma: no cover
             time.sleep(0.005)
         return
 
@@ -174,7 +176,9 @@ async def async_callable_func_slow(counter: Counter) -> None:
     with counter.acquire():
         while counter.counter < 2:
             if time.time() - start > 10:
-                raise TimeoutError("Tasks did not execute concurrently")
+                raise TimeoutError(
+                    "Tasks did not execute concurrently"
+                )  # pragma: no cover
             await anyio.sleep(0.005)
         return
 

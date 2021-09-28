@@ -59,24 +59,39 @@ async def test_default_argument():
     assert res == 2
 
 
-def func1(value: Literal[1] = Depends()) -> int:
-    return value
-
-
-def func2(value: 1 = Depends()) -> int:  # type: ignore
-    return value
-
-
 @pytest.mark.anyio
-@pytest.mark.parametrize("function", [func1, func2])
-async def test_non_callable_annotation(function: Callable[[int], int]):
-    """No type annotations are required if default values are provided"""
+async def test_invalid_non_callable_annotation():
+    """The type annotation value: int is not a valid identifier since 1 is not a callable"""
+
+    def func(value: 1 = Depends()) -> int:  # type: ignore
+        return value
 
     container = Container()
 
     match = "Annotation for value is not a callable class or function"
     with pytest.raises(WiringError, match=match):
-        await container.execute(Dependant(function))
+        await container.execute(Dependant(func))
+
+
+def func1(value: Literal[1] = Depends()) -> int:
+    return value
+
+
+def func2(value: int = Depends()) -> int:
+    return value
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("function, annotation", [(func1, Literal[1]), (func2, int)])
+async def test_valid_non_callable_annotation(
+    function: Callable[[int], int], annotation: type
+):
+    """No type annotations are required if default values are provided"""
+
+    container = Container()
+    container.bind(Dependant(lambda: 1), annotation, scope=None)
+    res = await container.execute(Dependant(function))
+    assert res == 1
 
 
 @pytest.mark.anyio
