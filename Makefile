@@ -50,12 +50,7 @@ test: .test
 	@echo ---- ⏳ Running tests ----
 	@(poetry run pytest -v --cov --cov-report term && echo "---- ✅ Tests passed ----" && exit 0 || echo "---- ❌ Tests failed ----" && exit 1)
 
-version-sync: .init
-	@echo --- Setting version ---
-	poetry version $(PACKAGE_VERSION)+$(GIT_SHA)
-	@echo --- Version set to $(PACKAGE_VERSION)+$(GIT_SHA) ---
-
-.netlify-build-docs: .init version-sync
+.netlify-build-docs: .init
 	rm -rf public && mkdir public
 	poetry export -f requirements.txt --output requirements.txt --dev
 	pip install -r requirements.txt
@@ -65,6 +60,6 @@ docs-serve: .docs
 	@echo ---- 📝 Serving docs ----
 	@poetry run mkdocs serve
 
-docs-deploy: .docs version-sync
+docs-deploy: .docs
 	@echo ---- 🚀 Deploying docs ----
 	@(poetry run mike deploy --push --update-aliases --branch gh-docs $(shell poetry version -s) latest && echo "---- ✅ Deploy succeeded ----" && exit 0 || echo "---- ❌ Deploy failed ----" && exit 1)

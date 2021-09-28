@@ -87,6 +87,11 @@ jobs:
           virtualenvs-in-project: true
       - name: Release on PyPi
         run: |
-          make version-sync
           poetry config pypi-token.pypi "${{ secrets.PYPI_TOKEN }}"
           poetry publish --build
+          echo "package_version=$(poetry version -s)" >> $GITHUB_ENV
+      - name: 🚀 Create GitHub Release 😺
+        uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ env.package_version }}
