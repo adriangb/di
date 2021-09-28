@@ -18,6 +18,7 @@
 !/.mdlrc
 !/.markdown.style.rb
 !/codecov.yml
+!/LICENSE.txt
 
 **/__pycache__
 **/.DS_Store
