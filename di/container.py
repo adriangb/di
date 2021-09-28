@@ -16,9 +16,10 @@ from typing import (
 )
 
 from anyio import create_task_group
+from anyio.abc import TaskGroup
 
-from di._concurrency import wrap_call
-from di._inspect import DependencyParameter
+from di._concurrency import bind_to_stack_as_awaitable, bind_to_stack_as_def_callable
+from di._inspect import DependencyParameter, is_coroutine_callable
 from di._state import ContainerState
 from di._task import Task
 from di._topsort import topsort
@@ -212,6 +213,7 @@ class Container:
             DependantProtocol[Any],
             Dict[str, DependencyParameter[DependantProtocol[Any]]],
         ],
+        parallel: bool,
     ) -> Task[DependencyType]:
         stack = state.stacks[dependency.scope]
 
@@ -221,7 +223,17 @@ class Container:
                 # use cached value
                 res = state.cached_values.get(dependency.call)
             else:
-                res = await wrap_call(dependency.call, stack=stack)(*args, **kwargs)
+                # if this task is not being parallelized and we are dealing with a sync function
+                # then we can just execute it directly
+                # otherwise, we wrap it
+                if not parallel and not is_coroutine_callable(dependency.call):
+                    res = bind_to_stack_as_def_callable(dependency.call, stack=stack)(
+                        *args, **kwargs
+                    )
+                else:
+                    res = await bind_to_stack_as_awaitable(
+                        dependency.call, stack=stack
+                    )(*args, **kwargs)
                 if dependency.shared:
                     # caching is allowed, now that we have a value we can save it and start using the cache
                     state.cached_values.set(
@@ -272,30 +284,43 @@ class Container:
                 check_is_inner(dep, subdep)
 
     async def execute_solved(
-        self, solved: SolvedDependency[DependencyType]
+        self, solved: SolvedDependency[DependencyType], validate_scopes: bool = True
     ) -> DependencyType:
-        """Execute an already solved dependency."""
+        """Execute an already solved dependency.
+
+        If you are not dynamically changing scopes, you can run once with `validate_scopes=True`
+        and then disable scope validation in subsequent runs with `validate_scope=False`.
+        """
         # this mapping uses the hash semantics defined by the implementation of DependantProtocol
         tasks: Dict[
             DependantProtocol[Any], Tuple[DependantProtocol[Any], Task[Any]]
         ] = {}
         async with self.enter_local_scope(None):
-            self._validate_scopes(solved)
+            if validate_scopes:
+                self._validate_scopes(solved)
             for group in reversed(solved.topsort):
+                parallel = len(group) == 1
                 for dep in group:
                     if dep not in tasks:
                         tasks[dep] = (
                             dep,
-                            self._build_task(dep, tasks, self._state, solved.dag),
+                            self._build_task(
+                                dep, tasks, self._state, solved.dag, parallel
+                            ),
                         )
             ordered_tasks = [
                 [tasks[dep][1] for dep in group] for group in solved.topsort
             ]
-            tg = create_task_group()
+            tg: Optional[TaskGroup] = None
             for task_group in reversed(ordered_tasks):
-                async with tg:
-                    for task in task_group:
-                        tg.start_soon(task.compute)  # type: ignore
+                if len(task_group) > 1:
+                    if tg is None:
+                        tg = create_task_group()
+                    async with tg:
+                        for task in task_group:
+                            tg.start_soon(task.compute)  # type: ignore
+                else:
+                    await task_group[0].compute()
 
         return tasks[solved.dependency][1].get_result()
 

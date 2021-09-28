@@ -9,6 +9,7 @@ from typing import (
     Callable,
     ContextManager,
     TypeVar,
+    Union,
     cast,
 )
 
@@ -28,13 +29,13 @@ T = TypeVar("T")
 
 
 def callable_in_thread_pool(call: Callable[..., T]) -> Callable[..., Awaitable[T]]:
-    async def inner(*args: Any, **kwargs: Any) -> T:
+    def inner(*args: Any, **kwargs: Any) -> T:
         # Ensure we run in the same context
         child = functools.partial(call, *args, **kwargs)
         context = contextvars.copy_context()
-        return cast(T, await anyio.to_thread.run_sync(context.run, child))
+        return cast(Awaitable[T], anyio.to_thread.run_sync(context.run, child))  # type: ignore
 
-    return inner
+    return inner  # type: ignore
 
 
 def context_manager_in_threadpool(
@@ -66,21 +67,37 @@ def bind_async_context_manager(
 
 def bind_sync_context_manager(
     cm: Callable[..., ContextManager[T]], stack: AsyncExitStack
-) -> Callable[..., Awaitable[T]]:
-    return bind_async_context_manager(context_manager_in_threadpool(cm), stack)
+) -> Callable[..., T]:
+    def inner(*args: Any, **kwargs: Any):
+        return stack.enter_context(cm(*args, **kwargs))
+
+    return inner
 
 
-def wrap_call(
-    call: DependencyProviderType[DependencyType], stack: AsyncExitStack
+def bind_to_stack_as_awaitable(
+    call: DependencyProviderType[DependencyType],
+    stack: AsyncExitStack,
 ) -> Callable[..., Awaitable[DependencyType]]:
     if is_async_gen_callable(call):
         call = cast(AsyncGeneratorProvider[DependencyType], call)
         return bind_async_context_manager(asynccontextmanager(call), stack)
     if is_gen_callable(call):
         call = cast(GeneratorProvider[DependencyType], call)
-        return bind_sync_context_manager(contextmanager(call), stack)
+        return bind_async_context_manager(
+            context_manager_in_threadpool(contextmanager(call)), stack
+        )
     if not is_coroutine_callable(call):
         call = cast(CallableProvider[DependencyType], call)
         return callable_in_thread_pool(call)
     call = cast(CoroutineProvider[DependencyType], call)
     return call
+
+
+def bind_to_stack_as_def_callable(
+    call: Union[GeneratorProvider[DependencyType], CallableProvider[DependencyType]],
+    stack: AsyncExitStack,
+) -> Callable[..., DependencyType]:
+    if is_gen_callable(call):
+        call = cast(GeneratorProvider[DependencyType], call)
+        return bind_sync_context_manager(contextmanager(call), stack)
+    return cast(Callable[..., T], call)
