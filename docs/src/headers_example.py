@@ -1,8 +1,7 @@
 import inspect
 from typing import Any, Callable, Mapping, Optional
 
-from di import Container, Dependant
-from di.params import Depends
+from di import Container, Dependant, Depends
 
 
 class Request:
@@ -39,6 +38,17 @@ async def web_framework() -> None:
     valid_request = Request(headers={"x-header-one": "one", "x-header-two": "2"})
     with container.bind(Dependant(lambda: valid_request), Request, scope=None):
         await container.execute(Dependant(controller))  # success
+
+    invalid_request = Request(headers={"x-header-one": "one"})
+    with container.bind(Dependant(lambda: invalid_request), Request, scope=None):
+        try:
+            await container.execute(Dependant(controller))  # fails
+        except KeyError:
+            pass
+        else:
+            raise AssertionError(
+                "This call should have failed because x-header-two is missing"
+            )
 
 
 def controller(
