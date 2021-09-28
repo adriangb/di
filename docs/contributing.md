@@ -95,6 +95,7 @@ The project version is stored in our [pyproject.toml] and uses semantic versioni
 As part of your pull request, you should propose what type of change is being made and determine the right version bump appropriately.
 
 Once your change is merged, the new docs and PyPi package will be released automatically.
+Every time a release is made on PyPi, a corresponding GitHub release will be created to allow correlating PyPi versions to VCS versions.
 
 [make]: https://www.gnu.org/software/make/
 [makefile]: https://github.com/adriangb/di/blob/main/Makefile
