@@ -19,7 +19,11 @@ from anyio import create_task_group
 from anyio.abc import TaskGroup
 
 from di._concurrency import bind_to_stack_as_awaitable, bind_to_stack_as_def_callable
-from di._inspect import DependencyParameter, is_coroutine_callable
+from di._inspect import (
+    DependencyParameter,
+    is_async_gen_callable,
+    is_coroutine_callable,
+)
 from di._state import ContainerState
 from di._task import Task
 from di._topsort import topsort
@@ -226,7 +230,10 @@ class Container:
                 # if this task is not being parallelized and we are dealing with a sync function
                 # then we can just execute it directly
                 # otherwise, we wrap it
-                if not parallel and not is_coroutine_callable(dependency.call):
+                if not parallel and not (
+                    is_coroutine_callable(dependency.call)
+                    or is_async_gen_callable(dependency.call)
+                ):
                     res = bind_to_stack_as_def_callable(dependency.call, stack=stack)(
                         *args, **kwargs
                     )
@@ -299,7 +306,7 @@ class Container:
             if validate_scopes:
                 self._validate_scopes(solved)
             for group in reversed(solved.topsort):
-                parallel = len(group) == 1
+                parallel = len(group) > 1
                 for dep in group:
                     if dep not in tasks:
                         tasks[dep] = (
