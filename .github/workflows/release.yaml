@@ -88,7 +88,7 @@ jobs:
       - name: Release on PyPi
         run: |
           echo "package_version=$(poetry version -s)" >> $GITHUB_ENV
-          cat "\nSee this release on GitHub: [v${{ env.package_version }}](https://github.com/adriangb/di/releases/tag/${{ env.package_version }})"
+          echo "\nSee this release on GitHub: [v${{ env.package_version }}](https://github.com/adriangb/di/releases/tag/${{ env.package_version }})" >> README.md
           poetry config pypi-token.pypi "${{ secrets.PYPI_TOKEN }}"
           poetry publish --build
 
