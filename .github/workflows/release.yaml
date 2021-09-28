@@ -87,11 +87,11 @@ jobs:
           virtualenvs-in-project: true
       - name: Release on PyPi
         run: |
-          echo "package_version=$(poetry version -s)" >> $GITHUB_ENV
-          echo "\nSee this release on GitHub: [v${{ env.package_version }}](https://github.com/adriangb/di/releases/tag/${{ env.package_version }})" >> README.md
+          PACKAGE_VERSION=$(poetry version -s)
+          echo "package_version=$PACKAGE_VERSION" >> $GITHUB_ENV
+          echo "\nSee this release on GitHub: [v$PACKAGE_VERSION](https://github.com/adriangb/di/releases/tag/$PACKAGE_VERSION)" >> README.md
           poetry config pypi-token.pypi "${{ secrets.PYPI_TOKEN }}"
           poetry publish --build
-
       - name: 🚀 Create GitHub Release 😺
         uses: ncipollo/release-action@v1
         with:
