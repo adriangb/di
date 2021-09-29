@@ -17,3 +17,5 @@ This means that binds are themselves dependencies:
 ```
 
 In this example we bind a concrete `Postgres` instance to `DBProtocol`, and we can see that `di` autowires `Postgres` as well!
+
+Binds can be used as a direct function call, in which case they are permanent, or as a context manager.

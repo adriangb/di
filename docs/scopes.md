@@ -19,9 +19,8 @@ Scopes provide a framework for several other important features:
 
 - Dependency lifespans
 - Dependency value sharing
-- Bind lifespans
 
-Every dependency and bind is linked to a scope.
+Every dependency is linked to a scope.
 When a scope exits, all dependencies linked to it are destroyed (if they have cleanup, the cleanup is run) and their value is no longer available as a shared value.
 This means that dependencies scoped to an outer scope cannot depend on dependencies scoped to an inner scope:
 
@@ -32,13 +31,6 @@ This means that dependencies scoped to an outer scope cannot depend on dependenc
 This example will fail with `di.exceptions.ScopeViolationError` because an `"app"` scoped dependency (`conn`, as requested by `controller` via `Depends(scope="app")`) depends on a request scope dependency (in `framework`, we specify `Dependant(..., scope="request"`).
 This is because dependencies and scopes behave much a stack and references in general purpose langauges: you can't reference a function local once you exit that function.
 Even if we could hold onto the value once we exit the scope, that value could be a reference to an object that already had it's destructor run, for example a database connection that was closed.
-
-Scopes also control bind lifespans.
-In the example above, we established a bind using a context manager (`with container.bind(...)`).
-Binds also support a `scope` parameter.
-When this is passed, the bind will be cleared when the scope exits.
-This parameter deafaults to the current scope, but you can override it to create a bind that persists after that outlive the scope they are declared in.
-When using a context manager, the bind is cleared when the context manager exits, which always overrides the `scope` parameter because the bind's context manager necessarily exits before even the current scope is done.
 
 ## Local vs. global scopes
 
