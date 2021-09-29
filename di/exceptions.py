@@ -1,30 +1,38 @@
-class WiringError(Exception):
+class DependencyInjectionException(Exception):
     pass
 
 
-class UnknownScopeError(Exception):
+class WiringError(DependencyInjectionException):
     pass
 
 
-class DuplicateScopeError(Exception):
+class UnknownScopeError(DependencyInjectionException):
     pass
 
 
-class DuplicatedDependencyError(Exception):
+class DuplicateScopeError(DependencyInjectionException):
     pass
 
 
-class CircularDependencyError(Exception):
+class DuplicatedDependencyError(DependencyInjectionException):
     pass
 
 
-class ScopeConflictError(Exception):
+class CircularDependencyError(DependencyInjectionException):
     pass
 
 
-class ScopeViolationError(Exception):
+class ScopeConflictError(DependencyInjectionException):
     pass
 
 
-class DependencyRegistryError(Exception):
+class ScopeViolationError(DependencyInjectionException):
     pass
+
+
+class DependencyRegistryError(DependencyInjectionException):
+    pass
+
+
+class AsyncDependencyInSyncScopeError(DependencyInjectionException):
+    ...
