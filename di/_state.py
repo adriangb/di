@@ -37,7 +37,8 @@ class ContainerState:
             self.binds.add_scope(scope)
         self.cached_values.add_scope(scope)
         try:
-            yield
+            async with stack:
+                yield
         finally:
             await stack.aclose()
             self.stacks.pop(scope)
