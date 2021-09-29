@@ -28,8 +28,17 @@ $ pip install di
     This project is a work in progress.
     Until there is 1.X.Y release, expect breaking changes.
 
+## Examples
 
-## Example
+### Simple Example
+
+Here is a simple example of how `di` works:
+
+```Python
+--8<-- "docs/src/simple.py"
+```
+
+### In-depth example
 
 In this example, we'll look at what it would take for a web framework to provide dependecy injection to it's users via `di`.
 
