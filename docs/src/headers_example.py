@@ -36,13 +36,15 @@ async def web_framework() -> None:
     container = Container()
 
     valid_request = Request(headers={"x-header-one": "one", "x-header-two": "2"})
-    with container.bind(Dependant(lambda: valid_request), Request, scope=None):
-        await container.execute(Dependant(controller))  # success
+    with container.bind(Dependant(lambda: valid_request), Request):
+        await container.execute_async(container.solve(Dependant(controller)))  # success
 
     invalid_request = Request(headers={"x-header-one": "one"})
-    with container.bind(Dependant(lambda: invalid_request), Request, scope=None):
+    with container.bind(Dependant(lambda: invalid_request), Request):
         try:
-            await container.execute(Dependant(controller))  # fails
+            await container.execute_async(
+                container.solve(Dependant(controller))
+            )  # fails
         except KeyError:
             pass
         else:

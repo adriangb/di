@@ -35,7 +35,7 @@ async def web_framework() -> None:
 
     # note: we bind a placeholder request here so that autowiring does not complain
     # about not knowing how to build a Request
-    with container.bind(Dependant(lambda: Request(scopes=[])), Request, scope=None):
+    with container.bind(Dependant(lambda: Request(scopes=[])), Request):
         scopes = gather_scopes(
             container.get_flat_subdependants(container.solve(Dependant(controller)))
         )
@@ -43,13 +43,15 @@ async def web_framework() -> None:
     assert set(scopes) == {"scope1", "scope2"}
 
     valid_request = Request(scopes=["scope1", "scope2"])
-    with container.bind(Dependant(lambda: valid_request), Request, scope=None):
-        await container.execute(Dependant(controller))  # success
+    with container.bind(Dependant(lambda: valid_request), Request):
+        await container.execute_async(container.solve(Dependant(controller)))  # success
 
     invalid_request = Request(scopes=["scope1"])
-    with container.bind(Dependant(lambda: invalid_request), Request, scope=None):
+    with container.bind(Dependant(lambda: invalid_request), Request):
         try:
-            await container.execute(Dependant(controller))  # fails
+            await container.execute_async(
+                container.solve(Dependant(controller))
+            )  # fails
         except ValueError:
             pass
         else:

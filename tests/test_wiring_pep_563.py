@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import pytest
-
 from di import Container, Dependant
 
 
@@ -10,8 +8,7 @@ class Test:
         return self
 
 
-@pytest.mark.anyio
-async def test_postponed_evaluation_solving():
+def test_postponed_evaluation_solving():
     container = Container()
-    res = await container.execute(Dependant(Test.__call__))
+    res = container.execute_sync(container.solve(Dependant(Test.__call__)))
     assert isinstance(res, Test)

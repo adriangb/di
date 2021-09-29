@@ -14,7 +14,7 @@ async def web_framework():
     container = Container()
     async with container.enter_local_scope("request"):
         request = Request(1)
-        request_provider = Dependant(lambda: request, scope="request")
-        container.bind(request_provider, Request, scope="request")
-        res = await container.execute(Dependant(controller))
+        request_provider = Dependant(lambda: request)
+        with container.bind(request_provider, Request):
+            res = await container.execute_async(container.solve(Dependant(controller)))
         assert res == 2

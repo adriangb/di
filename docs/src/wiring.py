@@ -26,4 +26,4 @@ async def controller(
 
 async def framework():
     container = Container()
-    await container.execute(Dependant(controller))
+    await container.execute_async(container.solve(Dependant(controller)))

@@ -1,8 +1,6 @@
 """We should support callable classes as dependencies.
 Modeled as call=cls.__call__, where the self argument is a dependency that depends on the class' constructor.
 """
-import pytest
-
 from di.container import Container
 from di.dependency import Dependant
 from di.params import Depends
@@ -25,10 +23,10 @@ class Dependency:
         return self
 
 
-@pytest.mark.anyio
-async def test_callable_class():
+def test_callable_class():
     container = Container()
-    res = await container.execute(Dependant(Dependency.__call__))
+    solved = container.solve(Dependant(Dependency.__call__))
+    res = container.execute_sync(solved)
     assert res.call_value == 3
 
 
@@ -43,13 +41,13 @@ class ScopedDependency:
         return self
 
 
-@pytest.mark.anyio
-async def test_callable_class_instance_scoped():
+def test_callable_class_instance_scoped():
     container = Container()
-    async with container.enter_global_scope("app"):
-        d1 = await container.execute(Dependant(ScopedDependency.__call__))
+    with container.enter_global_scope("app"):
+        solved = container.solve(Dependant(ScopedDependency.__call__))
+        d1 = container.execute_sync(solved)
         assert d1.call_value == 3
         d1.value = 10
-        d2 = await container.execute(Dependant(ScopedDependency.__call__))
+        d2 = container.execute_sync(solved)
         assert d2 is d1
         assert d2.call_value == 12

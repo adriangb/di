@@ -34,5 +34,5 @@ class DependencyRegistryError(DependencyInjectionException):
     pass
 
 
-class AsyncDependencyInSyncScopeError(DependencyInjectionException):
-    ...
+class IncompatibleDependencyError(DependencyInjectionException):
+    pass

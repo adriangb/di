@@ -29,9 +29,11 @@ class Postgres(DBProtocol):
 
 async def framework() -> None:
     container = Container()
+    container.bind(Dependant(Postgres, scope="app"), DBProtocol)  # type: ignore
+    solved = container.solve(Dependant(controller))
     async with container.enter_local_scope("app"):
-        with container.bind(Dependant(Postgres, scope="app"), DBProtocol):  # type: ignore
-            await container.execute(Dependant(controller))
-            db = await container.execute(Dependant(DBProtocol))
-            assert isinstance(db, Postgres)
-            assert db.log == ["SELECT *"]
+        # type: ignore
+        await container.execute_async(solved)
+        db = await container.execute_async(container.solve(Dependant(DBProtocol)))
+        assert isinstance(db, Postgres)
+        assert db.log == ["SELECT *"]

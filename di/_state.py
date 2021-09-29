@@ -1,9 +1,21 @@
 from __future__ import annotations
 
-from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
-from typing import Any, AsyncGenerator, ContextManager, Dict, Generator, List, Optional
+from contextlib import AsyncExitStack, ExitStack, contextmanager
+from types import TracebackType
+from typing import (
+    Any,
+    ContextManager,
+    Dict,
+    Generator,
+    List,
+    Optional,
+    Type,
+    Union,
+    cast,
+)
 
 from di._scope_map import ScopeMap
+from di._types import FusedContextManager
 from di.dependency import (
     DependantProtocol,
     DependencyProvider,
@@ -11,14 +23,13 @@ from di.dependency import (
     DependencyType,
     Scope,
 )
-from di.exceptions import DuplicateScopeError
 
 
 class ContainerState:
     def __init__(self) -> None:
-        self.binds = ScopeMap[DependencyProvider, DependantProtocol[Any]]()
+        self.binds: Dict[DependencyProvider, DependantProtocol[Any]] = {}
         self.cached_values = ScopeMap[DependencyProvider, Any]()
-        self.stacks: Dict[Scope, AsyncExitStack] = {}
+        self.stacks: Dict[Scope, Union[AsyncExitStack, ExitStack]] = {}
 
     def copy(self) -> "ContainerState":
         new = ContainerState()
@@ -27,22 +38,8 @@ class ContainerState:
         new.cached_values = self.cached_values.copy()
         return new
 
-    @asynccontextmanager
-    async def enter_scope(self, scope: Scope) -> AsyncGenerator[None, None]:
-        if scope in self.stacks:
-            raise DuplicateScopeError(f"Scope {scope} has already been entered!")
-        stack = AsyncExitStack()
-        self.stacks[scope] = stack
-        if not self.binds.has_scope(scope):
-            self.binds.add_scope(scope)
-        self.cached_values.add_scope(scope)
-        try:
-            async with stack:
-                yield
-        finally:
-            await stack.aclose()
-            self.stacks.pop(scope)
-            self.cached_values.pop_scope(scope)
+    def enter_scope(self, scope: Scope) -> FusedContextManager[None]:
+        return ScopeContext(self, scope)
 
     @property
     def scopes(self) -> List[Scope]:
@@ -52,20 +49,10 @@ class ContainerState:
         self,
         provider: DependantProtocol[DependencyType],
         dependency: DependencyProviderType[DependencyType],
-        scope: Scope,
     ) -> ContextManager[None]:
-        if not self.binds.has_scope(scope):
-            self.binds.add_scope(scope)
-        previous_scope: Optional[Scope]
-        previous_provider: Optional[DependantProtocol[Any]]
-        try:
-            previous_provider = self.binds.get(dependency)
-            previous_scope = self.binds.get_scope(dependency)
-        except KeyError:
-            previous_provider = None
-            previous_scope = None
+        previous_provider = self.binds.get(dependency, None)
 
-        self.binds.set(dependency, provider, scope=scope)
+        self.binds[dependency] = provider
         if self.cached_values.contains(dependency):
             self.cached_values.pop(dependency)
 
@@ -76,6 +63,42 @@ class ContainerState:
             finally:
                 self.binds.pop(dependency)
                 if previous_provider is not None:
-                    self.binds.set(dependency, previous_provider, scope=previous_scope)
+                    self.binds[dependency] = previous_provider
 
         return unbind()
+
+
+class ScopeContext(FusedContextManager[None]):
+    def __init__(self, state: ContainerState, scope: Scope) -> None:
+        self.state = state
+        self.scope = scope
+
+    def __enter__(self):
+        self.state.stacks[self.scope] = ExitStack()
+        self.state.cached_values.add_scope(self.scope)
+
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> Union[None, bool]:
+        stack = cast(ExitStack, self.state.stacks[self.scope])
+        self.state.stacks.pop(self.scope)
+        self.state.cached_values.pop_scope(self.scope)
+        return stack.__exit__(exc_type, exc_value, traceback)
+
+    async def __aenter__(self):
+        self.state.stacks[self.scope] = AsyncExitStack()
+        self.state.cached_values.add_scope(self.scope)
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> Union[None, bool]:
+        stack = cast(AsyncExitStack, self.state.stacks[self.scope])
+        self.state.stacks.pop(self.scope)
+        self.state.cached_values.pop_scope(self.scope)
+        return await stack.__aexit__(exc_type, exc_value, traceback)

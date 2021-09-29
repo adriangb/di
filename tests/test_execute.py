@@ -71,10 +71,9 @@ class vFive:
 v5 = vFive()
 
 
-@pytest.mark.anyio
-async def test_execute():
+def test_execute():
     container = Container()
-    res = await container.execute(Dependant(v5))
+    res = container.execute_sync(container.solve(Dependant(v5)))
     assert res.three.zero is res.zero
 
 
@@ -140,7 +139,7 @@ class AsyncGenCls:
 @pytest.mark.anyio
 async def test_dependency_types(dep: Any):
     container = Container()
-    assert (await container.execute(Dependant(dep))) == 1
+    assert (await container.execute_async(container.solve(Dependant(dep)))) == 1
 
 
 class Counter:
@@ -266,11 +265,11 @@ async def test_concurrency(dep1: Any, dep2: Any):
     container = Container()
 
     counter = Counter()
-    container.bind(Dependant(lambda: counter), Counter, scope=None)
+    container.bind(Dependant(lambda: counter), Counter)
 
     async def collector(
         a: None = Depends(dep1, shared=False), b: None = Depends(dep2, shared=False)
     ):
         ...
 
-    await container.execute(Dependant(collector))
+    await container.execute_async(container.solve(Dependant(collector)))

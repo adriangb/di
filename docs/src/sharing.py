@@ -12,6 +12,6 @@ def controller(
     assert v1 is not v3 and v2 is not v3
 
 
-async def main() -> None:
+def main() -> None:
     container = Container()
-    await container.execute(Dependant(controller))
+    container.execute_sync(container.solve(Dependant(controller)))

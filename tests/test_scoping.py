@@ -37,69 +37,63 @@ def default_scope(v: int = Depends(dep1)):
     return v
 
 
-@pytest.mark.anyio
-async def test_scoped_execute():
+def test_scoped_execute():
     container = Container()
-    async with container.enter_global_scope("app"):
+    with container.enter_global_scope("app"):
         dep1.value = 1
-        r = await container.execute(Dependant(app_scoped))
+        r = container.execute_sync(container.solve(Dependant(app_scoped)))
         assert r == 1, r
         # we change the value to 2, but we should still get back 1
         # since the value is cached
         dep1.value = 2
-        r = await container.execute(Dependant(app_scoped))
+        r = container.execute_sync(container.solve(Dependant(app_scoped)))
         assert r == 1, r
         # but if we execute a non-shared dependency, we get the current value
-        r = await container.execute(Dependant(not_shared))
+        r = container.execute_sync(container.solve(Dependant(not_shared)))
         assert r == 2, r
         # the default scope is None, which gives us the value cached
         # in the app scope since the app scope is outside of the None scope
-        r = await container.execute(Dependant(default_scope))
+        r = container.execute_sync(container.solve(Dependant(default_scope)))
         assert r == 1, r
     # now that we exited the app scope the cache was cleared
     # and so the default scope gives us the new value
-    r = await container.execute(Dependant(default_scope))
+    r = container.execute_sync(container.solve(Dependant(default_scope)))
     assert r == 2, r
     # and it gets refreshed every call to execute()
     dep1.value = 3
-    r = await container.execute(Dependant(default_scope))
+    r = container.execute_sync(container.solve(Dependant(default_scope)))
     assert r == 3, r
 
 
-@pytest.mark.anyio
-async def test_unknown_scope():
+def test_unknown_scope():
     def bad_dep(v: int = Depends(dep1, scope="abcde")) -> int:
         return v
 
     container = Container()
-    async with container.enter_global_scope("app"):
+    with container.enter_global_scope("app"):
         with pytest.raises(UnknownScopeError):
-            await container.execute(Dependant(bad_dep))
+            container.execute_sync(container.solve(Dependant(bad_dep)))
 
 
-@pytest.mark.anyio
 @pytest.mark.parametrize("outer", ("global", "local"))
 @pytest.mark.parametrize("inner", ("global", "local"))
-async def test_duplicate_global_scope(outer: Scope, inner: Scope):
+def test_duplicate_global_scope(outer: Scope, inner: Scope):
     """Cannot enter the same global scope twice"""
 
     container = Container()
 
-    fn: typing.Dict[
-        Scope, typing.Callable[[Scope], typing.AsyncContextManager[None]]
-    ] = {
-        "global": container.enter_global_scope,
-        "local": container.enter_local_scope,
-    }  # type: ignore
+    fn = {
+        typing.cast(Scope, "global"): container.enter_global_scope,
+        typing.cast(Scope, "local"): container.enter_local_scope,
+    }
 
-    async with fn[outer]("app"):
+    with fn[outer]("app"):
         with pytest.raises(DuplicateScopeError):
-            async with fn[inner]("app"):
+            with fn[inner]("app"):
                 ...
 
 
-@pytest.mark.anyio
-async def test_nested_caching():
+def test_nested_caching():
 
     holder: typing.List[str] = ["A", "B", "C"]
 
@@ -116,22 +110,23 @@ async def test_nested_caching():
         return c
 
     container = Container()
-    async with container.enter_local_scope("lifespan"):
-        async with container.enter_local_scope("request"):
-            res = await container.execute(Dependant(endpoint))
+    with container.enter_local_scope("lifespan"):
+        with container.enter_local_scope("request"):
+            res = container.execute_sync(container.solve(Dependant(endpoint)))
             assert res == "ABC"
             # values should be cached as long as we're within the request scope
             holder[:] = "DEF"
-            assert (await container.execute(Dependant(endpoint))) == "ABC"
-            assert (await container.execute(Dependant(C))) == "ABC"
-            assert (await container.execute(Dependant(B))) == "AB"
-            assert (await container.execute(Dependant(A))) == "A"
+            assert (
+                container.execute_sync(container.solve(Dependant(endpoint)))
+            ) == "ABC"
+            assert (container.execute_sync(container.solve(Dependant(C)))) == "ABC"
+            assert (container.execute_sync(container.solve(Dependant(B)))) == "AB"
+            assert (container.execute_sync(container.solve(Dependant(A)))) == "A"
         # A is still cached for B because it is lifespan scoped
-        assert (await container.execute(Dependant(B))) == "AE"
+        assert (container.execute_sync(container.solve(Dependant(B)))) == "AE"
 
 
-@pytest.mark.anyio
-async def test_nested_lifecycle():
+def test_nested_lifecycle():
 
     state: typing.Dict[str, str] = dict.fromkeys(("A", "B", "C"), "uninitialized")
 
@@ -154,10 +149,10 @@ async def test_nested_lifecycle():
         return
 
     container = Container()
-    async with container.enter_local_scope("lifespan"):
-        async with container.enter_local_scope("request"):
+    with container.enter_local_scope("lifespan"):
+        with container.enter_local_scope("request"):
             assert list(state.values()) == ["uninitialized"] * 3
-            await container.execute(Dependant(endpoint))
+            container.execute_sync(container.solve(Dependant(endpoint)))
             assert list(state.values()) == ["initialized"] * 3
         assert list(state.values()) == ["initialized", "destroyed", "destroyed"]
     assert list(state.values()) == ["destroyed", "destroyed", "destroyed"]
@@ -172,8 +167,8 @@ async def test_concurrent_local_scopes():
     async def endpoint() -> None:
         async with container.enter_local_scope("request"):
             await anyio.sleep(
-                0.05
-            )  # make sure execution overlaps, the number is arbitrary
+                0.05  # make sure execution overlaps, the number is arbitrary
+            )
 
     async with anyio.create_task_group() as tg:
         tg.start_soon(endpoint)  # type: ignore

@@ -16,5 +16,5 @@ def return_two(one: int = Depends(return_one), /) -> int:
 @pytest.mark.anyio
 async def test_positional_only_parameters():
     container = Container()
-    res = await container.execute(Dependant(return_two))
+    res = container.execute_sync(container.solve(Dependant(return_two)))
     assert res == 2

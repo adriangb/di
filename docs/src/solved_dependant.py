@@ -30,7 +30,7 @@ async def execute_request(
     async with container.enter_local_scope("request"):
         token = request_ctx.set(request)
         try:
-            return await container.execute_solved(solved)
+            return await container.execute_async(solved)
         finally:
             request_ctx.reset(token)
 
@@ -38,8 +38,8 @@ async def execute_request(
 async def framework() -> None:
     container = Container()
     request_log = RequestLog()
-    container.bind(Dependant(lambda: request_log, scope="app"), RequestLog, scope="app")
-    container.bind(Dependant(get_request, scope="request"), Request, scope="app")
+    container.bind(Dependant(lambda: request_log, scope="app"), RequestLog)
+    container.bind(Dependant(get_request, scope="request"), Request)
     solved = container.solve(Dependant(controller, scope="request"))
     async with container.enter_global_scope("app"):
         # simulate concurrent requests
