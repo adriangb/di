@@ -5,19 +5,24 @@ import typing
 import anyio
 import anyio.abc
 
-from di._concurrency import gurantee_awaitable
-from di.executor import Executor, Task
+from di._concurrency import curry_context, gurantee_awaitable
+from di.types.executor import AsyncExecutor, SyncExecutor, Task
 
 ResultType = typing.TypeVar("ResultType")
+T = typing.TypeVar("T")
 
 
-class ConcurrentSyncExecutor(Executor):
+def _all_sync(tasks: typing.Collection[Task]) -> bool:
+    return not any(inspect.iscoroutinefunction(task) for task in tasks)
+
+
+class DefaultExecutor(AsyncExecutor, SyncExecutor):
     def __init__(self) -> None:
         self._threadpool = concurrent.futures.ThreadPoolExecutor()
 
-    def execute(
+    def execute_sync(
         self,
-        tasks: typing.List[typing.Set[Task]],
+        tasks: typing.List[typing.Collection[Task]],
         get_result: typing.Callable[[], ResultType],
     ) -> ResultType:
         for task_group in tasks:
@@ -28,7 +33,7 @@ class ConcurrentSyncExecutor(Executor):
                     ]
                 ] = []
                 for task in task_group:
-                    futures.append(self._threadpool.submit(task))
+                    futures.append(self._threadpool.submit(curry_context(task)))
                 for future in concurrent.futures.as_completed(futures):
                     exc = future.exception()
                     if exc is not None:
@@ -45,39 +50,25 @@ class ConcurrentSyncExecutor(Executor):
                     )
         return get_result()
 
-
-class ConcurrentAsyncExecutor(Executor):
-    def __init__(self) -> None:
-        self._sync_executor = ConcurrentSyncExecutor()
-
-    def execute(
+    async def execute_async(
         self,
-        tasks: typing.List[typing.Set[Task]],
+        tasks: typing.List[typing.Collection[Task]],
         get_result: typing.Callable[[], ResultType],
-    ) -> typing.Union[ResultType, typing.Awaitable[ResultType]]:
-        if any(inspect.iscoroutinefunction(task) for group in tasks for task in group):
-            return self._execute_async(tasks, get_result)
-        return self._sync_executor.execute(tasks, get_result)
-
-    def _execute_async(
-        self,
-        tasks: typing.List[typing.Set[Task]],
-        get_result: typing.Callable[[], ResultType],
-    ) -> typing.Awaitable[ResultType]:
-        async def execute() -> ResultType:
-            tg: typing.Optional[anyio.abc.TaskGroup] = None
-            for task_group in tasks:
-                if len(task_group) > 1:
+    ) -> ResultType:
+        tg: typing.Optional[anyio.abc.TaskGroup] = None
+        for task_group in tasks:
+            if len(task_group) > 1:
+                if _all_sync(task_group):
+                    self.execute_sync([task_group], lambda: None)
+                else:
                     if tg is None:
                         tg = anyio.create_task_group()
                     async with tg:
                         for task in task_group:
                             tg.start_soon(gurantee_awaitable(task))  # type: ignore
-                else:
-                    task = next(iter(task_group))
-                    res = task()
-                    if res is not None and inspect.isawaitable(res):
-                        await res
-            return get_result()
-
-        return typing.cast(typing.Awaitable[ResultType], execute())
+            else:
+                task = next(iter(task_group))
+                res = task()
+                if res is not None and inspect.isawaitable(res):
+                    await res
+        return get_result()

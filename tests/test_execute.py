@@ -6,9 +6,7 @@ from typing import Any, AsyncGenerator, Generator
 import anyio
 import pytest
 
-from di.container import Container
-from di.dependency import Dependant
-from di.params import Depends
+from di import Container, Dependant, Depends
 
 
 class vZero:

@@ -3,10 +3,9 @@ import typing
 import anyio
 import pytest
 
-from di.container import Container
-from di.dependency import Dependant, Scope
+from di import Container, Dependant, Depends
 from di.exceptions import DuplicateScopeError, UnknownScopeError
-from di.params import Depends
+from di.types.scopes import Scope
 
 
 class Dep:

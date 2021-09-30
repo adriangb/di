@@ -15,14 +15,14 @@ from typing import (
 )
 
 from di._scope_map import ScopeMap
-from di._types import FusedContextManager
-from di.dependency import (
-    DependantProtocol,
+from di.types import FusedContextManager
+from di.types.dependencies import DependantProtocol
+from di.types.providers import (
     DependencyProvider,
     DependencyProviderType,
     DependencyType,
-    Scope,
 )
+from di.types.scopes import Scope
 
 
 class ContainerState:

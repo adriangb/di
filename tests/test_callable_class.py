@@ -1,9 +1,7 @@
 """We should support callable classes as dependencies.
 Modeled as call=cls.__call__, where the self argument is a dependency that depends on the class' constructor.
 """
-from di.container import Container
-from di.dependency import Dependant
-from di.params import Depends
+from di import Container, Dependant, Depends
 
 
 def return_1() -> int:

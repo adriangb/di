@@ -9,12 +9,18 @@ from di._inspect import is_coroutine_callable
 T = TypeVar("T")
 
 
+def curry_context(call: Callable[..., T]) -> Callable[..., T]:
+    ctx = contextvars.copy_context()
+
+    def inner(*args: Any, **kwargs: Any) -> T:
+        return ctx.run(functools.partial(call, *args, **kwargs))
+
+    return inner
+
+
 def callable_in_thread_pool(call: Callable[..., T]) -> Callable[..., Awaitable[T]]:
     def inner(*args: Any, **kwargs: Any) -> T:
-        # Ensure we run in the same context
-        child = functools.partial(call, *args, **kwargs)
-        context = contextvars.copy_context()
-        return cast(Awaitable[T], anyio.to_thread.run_sync(context.run, child))  # type: ignore
+        return cast(Awaitable[T], anyio.to_thread.run_sync(curry_context(call)))  # type: ignore
 
     return inner  # type: ignore
 

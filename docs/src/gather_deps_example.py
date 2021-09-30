@@ -1,7 +1,7 @@
 from typing import Any, Iterable, List
 
 from di import Container, Dependant
-from di.dependency import DependantProtocol
+from di.types.dependencies import DependantProtocol
 
 
 class Request:

@@ -1,3 +1,5 @@
+# TODO: remove this test once high-level API is more stable
+# This should be tested via public APIs
 import typing
 
 import pytest

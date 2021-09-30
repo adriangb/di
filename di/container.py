@@ -1,4 +1,5 @@
-import inspect
+from __future__ import annotations
+
 from collections import deque
 from contextlib import ExitStack, asynccontextmanager, contextmanager
 from contextvars import ContextVar
@@ -7,7 +8,6 @@ from types import TracebackType
 from typing import (
     Any,
     AsyncContextManager,
-    Awaitable,
     Callable,
     ContextManager,
     Deque,
@@ -30,19 +30,6 @@ from di._inspect import (
 from di._state import ContainerState
 from di._task import AsyncTask, SyncTask, Task
 from di._topsort import topsort
-from di._types import FusedContextManager
-from di.dependency import (
-    AsyncGeneratorProvider,
-    CallableProvider,
-    CoroutineProvider,
-    DependantProtocol,
-    Dependency,
-    DependencyProvider,
-    DependencyProviderType,
-    DependencyType,
-    GeneratorProvider,
-    Scope,
-)
 from di.exceptions import (
     DependencyRegistryError,
     DuplicateScopeError,
@@ -50,8 +37,21 @@ from di.exceptions import (
     ScopeViolationError,
     UnknownScopeError,
 )
-from di.executor import Executor
-from di.executors import ConcurrentAsyncExecutor
+from di.executors import DefaultExecutor
+from di.types import FusedContextManager
+from di.types.dependencies import DependantProtocol
+from di.types.executor import AsyncExecutor, SyncExecutor
+from di.types.providers import (
+    AsyncGeneratorProvider,
+    CallableProvider,
+    CoroutineProvider,
+    Dependency,
+    DependencyProvider,
+    DependencyProviderType,
+    DependencyType,
+    GeneratorProvider,
+)
+from di.types.scopes import Scope
 
 
 @dataclass
@@ -72,13 +72,17 @@ class SolvedDependency(Generic[DependencyType]):
 
 
 class Container:
-    def __init__(self, executor: Optional[Executor] = None) -> None:
+    def __init__(
+        self, executor: Optional[Union[AsyncExecutor, SyncExecutor]] = None
+    ) -> None:
         self._context = ContextVar[ContainerState]("context")
         state = ContainerState()
         state.cached_values.add_scope("container")
         state.cached_values.set(Container, self, scope="container")
         self._context.set(state)
-        self._executor = executor or ConcurrentAsyncExecutor()
+        self._executor: Union[AsyncExecutor, SyncExecutor] = (
+            executor or DefaultExecutor()
+        )
 
     @property
     def _state(self) -> ContainerState:
@@ -389,13 +393,15 @@ class Container:
 
             tasks, get_result = self._build_tasks(solved)
 
-            res = self._executor.execute(
-                [{t.compute for t in group} for group in reversed(tasks)], get_result
-            )
+            if not hasattr(self._executor, "execute_sync"):
+                raise TypeError(
+                    "execute_sync requires an executor implementing the SyncExecutor protocol"
+                )
+            executor = cast(SyncExecutor, self._executor)
 
-            if inspect.isawaitable(res):
-                raise RuntimeError
-            return cast(DependencyType, res)
+            return executor.execute_sync(
+                [[t.compute for t in group] for group in reversed(tasks)], get_result
+            )
 
     async def execute_async(
         self,
@@ -413,9 +419,12 @@ class Container:
 
             tasks, get_result = self._build_tasks(solved)
 
-            res = self._executor.execute(
-                [{t.compute for t in group} for group in reversed(tasks)], get_result
+            if not hasattr(self._executor, "execute_async"):
+                raise TypeError(
+                    "execute_async requires an executor implementing the AsyncExecutor protocol"
+                )
+            executor = cast(AsyncExecutor, self._executor)
+
+            return await executor.execute_async(
+                [[t.compute for t in group] for group in reversed(tasks)], get_result
             )
-            if inspect.isawaitable(res):
-                return await cast(Awaitable[DependencyType], res)
-            return cast(DependencyType, res)

@@ -3,16 +3,16 @@
 
 from typing import Optional, overload
 
-from di.dependency import (
+from di.dependant import Dependant
+from di.types.providers import (
     AsyncGeneratorProvider,
     CallableProvider,
     CoroutineProvider,
-    Dependant,
     DependencyProviderType,
     DependencyType,
     GeneratorProvider,
-    Scope,
 )
+from di.types.scopes import Scope
 
 
 @overload

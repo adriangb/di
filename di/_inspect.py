@@ -1,5 +1,4 @@
 import inspect
-import types
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import (
@@ -78,7 +77,9 @@ def get_annotations(call: DependencyProvider) -> Dict[str, Any]:
     types_from: DependencyProvider
     if inspect.isclass(call):
         types_from = call.__init__  # type: ignore
-    elif not isinstance(call, types.FunctionType) and hasattr(call, "__call__"):
+    elif not (inspect.isfunction(call) or inspect.ismethod(call)) and hasattr(
+        call, "__call__"
+    ):
         # callable class
         types_from = call.__call__  # type: ignore
     else:
