@@ -18,7 +18,7 @@ def _all_sync(tasks: typing.List[Task]) -> bool:
         if isinstance(task, functools.partial):
             call = task.func  # type: ignore
         else:
-            call = task
+            call = task  # pragma: no cover
         if inspect.iscoroutinefunction(call):
             return False
     return True

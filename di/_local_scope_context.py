@@ -13,7 +13,7 @@ from typing import (
 )
 
 if TYPE_CHECKING:
-    from di._state import ContainerState
+    from di._state import ContainerState  # pragma: no cover
 
 from di.types import FusedContextManager
 from di.types.scopes import Scope

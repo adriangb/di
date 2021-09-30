@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Generic, Hashable, List, TypeVar, Union, overload
+from typing import Dict, Generic, Hashable, List, TypeVar
 
 from di.exceptions import DuplicateScopeError, UnknownScopeError
 from di.types.scopes import Scope
@@ -8,9 +8,6 @@ from di.types.scopes import Scope
 T = TypeVar("T")
 KT = TypeVar("KT", bound=Hashable)
 VT = TypeVar("VT")
-
-
-_unset: Any = object()
 
 
 class ScopeMap(Generic[KT, VT]):
@@ -52,33 +49,11 @@ class ScopeMap(Generic[KT, VT]):
                 if key in mapping:
                     mapping.pop(key)
 
-    @overload
-    def pop(self, key: KT) -> VT:
-        ...
-
-    @overload
-    def pop(self, key: KT, default: T) -> Union[VT, T]:
-        ...
-
-    def pop(self, key: KT, default: T = _unset) -> Union[VT, T]:
-        for mapping in self.mappings.values():
-            if key in mapping:
-                return mapping.pop(key)
-        if default is not _unset:
-            return default
-        raise KeyError(key)
-
     def contains(self, key: KT) -> bool:
         for mapping in self.mappings.values():
             if key in mapping:
                 return True
         return False
-
-    def get_scope(self, key: KT) -> Scope:
-        for scope, mapping in self.mappings.items():
-            if key in mapping:
-                return scope
-        raise KeyError(key)
 
     def add_scope(self, scope: Scope) -> None:
         if scope in self.mappings:
@@ -91,9 +66,6 @@ class ScopeMap(Generic[KT, VT]):
                 f"The scope {scope} is not amongst the known scopes: {self.mappings.keys()}"
             )
         self.mappings.pop(scope)
-
-    def has_scope(self, scope: Scope) -> bool:
-        return scope in self.mappings
 
     def copy(self) -> ScopeMap[KT, VT]:
         new = ScopeMap[KT, VT]()

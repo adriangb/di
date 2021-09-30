@@ -56,8 +56,6 @@ class ContainerState(object):
         previous_provider = self.binds.get(dependency, None)
 
         self.binds[dependency] = provider
-        if self.cached_values.contains(dependency):
-            self.cached_values.pop(dependency)
 
         @contextmanager
         def unbind() -> Generator[None, None, None]:
