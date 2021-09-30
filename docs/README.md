@@ -77,21 +77,23 @@ This would happen for each incoming request.
 
 Note that `"request"` does not have any special meaning to `di`: any hashable value (strings, enums, integers, etc.) will do. Frameworks using `di` need to establish semantic meanings for their scopes and communicate them with their users, but no changes in `di` are necessary to add more socpes.
 
-Now that we are in the `"request"` scope, we can bind our request instance:
+Next can bind our request instance:
 
 ```Python hl_lines="17-18"
 --8<-- "docs/src/web_framework.py"
 ```
 
+!!! tip
+    We didn't have to be in the `"request"` scope to do the bind, the opposite order (bind then enter scope) works just as well.
+
 Binds are always a callable.
-They can even have their own dependencies and declare their own scope.
+They can even have their own dependencies (e.g. `container.bind(Dependant(callable_with_dependencies))`) and declare their own scope (see next paragraph).
 But in this case we want to use the same `Request` instance everywhere, so we define a lambda that always returns the same instance.
 
 Although not strictly necessary in this case (`Request` is not a context maanger), we pass `scope="request"` to `Dependant` to signify that we want teardown for that dependncy to happen when we exit the `"request"` scope.
+If `Request` was a context manager like dependency (a dependency with `yield`), then it's teardown (the section after `yield`) would we run when we exit the `"request"` scope.
 
-Finally, we also pass `scope="request"` to `bind()` to signify that we want to revert the _bind_ itself when we exit the `"request"` scope. We also have the option to use `bind()` as a context manager (`with bind(...):`), in which case the bind would be reverted as soon as we exit that context manager.
-
-Now we can execute the user's controller / endpoint:
+Finally, we execute the user's controller / endpoint:
 
 ```Python hl_lines="19-20"
 --8<-- "docs/src/web_framework.py"
