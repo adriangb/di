@@ -10,7 +10,7 @@ The integrations will be shown from a users perspective, but you can see the sou
 
 ## Textual
 
-Textual is a TUI (Text User Interface) framework for Python inspired by modern web development.
+[Textual] is a TUI (Text User Interface) framework for Python inspired by modern web development.
 
 In this example, we add dependency injection functionality into Textual and use it to inject an HTTP client that pulls a markdown file from the web and displays it in the console.
 This example mirrors [Textual's own simple.py example].
