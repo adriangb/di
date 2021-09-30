@@ -24,7 +24,7 @@ _VARIABLE_PARAMETER_KINDS = (
 )
 
 
-_expected_attributes = ("call", "scope", "shared", "get_dependencies", "is_equivalent")
+_expected_attributes = ("call", "scope", "shared", "get_dependencies")
 
 
 def _is_dependant_protocol_instance(o: object) -> bool:
@@ -102,16 +102,12 @@ class Dependant(DependantProtocol[DependencyType]):
 
     @join_docstring_from(DependantProtocol[Any].__eq__)
     def __eq__(self, o: object) -> bool:
-        if type(self) != type(o):
+        if type(self) is not type(o):
             return False
         assert isinstance(o, type(self))
         if self.shared is False or o.shared is False:
             return False
         return self.call is o.call
-
-    @join_docstring_from(DependantProtocol[Any].is_equivalent)
-    def is_equivalent(self, other: DependantProtocol[Any]) -> bool:
-        return self.call is other.call and other.scope == self.scope
 
     @join_docstring_from(DependantProtocol[Any].get_dependencies)
     def get_dependencies(

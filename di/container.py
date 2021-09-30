@@ -133,16 +133,16 @@ class Container:
             return params
 
         def check_equivalent(dep: DependantProtocol[Any]):
-            if not dep.is_equivalent(dep_registry[dep]):
+            if dep in dep_registry and dep.scope != dep_registry[dep].scope:
                 raise DependencyRegistryError(
                     f"The dependencies {dep} and {dep_registry[dep]}"
-                    " have the same hash but are not equal."
-                    " This can be caused by using the same callable / class as a dependency in"
-                    " two different scopes, which is usually a mistake"
-                    " To work around this, you can subclass or wrap the function so that it"
-                    " does not have the same hash/id."
-                    " Alternatively, you may provide an implementation of DependencyProtocol"
-                    " that uses custom __hash__ and __eq__ semantics."
+                    " have the same lookup (__hash__ and __eq__) but have different scopes"
+                    f" ({dep.scope} and {dep_registry[dep].scope} respectively)"
+                    " This is likely a mistake, but you can override this behavior by either:"
+                    "\n  1. Wrapping the function in another function or subclassing the class such"
+                    " that they now are considered different dependencies"
+                    "\n  2. Use a custom implemetnation of DependantProtocol that changes the meaning"
+                    " or computation of __hash__ and/or __eq__"
                 )
 
         q: Deque[DependantProtocol[Any]] = deque([dependency])

@@ -27,43 +27,35 @@ class DependantProtocol(Protocol[DependencyType]):
     shared: bool
 
     def __hash__(self) -> int:
-        """A unique identifier for this dependency.
+        """Dependencies need to be hashable for quick O(1) lookups.
 
-        By default, dependencies are identified by their call attribute.
-        This can be overriden to introduce other semantics, e.g. to involve the scope or custom attrbiutes
-        in dependency identification.
+        Generally, hash(self.call) will suffice so that dependencies are identified by their callable.
         """
         raise NotImplementedError
 
     def __eq__(self, o: object) -> bool:
         """Used in conjunction with __hash__ for mapping lookups of dependencies.
-        Generally, this should have the same semantics as __hash__ but can check for object identity.
-        """
-        raise NotImplementedError
 
-    def is_equivalent(self, other: DependantProtocol[Any]) -> bool:
-        """Copare two DependantProtocol implementers for equality.
+        If this returns `True`, the two dependencies are considered the same and
+        `di` will pick one to subsitute for the other.
 
-        By default, the two are equal only if they share the same callable and scope.
-
-        If two dependencies share the same hash but are not equal, the Container will
-        report an error.
-        This is commonly caused by using the same callable under two different scopes.
-        To remedy this, you can either wrap the callable to give it two different hashes/ids,
-        or you can create a DependantProtocol implementation that overrides __hash__ and/or __eq__.
+        Note that using the same dependenyc in two different scopes is prohibited,
+        so if this returns `True` and `self.scope != o.scope` `di` will raise a DependencyRegistryError.
         """
         raise NotImplementedError
 
     def get_dependencies(
         self,
     ) -> Dict[str, DependencyParameter[DependantProtocol[Any]]]:
-        """A cache on top of `gather_dependencies()`"""
+        """Collect all of the sub dependencies for this dependant into a mapping
+        of parameter name => parameter spec.
+        """
         raise NotImplementedError
 
     def gather_parameters(self) -> Dict[str, inspect.Parameter]:
         """Collect parameters that this dependency needs to construct itself.
 
-        Generally, this means introspecting into this dependencies own callable.
+        Generally, this means introspecting into our own callable (self.call).
         """
         raise NotImplementedError
 
@@ -74,13 +66,17 @@ class DependantProtocol(Protocol[DependencyType]):
 
         This is used in the scenario where a transient dependency is inferred from a type hint.
         For example:
+
         >>> class Foo:
         >>>     ...
         >>> def foo_factory(foo: Foo) -> Foo:
         >>>     return foo
         >>> def parent(foo: Dependency(foo_factory)):
         >>>    ...
+
         In this scenario, `Dependency(foo_factory)` will call `create_sub_dependant(Foo)`.
+
+        It is recommended to transfer `scope` and possibly `shared` to sub-dependencies created in this manner.
         """
         raise NotImplementedError
 
