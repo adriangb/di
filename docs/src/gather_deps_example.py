@@ -37,7 +37,7 @@ async def web_framework() -> None:
     # about not knowing how to build a Request
     with container.bind(Dependant(lambda: Request(scopes=[])), Request):
         scopes = gather_scopes(
-            container.get_flat_subdependants(container.solve(Dependant(controller)))
+            container.solve(Dependant(controller)).flat_subdependants
         )
 
     assert set(scopes) == {"scope1", "scope2"}

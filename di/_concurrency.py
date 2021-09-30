@@ -19,10 +19,10 @@ def curry_context(call: Callable[..., T]) -> Callable[..., T]:
 
 
 def callable_in_thread_pool(call: Callable[..., T]) -> Callable[..., Awaitable[T]]:
-    def inner(*args: Any, **kwargs: Any) -> T:
+    def inner(*args: Any, **kwargs: Any) -> Awaitable[T]:
         return cast(Awaitable[T], anyio.to_thread.run_sync(curry_context(call)))  # type: ignore
 
-    return inner  # type: ignore
+    return inner
 
 
 def gurantee_awaitable(

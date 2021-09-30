@@ -1,4 +1,5 @@
 import concurrent.futures
+import functools
 import inspect
 import typing
 
@@ -12,8 +13,15 @@ ResultType = typing.TypeVar("ResultType")
 T = typing.TypeVar("T")
 
 
-def _all_sync(tasks: typing.Collection[Task]) -> bool:
-    return not any(inspect.iscoroutinefunction(task) for task in tasks)
+def _all_sync(tasks: typing.List[Task]) -> bool:
+    for task in tasks:
+        if isinstance(task, functools.partial):
+            call = task.func  # type: ignore
+        else:
+            call = task
+        if inspect.iscoroutinefunction(call):
+            return False
+    return True
 
 
 class DefaultExecutor(AsyncExecutor, SyncExecutor):
@@ -22,7 +30,7 @@ class DefaultExecutor(AsyncExecutor, SyncExecutor):
 
     def execute_sync(
         self,
-        tasks: typing.List[typing.Collection[Task]],
+        tasks: typing.List[typing.List[Task]],
         get_result: typing.Callable[[], ResultType],
     ) -> ResultType:
         for task_group in tasks:
@@ -43,7 +51,7 @@ class DefaultExecutor(AsyncExecutor, SyncExecutor):
                             "Cannot execute async dependencies in a SyncExecutor"
                         )
             else:
-                v = next(iter(task_group))()
+                v = task_group[0]()
                 if inspect.isawaitable(v):
                     raise TypeError(
                         "Cannot execute async dependencies in a SyncExecutor"
@@ -52,7 +60,7 @@ class DefaultExecutor(AsyncExecutor, SyncExecutor):
 
     async def execute_async(
         self,
-        tasks: typing.List[typing.Collection[Task]],
+        tasks: typing.List[typing.List[Task]],
         get_result: typing.Callable[[], ResultType],
     ) -> ResultType:
         tg: typing.Optional[anyio.abc.TaskGroup] = None
@@ -67,8 +75,7 @@ class DefaultExecutor(AsyncExecutor, SyncExecutor):
                         for task in task_group:
                             tg.start_soon(gurantee_awaitable(task))  # type: ignore
             else:
-                task = next(iter(task_group))
-                res = task()
+                res = next(iter(task_group))()
                 if res is not None and inspect.isawaitable(res):
                     await res
         return get_result()

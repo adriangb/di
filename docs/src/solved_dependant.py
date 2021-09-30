@@ -4,7 +4,7 @@ from typing import List, TypeVar
 import anyio
 
 from di import Container, Dependant
-from di.container import SolvedDependency
+from di.types.solved import SolvedDependency
 
 T = TypeVar("T")
 

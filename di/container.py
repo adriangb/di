@@ -1,22 +1,17 @@
 from __future__ import annotations
 
+import functools
 from collections import deque
-from contextlib import ExitStack, asynccontextmanager, contextmanager
 from contextvars import ContextVar
-from dataclasses import dataclass
-from types import TracebackType
 from typing import (
     Any,
-    AsyncContextManager,
     Callable,
     ContextManager,
     Deque,
     Dict,
-    Generic,
     List,
     Optional,
     Tuple,
-    Type,
     Union,
     cast,
 )
@@ -25,15 +20,14 @@ from di._inspect import (
     DependencyParameter,
     is_async_gen_callable,
     is_coroutine_callable,
-    is_gen_callable,
 )
+from di._local_scope_context import LocalScopeContext
 from di._state import ContainerState
 from di._task import AsyncTask, SyncTask, Task
 from di._topsort import topsort
 from di.exceptions import (
     DependencyRegistryError,
     DuplicateScopeError,
-    IncompatibleDependencyError,
     ScopeViolationError,
     UnknownScopeError,
 )
@@ -42,33 +36,13 @@ from di.types import FusedContextManager
 from di.types.dependencies import DependantProtocol
 from di.types.executor import AsyncExecutor, SyncExecutor
 from di.types.providers import (
-    AsyncGeneratorProvider,
-    CallableProvider,
-    CoroutineProvider,
     Dependency,
     DependencyProvider,
     DependencyProviderType,
     DependencyType,
-    GeneratorProvider,
 )
 from di.types.scopes import Scope
-
-
-@dataclass
-class SolvedDependency(Generic[DependencyType]):
-    """Representation of a fully solved dependency.
-
-    A fully solved dependency consists of:
-    - A DAG of sub-dependency paramters.
-    - A topologically sorted order of execution, where each sublist represents a
-    group of dependencies that can be executed in parallel.
-    """
-
-    dependency: DependantProtocol[DependencyType]
-    dag: Dict[
-        DependantProtocol[Any], Dict[str, DependencyParameter[DependantProtocol[Any]]]
-    ]
-    topsort: List[List[DependantProtocol[Any]]]
+from di.types.solved import SolvedDependency
 
 
 class Container:
@@ -102,45 +76,7 @@ class Container:
         """
         if scope in self._state.stacks:
             raise DuplicateScopeError(f"Scope {scope} has already been entered!")
-
-        container = self
-
-        class LocalScopeContext(FusedContextManager[None]):
-            def __enter__(self):
-                current = container._state
-                new = current.copy()
-                self.token = container._context.set(new)
-                self.state_cm = cast(ContextManager[None], new.enter_scope(scope))
-                self.state_cm.__enter__()
-
-            def __exit__(
-                self,
-                exc_type: Optional[Type[BaseException]],
-                exc_value: Optional[BaseException],
-                traceback: Optional[TracebackType],
-            ) -> Union[None, bool]:
-                container._context.reset(self.token)
-                cm = cast(ContextManager[None], self.state_cm)
-                return cm.__exit__(exc_type, exc_value, traceback)
-
-            async def __aenter__(self):
-                current = container._state
-                new = current.copy()
-                self.token = container._context.set(new)
-                self.state_cm = cast(AsyncContextManager[None], new.enter_scope(scope))
-                await self.state_cm.__aenter__()
-
-            async def __aexit__(
-                self,
-                exc_type: Optional[Type[BaseException]],
-                exc_value: Optional[BaseException],
-                traceback: Optional[TracebackType],
-            ) -> Union[None, bool]:
-                container._context.reset(self.token)
-                cm = cast(AsyncContextManager[None], self.state_cm)
-                return await cm.__aexit__(exc_type, exc_value, traceback)
-
-        return LocalScopeContext()
+        return LocalScopeContext(self._context, scope)
 
     def bind(
         self,
@@ -171,7 +107,7 @@ class Container:
         will not be changing between calls.
         """
 
-        if dependency.call in self._state.binds:  # type: ignore
+        if dependency.call in self._state.binds:
             dependency = self._state.binds[dependency.call]  # type: ignore
 
         param_graph: Dict[
@@ -225,18 +161,16 @@ class Container:
                     if subdep not in dep_registry:
                         q.append(subdep)
 
-        groups = topsort(dependency, dep_dag)
-        return SolvedDependency[DependencyType](
-            dependency=dependency, dag=param_graph, topsort=groups
+        topsorted_groups = topsort(dependency, dep_dag)
+        tasks, get_results = self._build_tasks(
+            topsorted_groups, dependency, param_graph
         )
-
-    def get_flat_subdependants(
-        self, solved: SolvedDependency[Any]
-    ) -> List[DependantProtocol[Any]]:
-        """Get an exhaustive list of all of the dependencies of this dependency,
-        in no particular order.
-        """
-        return [dep for group in solved.topsort[1:] for dep in group]
+        return SolvedDependency(
+            dependency=dependency,
+            dag=param_graph,
+            _tasks=tasks,
+            _get_results=get_results,
+        )
 
     def _build_task(
         self,
@@ -244,7 +178,6 @@ class Container:
         tasks: Dict[
             DependantProtocol[Any], Union[AsyncTask[Dependency], SyncTask[Dependency]]
         ],
-        state: ContainerState,
         dag: Dict[
             DependantProtocol[Any],
             Dict[str, DependencyParameter[DependantProtocol[Any]]],
@@ -261,73 +194,34 @@ class Container:
         if is_async_gen_callable(dependency.call) or is_coroutine_callable(
             dependency.call
         ):
-
-            async def async_call(*args: Any, **kwargs: Any) -> DependencyType:
-                assert dependency.call is not None
-                if dependency.shared and state.cached_values.contains(dependency.call):
-                    # use cached value
-                    res = state.cached_values.get(dependency.call)
-                else:
-                    if is_coroutine_callable(dependency.call):
-                        res = await cast(
-                            CoroutineProvider[DependencyType], dependency.call
-                        )(*args, **kwargs)
-                    else:
-                        stack = state.stacks[dependency.scope]
-                        if isinstance(stack, ExitStack):
-                            raise IncompatibleDependencyError(
-                                f"The dependency {dependency} is an awaitable dependency"
-                                f" and canot be used in the sync scope {dependency.scope}"
-                            )
-                        res = await stack.enter_async_context(
-                            asynccontextmanager(
-                                cast(
-                                    AsyncGeneratorProvider[DependencyType],
-                                    dependency.call,
-                                )
-                            )(*args, **kwargs)
-                        )
-                    if dependency.shared:
-                        # caching is allowed, now that we have a value we can save it and start using the cache
-                        state.cached_values.set(
-                            dependency.call, res, scope=dependency.scope
-                        )
-
-                return cast(DependencyType, res)
-
-            return AsyncTask[DependencyType](
-                call=async_call, dependencies=task_dependencies
-            )
+            return AsyncTask(dependant=dependency, dependencies=task_dependencies)
         else:
-            # sync
-            def sync_call(*args: Any, **kwargs: Any) -> DependencyType:
-                assert dependency.call is not None
-                if dependency.shared and state.cached_values.contains(dependency.call):
-                    # use cached value
-                    res = state.cached_values.get(dependency.call)
-                else:
-                    if not is_gen_callable(dependency.call):
-                        res = cast(CallableProvider[DependencyType], dependency.call)(
-                            *args, **kwargs
-                        )
-                    else:
-                        stack = state.stacks[dependency.scope]
-                        res = stack.enter_context(
-                            contextmanager(
-                                cast(GeneratorProvider[DependencyType], dependency.call)
-                            )(*args, **kwargs)
-                        )
-                    if dependency.shared:
-                        # caching is allowed, now that we have a value we can save it and start using the cache
-                        state.cached_values.set(
-                            dependency.call, res, scope=dependency.scope
-                        )
+            return SyncTask(dependant=dependency, dependencies=task_dependencies)
 
-                return cast(DependencyType, res)
-
-            return SyncTask[DependencyType](
-                call=sync_call, dependencies=task_dependencies
-            )
+    def _build_tasks(
+        self,
+        topsort: List[List[DependantProtocol[Any]]],
+        dependency: DependantProtocol[DependencyType],
+        dag: Dict[
+            DependantProtocol[Any],
+            Dict[str, DependencyParameter[DependantProtocol[Any]]],
+        ],
+    ) -> Tuple[
+        List[List[Union[AsyncTask[Dependency], SyncTask[Dependency]]]],
+        Callable[[], DependencyType],
+    ]:
+        tasks: Dict[
+            DependantProtocol[Any], Union[AsyncTask[Dependency], SyncTask[Dependency]]
+        ] = {}
+        for group in reversed(topsort):
+            for dep in group:
+                if dep not in tasks:
+                    tasks[dep] = self._build_task(dep, tasks, dag)
+        get_result = tasks[dependency].get_result
+        return (
+            list(reversed([[tasks[dep] for dep in group] for group in topsort])),
+            get_result,
+        )
 
     def _validate_scopes(self, solved: SolvedDependency[Dependency]) -> None:
         """Validate that dependencies all have a valid scope and
@@ -361,22 +255,6 @@ class Container:
                 check_scope(subdep)
                 check_is_inner(dep, subdep)
 
-    def _build_tasks(
-        self, solved: SolvedDependency[DependencyType]
-    ) -> Tuple[
-        List[List[Union[AsyncTask[Dependency], SyncTask[Dependency]]]],
-        Callable[[], DependencyType],
-    ]:
-        tasks: Dict[
-            DependantProtocol[Any], Union[AsyncTask[Dependency], SyncTask[Dependency]]
-        ] = {}
-        for group in reversed(solved.topsort):
-            for dep in group:
-                if dep not in tasks:
-                    tasks[dep] = self._build_task(dep, tasks, self._state, solved.dag)
-        get_result = tasks[solved.dependency].get_result
-        return [[tasks[dep] for dep in group] for group in solved.topsort], get_result
-
     def execute_sync(
         self,
         solved: SolvedDependency[DependencyType],
@@ -391,7 +269,7 @@ class Container:
             if validate_scopes:
                 self._validate_scopes(solved)
 
-            tasks, get_result = self._build_tasks(solved)
+            tasks, get_results = solved._tasks, solved._get_results  # type: ignore
 
             if not hasattr(self._executor, "execute_sync"):
                 raise TypeError(
@@ -399,9 +277,12 @@ class Container:
                 )
             executor = cast(SyncExecutor, self._executor)
 
-            return executor.execute_sync(
-                [[t.compute for t in group] for group in reversed(tasks)], get_result
-            )
+            stateful_tasks = [
+                [functools.partial(t.compute, self._state) for t in group]
+                for group in tasks
+            ]
+
+            return executor.execute_sync(stateful_tasks, get_results)  # type: ignore
 
     async def execute_async(
         self,
@@ -417,7 +298,7 @@ class Container:
             if validate_scopes:
                 self._validate_scopes(solved)
 
-            tasks, get_result = self._build_tasks(solved)
+            tasks, get_results = solved._tasks, solved._get_results  # type: ignore
 
             if not hasattr(self._executor, "execute_async"):
                 raise TypeError(
@@ -425,6 +306,9 @@ class Container:
                 )
             executor = cast(AsyncExecutor, self._executor)
 
-            return await executor.execute_async(
-                [[t.compute for t in group] for group in reversed(tasks)], get_result
-            )
+            stateful_tasks = [
+                [functools.partial(t.compute, self._state) for t in group]
+                for group in tasks
+            ]
+
+            return await executor.execute_async(stateful_tasks, get_results)  # type: ignore

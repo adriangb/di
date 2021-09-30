@@ -1,3 +1,4 @@
+import functools
 import inspect
 from dataclasses import dataclass
 from functools import lru_cache
@@ -50,6 +51,8 @@ class DependencyParameter(Generic[T]):
 
 @lru_cache(maxsize=4096)
 def is_coroutine_callable(call: DependencyProvider) -> bool:
+    if isinstance(call, functools.partial):
+        call = call.func
     if inspect.isroutine(call):
         return inspect.iscoroutinefunction(call)
     if inspect.isclass(call):

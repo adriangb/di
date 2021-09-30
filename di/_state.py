@@ -25,7 +25,10 @@ from di.types.providers import (
 from di.types.scopes import Scope
 
 
-class ContainerState:
+class ContainerState(object):
+
+    __slots__ = ("binds", "cached_values", "stacks")
+
     def __init__(self) -> None:
         self.binds: Dict[DependencyProvider, DependantProtocol[Any]] = {}
         self.cached_values = ScopeMap[DependencyProvider, Any]()

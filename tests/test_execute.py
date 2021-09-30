@@ -160,7 +160,7 @@ def sync_callable_func_slow(counter: Counter) -> None:
     start = time.time()
     with counter.acquire():
         while counter.counter < 2:
-            if time.time() - start > 10:
+            if time.time() - start > 0.5:
                 raise TimeoutError(
                     "Tasks did not execute concurrently"
                 )  # pragma: no cover
@@ -172,7 +172,7 @@ async def async_callable_func_slow(counter: Counter) -> None:
     start = time.time()
     with counter.acquire():
         while counter.counter < 2:
-            if time.time() - start > 10:
+            if time.time() - start > 0.5:
                 raise TimeoutError(
                     "Tasks did not execute concurrently"
                 )  # pragma: no cover

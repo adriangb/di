@@ -10,7 +10,7 @@ Task = typing.Union[
 class SyncExecutor(typing.Protocol):
     def execute_sync(
         self,
-        tasks: typing.List[typing.Collection[Task]],
+        tasks: typing.List[typing.List[Task]],
         get_result: typing.Callable[[], ResultType],
     ) -> ResultType:
         raise NotImplementedError
@@ -19,7 +19,7 @@ class SyncExecutor(typing.Protocol):
 class AsyncExecutor(typing.Protocol):
     async def execute_async(
         self,
-        tasks: typing.List[typing.Collection[Task]],
+        tasks: typing.List[typing.List[Task]],
         get_result: typing.Callable[[], ResultType],
     ) -> ResultType:
         raise NotImplementedError
