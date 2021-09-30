@@ -75,7 +75,12 @@ class DefaultExecutor(AsyncExecutor, SyncExecutor):
                         for task in task_group:
                             tg.start_soon(gurantee_awaitable(task))  # type: ignore
             else:
-                res = next(iter(task_group))()
-                if res is not None and inspect.isawaitable(res):
-                    await res
+                maybe_awaitable = next(iter(task_group))()
+                try:
+                    # this could break if a dependency *value* is an awaitable
+                    # the day that happens, we can go back to using inspect
+                    # otherwise, this is much faster
+                    await maybe_awaitable  # type: ignore
+                except TypeError:
+                    pass  # not awaitable
         return get_result()
