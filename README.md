@@ -7,4 +7,4 @@
 
 For more information, see our [docs].
 
-[docs]: http://www.adriangb.com/di/
+[docs]: https://www.adriangb.com/di/
