@@ -156,7 +156,9 @@ def test_dependency_can_catch_exception_single_sync_reraise() -> None:
     except MyException:
         pass
     else:
-        raise AssertionError("MyException should have been re-raised")
+        raise AssertionError(
+            "MyException should have been re-raised"
+        )  # pragma: no cover
     assert rec.caught == {"dep1_reraise": True}
 
 
@@ -173,7 +175,9 @@ async def test_dependency_can_catch_exception_single_async_reraise() -> None:
     except MyException:
         pass
     else:
-        raise AssertionError("MyException should have been re-raised")
+        raise AssertionError(
+            "MyException should have been re-raised"
+        )  # pragma: no cover
     assert rec.caught == {"async_dep1_reraise": True}
 
 
@@ -191,7 +195,9 @@ def test_dependency_can_catch_exception_concurrent_sync_reraise() -> None:
     except MyException:
         pass
     else:
-        raise AssertionError("MyException should have been re-raised")
+        raise AssertionError(
+            "MyException should have been re-raised"
+        )  # pragma: no cover
     assert rec.caught == {"dep1_reraise": True, "dep2_reraise": True}
 
 
@@ -210,7 +216,9 @@ async def test_dependency_can_catch_exception_concurrent_async_reraise() -> None
     except MyException:
         pass
     else:
-        raise AssertionError("MyException should have been re-raised")
+        raise AssertionError(
+            "MyException should have been re-raised"
+        )  # pragma: no cover
     assert rec.caught == {"async_dep1_reraise": True, "async_dep2_reraise": True}
 
 
@@ -229,7 +237,9 @@ async def test_dependency_can_catch_exception_concurrent_mixed_reraise() -> None
     except MyException:
         pass
     else:
-        raise AssertionError("MyException should have been re-raised")
+        raise AssertionError(
+            "MyException should have been re-raised"
+        )  # pragma: no cover
     assert rec.caught == {"async_dep1_reraise": True, "dep2_reraise": True}
 
 
@@ -240,7 +250,7 @@ def test_deep_reraise() -> None:
         except MyException:
             pass
         else:
-            raise AssertionError("Exception did not propagate")
+            raise AssertionError("Exception did not propagate")  # pragma: no cover
 
     def parent(child: None = Depends(leaf)) -> Generator[None, None, None]:
         try:
