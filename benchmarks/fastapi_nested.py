@@ -11,7 +11,7 @@ from starlette.testclient import TestClient
 
 from benchmarks.utils import generate_dag
 
-root = generate_dag(Depends, 15, 5, 3)
+root = generate_dag(Depends, 4, 3, 3)
 
 
 app = App()
@@ -24,6 +24,6 @@ async def endpoint(dag: None = Depends(root)):
 
 with TestClient(app) as client:
     start = time.time()
-    for _ in range(2):
+    for _ in range(50):
         client.get("/")
     print(f"{time.time()-start}")

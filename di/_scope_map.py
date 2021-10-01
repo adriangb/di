@@ -26,10 +26,12 @@ class ScopeMap(Generic[KT, VT]):
     ChainMap also doesn't allow you to set values anywhere but the left mapping, and we need to set values in arbitrary mappings.
     """
 
+    mappings: Dict[Scope, Dict[KT, VT]]
+
     __slots__ = ("mappings",)
 
     def __init__(self) -> None:
-        self.mappings: Dict[Scope, Dict[KT, VT]] = {}
+        self.mappings = {}
 
     def get(self, key: KT) -> VT:
         for mapping in self.mappings.values():
@@ -68,7 +70,7 @@ class ScopeMap(Generic[KT, VT]):
         self.mappings.pop(scope)
 
     def copy(self) -> ScopeMap[KT, VT]:
-        new = ScopeMap[KT, VT]()
+        new = type(self)()
         new.mappings = self.mappings.copy()
         return new
 

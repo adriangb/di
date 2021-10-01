@@ -12,12 +12,16 @@ from di.types.scopes import Scope
 
 
 class LocalScopeContext(FusedContextManager[None]):
+    context: contextvars.ContextVar[ContainerState]
+    scope: Scope
+    token: Optional[contextvars.Token[ContainerState]]
+
     def __init__(
         self, context: contextvars.ContextVar[ContainerState], scope: Scope
     ) -> None:
         self.context = context
         self.scope = scope
-        self.token: Optional[contextvars.Token[ContainerState]] = None
+        self.token = None
 
     def __enter__(self):
         current = self.context.get()

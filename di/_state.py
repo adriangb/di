@@ -27,13 +27,14 @@ from di.types.scopes import Scope
 
 
 class ContainerState(object):
-
-    __slots__ = ("binds", "cached_values", "stacks")
+    binds: Dict[DependencyProvider, DependantProtocol[Any]]
+    cached_values: ScopeMap[DependencyProvider, Any]
+    stacks: Dict[Scope, Union[AsyncExitStack, ExitStack]]
 
     def __init__(self) -> None:
-        self.binds: Dict[DependencyProvider, DependantProtocol[Any]] = {}
-        self.cached_values = ScopeMap[DependencyProvider, Any]()
-        self.stacks: Dict[Scope, Union[AsyncExitStack, ExitStack]] = {}
+        self.binds = {}
+        self.cached_values = ScopeMap()
+        self.stacks = {}
 
     def copy(self) -> "ContainerState":
         new = ContainerState()

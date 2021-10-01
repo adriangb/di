@@ -10,7 +10,7 @@ from benchmarks.utils import generate_dag
 from di import Depends
 from docs.src.starlette.src import App
 
-root = generate_dag(Depends, 15, 5, 3)
+root = generate_dag(Depends, 4, 3, 3)
 
 
 app = App()
