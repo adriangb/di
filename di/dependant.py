@@ -29,7 +29,7 @@ _expected_attributes = ("call", "scope", "share", "get_dependencies")
 
 def _is_dependant_protocol_instance(o: object) -> bool:
     # run cheap attribute checks before running isinstance
-    # isinstace is expensive since runs reflection on methods
+    # isinstance is expensive since it runs reflection on methods
     # to check argument types, etc.
     for attr in _expected_attributes:
         if not hasattr(o, attr):
@@ -37,7 +37,7 @@ def _is_dependant_protocol_instance(o: object) -> bool:
     return isinstance(o, DependantProtocol)
 
 
-class Dependant(DependantProtocol[DependencyType]):
+class Dependant(DependantProtocol[DependencyType], object):
     @overload
     def __init__(
         self,
@@ -87,29 +87,9 @@ class Dependant(DependantProtocol[DependencyType]):
         ] = None
         self.share = share
 
-    def create_sub_dependant(
-        self, call: DependencyProvider, scope: Scope, share: bool
-    ) -> DependantProtocol[Any]:
-        """Create a Dependant instance from a sub-dependency of this Dependency.
-
-        This is used in the scenario where a transient dependency is inferred from a type hint.
-        For example:
-
-        >>> class Foo:
-        >>>     ...
-        >>> def foo_factory(foo: Foo) -> Foo:
-        >>>     return foo
-        >>> def parent(foo: Dependency(foo_factory)):
-        >>>    ...
-
-        In this scenario, `Dependency(foo_factory)` will call `create_sub_dependant(Foo)`.
-
-        It is recommended to transfer `scope` and possibly `share` to sub-dependencies created in this manner.
-        """
-        return Dependant[Any](call=call, scope=scope, share=share)
-
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(call={self.call}, scope={self.scope})"
+        share = "" if self.share is False else ", share=False"
+        return f"{self.__class__.__name__}(call={self.call}, scope={self.scope}{share})"
 
     @join_docstring_from(DependantProtocol[Any].__hash__)
     def __hash__(self) -> int:
@@ -186,3 +166,24 @@ class Dependant(DependantProtocol[DependencyType]):
                 dependency=sub_dependant, parameter=param
             )
         return res
+
+    def create_sub_dependant(
+        self, call: DependencyProvider, scope: Scope, share: bool
+    ) -> DependantProtocol[Any]:
+        """Create a Dependant instance from a sub-dependency of this Dependency.
+
+        This is used in the scenario where a transient dependency is inferred from a type hint.
+        For example:
+
+        >>> class Foo:
+        >>>     ...
+        >>> def foo_factory(foo: Foo) -> Foo:
+        >>>     return foo
+        >>> def parent(foo: Dependency(foo_factory)):
+        >>>    ...
+
+        In this scenario, `Dependency(foo_factory)` will call `create_sub_dependant(Foo)`.
+
+        It is recommended to transfer `scope` and possibly `share` to sub-dependencies created in this manner.
+        """
+        return Dependant[Any](call=call, scope=scope, share=share)

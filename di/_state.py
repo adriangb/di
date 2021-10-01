@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import AsyncExitStack, ExitStack, contextmanager
 from types import TracebackType
 from typing import (
+    TYPE_CHECKING,
     Any,
     ContextManager,
     Dict,
@@ -84,7 +85,9 @@ class ScopeContext(FusedContextManager[None]):
         exc_value: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> Union[None, bool]:
-        stack = cast(ExitStack, self.state.stacks[self.scope])
+        stack = self.state.stacks[self.scope]
+        if TYPE_CHECKING:
+            stack = cast(ExitStack, stack)
         self.state.stacks.pop(self.scope)
         self.state.cached_values.pop_scope(self.scope)
         return stack.__exit__(exc_type, exc_value, traceback)
@@ -99,7 +102,9 @@ class ScopeContext(FusedContextManager[None]):
         exc_value: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> Union[None, bool]:
-        stack = cast(AsyncExitStack, self.state.stacks[self.scope])
+        stack = self.state.stacks[self.scope]
+        if TYPE_CHECKING:
+            stack = cast(AsyncExitStack, stack)
         self.state.stacks.pop(self.scope)
         self.state.cached_values.pop_scope(self.scope)
         return await stack.__aexit__(exc_type, exc_value, traceback)

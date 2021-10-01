@@ -1,6 +1,6 @@
 import contextvars
 import functools
-from typing import Any, Awaitable, Callable, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, TypeVar, Union, cast
 
 import anyio
 
@@ -20,7 +20,7 @@ def curry_context(call: Callable[..., T]) -> Callable[..., T]:
 
 def callable_in_thread_pool(call: Callable[..., T]) -> Callable[..., Awaitable[T]]:
     def inner(*args: Any, **kwargs: Any) -> Awaitable[T]:
-        return cast(Awaitable[T], anyio.to_thread.run_sync(curry_context(call)))  # type: ignore
+        return anyio.to_thread.run_sync(curry_context(call))  # type: ignore
 
     return inner
 
@@ -29,5 +29,7 @@ def gurantee_awaitable(
     call: Union[Callable[..., Awaitable[T]], Callable[..., T]]
 ) -> Callable[..., Awaitable[T]]:
     if not is_coroutine_callable(call):
-        return callable_in_thread_pool(cast(Callable[..., T], call))
-    return cast(Callable[..., Awaitable[T]], call)
+        if TYPE_CHECKING:
+            call = cast(Callable[..., T], call)
+        return callable_in_thread_pool(call)
+    return call  # type: ignore

@@ -14,7 +14,6 @@ from typing import (
     Optional,
     TypeVar,
     Union,
-    cast,
     get_type_hints,
 )
 
@@ -126,4 +125,4 @@ def infer_call_from_annotation(parameter: inspect.Parameter) -> DependencyProvid
             f"Annotation for {parameter.name} is not a callable class or function and so we cannot autowire it."
             " You must explicity provide a default value implementing the DependencyProtocol"
         )
-    return cast(DependencyProvider, parameter.annotation)
+    return parameter.annotation

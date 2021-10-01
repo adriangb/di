@@ -19,6 +19,7 @@
 !/.markdown.style.rb
 !/codecov.yml
 !/LICENSE.txt
+!/benchmarks
 
 **/__pycache__
 **/.DS_Store

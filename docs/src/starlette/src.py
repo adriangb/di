@@ -26,12 +26,11 @@ class WiredGetRoute(Route):
         container: Container,
     ) -> None:
 
-        solved_endpoint = container.solve(Dependant(endpoint, scope="request"))
+        solved_endpoint = container.solve(Dependant(endpoint))
 
         async def wrapped_endpoint(request: Request) -> Any:
             _req.set(request)
-            async with container.enter_local_scope("request"):
-                return await container.execute_async(solved_endpoint)
+            return await container.execute_async(solved_endpoint)
 
         super().__init__(path=path, endpoint=wrapped_endpoint, methods=["GET"])  # type: ignore
 
@@ -39,7 +38,7 @@ class WiredGetRoute(Route):
 class App(Starlette):
     def __init__(self, container: Container | None = None, **kwargs: Any) -> None:
         self.container = container or Container()
-        self.container.bind(Dependant(get_request, scope="request"), Request)
+        self.container.bind(Dependant(get_request), Request)
 
         @contextlib.asynccontextmanager
         async def lifespan(app: App):

@@ -2,15 +2,7 @@ from __future__ import annotations
 
 import contextvars
 from types import TracebackType
-from typing import (
-    TYPE_CHECKING,
-    AsyncContextManager,
-    ContextManager,
-    Optional,
-    Type,
-    Union,
-    cast,
-)
+from typing import TYPE_CHECKING, Optional, Type, Union
 
 if TYPE_CHECKING:
     from di._state import ContainerState  # pragma: no cover
@@ -31,8 +23,8 @@ class LocalScopeContext(FusedContextManager[None]):
         current = self.context.get()
         new = current.copy()
         self.token = self.context.set(new)
-        self.state_cm = cast(ContextManager[None], new.enter_scope(self.scope))
-        self.state_cm.__enter__()
+        self._sync_cm = new.enter_scope(self.scope)
+        self._sync_cm.__enter__()
 
     def __exit__(
         self,
@@ -42,15 +34,14 @@ class LocalScopeContext(FusedContextManager[None]):
     ) -> Union[None, bool]:
         if self.token is not None:
             self.context.reset(self.token)
-        cm = cast(ContextManager[None], self.state_cm)
-        return cm.__exit__(exc_type, exc_value, traceback)
+        return self._sync_cm.__exit__(exc_type, exc_value, traceback)
 
     async def __aenter__(self):
         current = self.context.get()
         new = current.copy()
         self.token = self.context.set(new)
-        self.state_cm = cast(AsyncContextManager[None], new.enter_scope(self.scope))
-        await self.state_cm.__aenter__()
+        self._async_cm = new.enter_scope(self.scope)
+        await self._async_cm.__aenter__()
 
     async def __aexit__(
         self,
@@ -60,5 +51,4 @@ class LocalScopeContext(FusedContextManager[None]):
     ) -> Union[None, bool]:
         if self.token is not None:
             self.context.reset(self.token)
-        cm = cast(AsyncContextManager[None], self.state_cm)
-        return await cm.__aexit__(exc_type, exc_value, traceback)
+        return await self._async_cm.__aexit__(exc_type, exc_value, traceback)
