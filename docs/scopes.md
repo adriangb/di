@@ -21,7 +21,7 @@ Scopes provide a framework for several other important features:
 - Dependency value sharing
 
 Every dependency is linked to a scope.
-When a scope exits, all dependencies linked to it are destroyed (if they have cleanup, the cleanup is run) and their value is no longer available as a shared value.
+When a scope exits, all dependencies linked to it are destroyed (if they have cleanup, the cleanup is run) and their value is no longer available as a share value.
 This means that dependencies scoped to an outer scope cannot depend on dependencies scoped to an inner scope:
 
 ```Python hl_lines="13 22"
@@ -37,7 +37,7 @@ Even if we could hold onto the value once we exit the scope, that value could be
 There are two types of scopes in `di`:
 
 - Local: localized to the current thread/coroutine via [contextvars].
-- Global: applied to the `Container` object itself, and hence shared by any threads or coroutines that share the same `Container` object.
+- Global: applied to the `Container` object itself, and hence share by any threads or coroutines that share the same `Container` object.
 
 You can enter a local scope via `Container.enter_local_scope` and a global one via `Container.enter_global_scope`.
 

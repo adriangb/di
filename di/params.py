@@ -20,7 +20,7 @@ def Depends(
     call: Optional[AsyncGeneratorProvider[DependencyType]] = None,
     *,
     scope: Optional[Scope] = None,
-    shared: bool = True
+    share: bool = True
 ) -> DependencyType:
     ...
 
@@ -30,7 +30,7 @@ def Depends(
     call: Optional[CoroutineProvider[DependencyType]] = None,
     *,
     scope: Optional[Scope] = None,
-    shared: bool = True
+    share: bool = True
 ) -> DependencyType:
     ...
 
@@ -40,7 +40,7 @@ def Depends(
     call: Optional[GeneratorProvider[DependencyType]] = None,
     *,
     scope: Optional[Scope] = None,
-    shared: bool = True
+    share: bool = True
 ) -> DependencyType:
     ...
 
@@ -50,7 +50,7 @@ def Depends(
     call: Optional[CallableProvider[DependencyType]] = None,
     *,
     scope: Optional[Scope] = None,
-    shared: bool = True
+    share: bool = True
 ) -> DependencyType:
     ...
 
@@ -59,6 +59,6 @@ def Depends(
     call: Optional[DependencyProviderType[DependencyType]] = None,
     *,
     scope: Optional[Scope] = None,
-    shared: bool = True
+    share: bool = True
 ) -> DependencyType:
-    return Dependant(call=call, scope=scope, shared=shared)  # type: ignore
+    return Dependant(call=call, scope=scope, share=share)  # type: ignore

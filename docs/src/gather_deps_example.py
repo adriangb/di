@@ -12,7 +12,7 @@ class Request:
 class SecurityDependant(Dependant[bool]):
     def __init__(self, scopes: Iterable[str]) -> None:
         self.scopes = set(scopes)
-        super().__init__(call=self.__call__, scope=None, shared=False)
+        super().__init__(call=self.__call__, scope=None, share=False)
 
     async def __call__(self, request: Request) -> bool:
         return self.scopes.issubset(request.scopes)

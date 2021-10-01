@@ -12,7 +12,7 @@ class Request:
 class HeaderDependant(Dependant[Any]):
     def __init__(self, alias: Optional[str]) -> None:
         self.alias = alias
-        super().__init__(call=None, scope=None, shared=False)
+        super().__init__(call=None, scope=None, share=False)
 
     def infer_call_from_annotation(
         self, param: inspect.Parameter

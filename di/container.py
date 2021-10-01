@@ -63,7 +63,7 @@ class Container:
         return self._context.get()
 
     def enter_global_scope(self, scope: Scope) -> FusedContextManager[None]:
-        """Enter a global scope that is shared amongst threads and coroutines.
+        """Enter a global scope that is share amongst threads and coroutines.
 
         If you enter a global scope in one thread / coroutine, it will propagate to others.
         """

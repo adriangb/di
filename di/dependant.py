@@ -24,7 +24,7 @@ _VARIABLE_PARAMETER_KINDS = (
 )
 
 
-_expected_attributes = ("call", "scope", "shared", "get_dependencies")
+_expected_attributes = ("call", "scope", "share", "get_dependencies")
 
 
 def _is_dependant_protocol_instance(o: object) -> bool:
@@ -43,7 +43,7 @@ class Dependant(DependantProtocol[DependencyType]):
         self,
         call: Optional[AsyncGeneratorProvider[DependencyType]] = None,
         scope: Optional[Scope] = None,
-        shared: bool = True,
+        share: bool = True,
     ) -> None:
         ...
 
@@ -52,7 +52,7 @@ class Dependant(DependantProtocol[DependencyType]):
         self,
         call: Optional[CoroutineProvider[DependencyType]] = None,
         scope: Optional[Scope] = None,
-        shared: bool = True,
+        share: bool = True,
     ) -> None:
         ...
 
@@ -61,7 +61,7 @@ class Dependant(DependantProtocol[DependencyType]):
         self,
         call: Optional[GeneratorProvider[DependencyType]] = None,
         scope: Optional[Scope] = None,
-        shared: bool = True,
+        share: bool = True,
     ) -> None:
         ...
 
@@ -70,7 +70,7 @@ class Dependant(DependantProtocol[DependencyType]):
         self,
         call: Optional[CallableProvider[DependencyType]] = None,
         scope: Optional[Scope] = None,
-        shared: bool = True,
+        share: bool = True,
     ) -> None:
         ...
 
@@ -78,17 +78,17 @@ class Dependant(DependantProtocol[DependencyType]):
         self,
         call: Optional[DependencyProviderType[DependencyType]] = None,
         scope: Scope = None,
-        shared: bool = True,
+        share: bool = True,
     ) -> None:
         self.call = call
         self.scope = scope
         self.dependencies: Optional[
             Dict[str, DependencyParameter[DependantProtocol[Any]]]
         ] = None
-        self.shared = shared
+        self.share = share
 
     def create_sub_dependant(
-        self, call: DependencyProvider, scope: Scope, shared: bool
+        self, call: DependencyProvider, scope: Scope, share: bool
     ) -> DependantProtocol[Any]:
         """Create a Dependant instance from a sub-dependency of this Dependency.
 
@@ -104,9 +104,9 @@ class Dependant(DependantProtocol[DependencyType]):
 
         In this scenario, `Dependency(foo_factory)` will call `create_sub_dependant(Foo)`.
 
-        It is recommended to transfer `scope` and possibly `shared` to sub-dependencies created in this manner.
+        It is recommended to transfer `scope` and possibly `share` to sub-dependencies created in this manner.
         """
-        return Dependant[Any](call=call, scope=scope, shared=shared)
+        return Dependant[Any](call=call, scope=scope, share=share)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(call={self.call}, scope={self.scope})"
@@ -120,7 +120,7 @@ class Dependant(DependantProtocol[DependencyType]):
         if type(self) is not type(o):
             return False
         assert isinstance(o, type(self))
-        if self.shared is False or o.shared is False:
+        if self.share is False or o.share is False:
             return False
         return self.call is o.call
 
@@ -178,7 +178,7 @@ class Dependant(DependantProtocol[DependencyType]):
                 sub_dependant = self.create_sub_dependant(
                     call=self.infer_call_from_annotation(param),
                     scope=self.scope,
-                    shared=self.shared,
+                    share=self.share,
                 )
             else:
                 continue  # pragma: no cover

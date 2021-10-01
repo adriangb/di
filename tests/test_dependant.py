@@ -23,9 +23,9 @@ class Custom(Dependant[T]):
     "d1,d2,hash_eq,eq_qe",
     [
         (Dependant(func), Dependant(func), True, True),
-        (Dependant(func, shared=False), Dependant(func), True, False),
-        (Dependant(func), Dependant(func, shared=False), True, False),
-        (Dependant(func, shared=False), Dependant(func, shared=False), True, False),
+        (Dependant(func, share=False), Dependant(func), True, False),
+        (Dependant(func), Dependant(func, share=False), True, False),
+        (Dependant(func, share=False), Dependant(func, share=False), True, False),
         (Dependant(func), Custom(func), True, False),
         (Dependant(func), Dependant(other_func), False, False),
     ],

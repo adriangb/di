@@ -11,7 +11,7 @@ There are many use cases for this, including:
 
 1. Carrying extra data in the marker by making a class that accepts extra arguments in `__init__`.
 2. Providing a callable implementation that depends on user defined parameters.
-3. Hiding options like `scope` or `shared` from users where it does not make sense to change them.
+3. Hiding options like `scope` or `share` from users where it does not make sense to change them.
 
 An example of creating Security dependencies for a web framework is available in the the [Security docs].
 

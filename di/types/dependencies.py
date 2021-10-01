@@ -24,7 +24,7 @@ class DependantProtocol(Protocol[DependencyType]):
     call: Optional[DependencyProviderType[DependencyType]]
     dependencies: Optional[Dict[str, DependencyParameter[DependantProtocol[Any]]]]
     scope: Scope
-    shared: bool
+    share: bool
 
     def __hash__(self) -> int:
         """Dependencies need to be hashable for quick O(1) lookups.

@@ -52,7 +52,7 @@ class AsyncTask(Task[DependencyType]):
         assert self.dependant.call is not None
         args, kwargs = self._gather_params()
 
-        if self.dependant.shared and state.cached_values.contains(self.dependant.call):
+        if self.dependant.share and state.cached_values.contains(self.dependant.call):
             # use cached value
             self._result = state.cached_values.get(self.dependant.call)
         else:
@@ -75,7 +75,7 @@ class AsyncTask(Task[DependencyType]):
                         )
                     )(*args, **kwargs)
                 )
-            if self.dependant.shared:
+            if self.dependant.share:
                 # caching is allowed, now that we have a value we can save it and start using the cache
                 state.cached_values.set(
                     self.dependant.call, self._result, scope=self.dependant.scope
@@ -87,7 +87,7 @@ class SyncTask(Task[DependencyType]):
         assert self.dependant.call is not None
         args, kwargs = self._gather_params()
 
-        if self.dependant.shared and state.cached_values.contains(self.dependant.call):
+        if self.dependant.share and state.cached_values.contains(self.dependant.call):
             # use cached value
             self._result = state.cached_values.get(self.dependant.call)
         else:
@@ -102,7 +102,7 @@ class SyncTask(Task[DependencyType]):
                         cast(GeneratorProvider[DependencyType], self.dependant.call)
                     )(*args, **kwargs)
                 )
-            if self.dependant.shared:
+            if self.dependant.share:
                 # caching is allowed, now that we have a value we can save it and start using the cache
                 state.cached_values.set(
                     self.dependant.call, self._result, scope=self.dependant.scope
