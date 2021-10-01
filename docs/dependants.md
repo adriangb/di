@@ -13,7 +13,7 @@ There are many use cases for this, including:
 2. Providing a callable implementation that depends on user defined parameters.
 3. Hiding options like `scope` or `share` from users where it does not make sense to change them.
 
-An example of creating Security dependencies for a web framework is available in the the [Security docs].
+An example of creating Security dependencies for a web framework is available in the the [Solving docs].
 
 Here is another example that extracts headers from requests:
 
@@ -21,4 +21,4 @@ Here is another example that extracts headers from requests:
 --8<-- "docs/src/headers_example.py"
 ```
 
-[Security docs]: solving.md
+[Solving docs]: solving.md
