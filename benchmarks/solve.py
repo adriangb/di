@@ -1,4 +1,7 @@
 """Profile solving a DAG
+
+Run this file, then run:
+snakeviz bench.prof
 """
 
 import cProfile

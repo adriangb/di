@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
-from typing import TYPE_CHECKING, Any, Dict, Generic, List, Tuple, cast
+from typing import TYPE_CHECKING, Dict, Generic, List, NewType, Tuple, Union, cast
 
 from di._inspect import DependencyParameter, is_async_gen_callable, is_gen_callable
 from di._state import ContainerState
@@ -16,10 +16,17 @@ from di.types.providers import (
     GeneratorProvider,
 )
 
-_UNSET = object()
+_UNSET_TYPE = NewType("_UNSET_TYPE", object)
+_UNSET = _UNSET_TYPE(object())
 
 
 class Task(Generic[DependencyType]):
+    dependant: DependantProtocol[DependencyType]
+    dependencies: Dict[str, DependencyParameter[Task[Dependency]]]
+    _result: Union[_UNSET_TYPE, DependencyType]
+
+    __slots__ = ("dependant", "dependencies", "_result")
+
     def __init__(
         self,
         dependant: DependantProtocol[DependencyType],
@@ -27,7 +34,7 @@ class Task(Generic[DependencyType]):
     ) -> None:
         self.dependant = dependant
         self.dependencies = dependencies
-        self._result: Any = _UNSET
+        self._result = _UNSET
 
     def _gather_params(self) -> Tuple[List[Dependency], Dict[str, Dependency]]:
         positional: List[Dependency] = []
@@ -44,7 +51,7 @@ class Task(Generic[DependencyType]):
             raise ValueError(
                 "`compute()` must be called before `get_result()`; this is likely a bug!"
             )
-        return self._result
+        return cast(DependencyType, self._result)
 
 
 class AsyncTask(Task[DependencyType]):

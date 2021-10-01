@@ -31,6 +31,8 @@ class ContainerState(object):
     cached_values: ScopeMap[DependencyProvider, Any]
     stacks: Dict[Scope, Union[AsyncExitStack, ExitStack]]
 
+    __slots__ = ("binds", "cached_values", "stacks")
+
     def __init__(self) -> None:
         self.binds = {}
         self.cached_values = ScopeMap()
