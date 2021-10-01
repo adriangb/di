@@ -48,4 +48,5 @@ extra_javascript:
 
 plugins:
   - mike:
+      version_selector: true   # set to false to leave out the version selector
   - search:
