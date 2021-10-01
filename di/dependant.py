@@ -87,10 +87,25 @@ class Dependant(DependantProtocol[DependencyType]):
         ] = None
         self.shared = shared
 
-    @join_docstring_from(DependantProtocol[Any].create_sub_dependant)
     def create_sub_dependant(
         self, call: DependencyProvider, scope: Scope, shared: bool
     ) -> DependantProtocol[Any]:
+        """Create a Dependant instance from a sub-dependency of this Dependency.
+
+        This is used in the scenario where a transient dependency is inferred from a type hint.
+        For example:
+
+        >>> class Foo:
+        >>>     ...
+        >>> def foo_factory(foo: Foo) -> Foo:
+        >>>     return foo
+        >>> def parent(foo: Dependency(foo_factory)):
+        >>>    ...
+
+        In this scenario, `Dependency(foo_factory)` will call `create_sub_dependant(Foo)`.
+
+        It is recommended to transfer `scope` and possibly `shared` to sub-dependencies created in this manner.
+        """
         return Dependant[Any](call=call, scope=scope, shared=shared)
 
     def __repr__(self) -> str:
@@ -113,12 +128,18 @@ class Dependant(DependantProtocol[DependencyType]):
     def get_dependencies(
         self,
     ) -> Dict[str, DependencyParameter[DependantProtocol[Any]]]:
+        """For the Dependant implementation, this serves as a cache layer on
+        top of gather_dependencies.
+        """
         if self.dependencies is None:  # type: ignore
             self.dependencies = self.gather_dependencies()
         return self.dependencies
 
-    @join_docstring_from(DependantProtocol[Any].gather_parameters)
     def gather_parameters(self) -> Dict[str, inspect.Parameter]:
+        """Collect parameters that this dependency needs to construct itself.
+
+        Generally, this means introspecting into our own callable (self.call).
+        """
         assert self.call is not None, "Cannot gather parameters without a bound call"
         return get_parameters(self.call)
 

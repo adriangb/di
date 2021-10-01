@@ -52,34 +52,6 @@ class DependantProtocol(Protocol[DependencyType]):
         """
         raise NotImplementedError
 
-    def gather_parameters(self) -> Dict[str, inspect.Parameter]:
-        """Collect parameters that this dependency needs to construct itself.
-
-        Generally, this means introspecting into our own callable (self.call).
-        """
-        raise NotImplementedError
-
-    def create_sub_dependant(
-        self, call: DependencyProvider, scope: Scope, shared: bool
-    ) -> DependantProtocol[Any]:
-        """Create a Dependant instance from a sub-dependency of this Dependency.
-
-        This is used in the scenario where a transient dependency is inferred from a type hint.
-        For example:
-
-        >>> class Foo:
-        >>>     ...
-        >>> def foo_factory(foo: Foo) -> Foo:
-        >>>     return foo
-        >>> def parent(foo: Dependency(foo_factory)):
-        >>>    ...
-
-        In this scenario, `Dependency(foo_factory)` will call `create_sub_dependant(Foo)`.
-
-        It is recommended to transfer `scope` and possibly `shared` to sub-dependencies created in this manner.
-        """
-        raise NotImplementedError
-
     def infer_call_from_annotation(
         self, param: inspect.Parameter
     ) -> DependencyProvider:
