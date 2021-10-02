@@ -2,9 +2,7 @@ import typing
 
 ResultType = typing.TypeVar("ResultType")
 
-Task = typing.Union[
-    typing.Callable[[], None], typing.Callable[[], typing.Awaitable[None]]
-]
+Task = typing.Callable[[], typing.Union[None, typing.Awaitable[None]]]
 
 
 class SyncExecutor(typing.Protocol):

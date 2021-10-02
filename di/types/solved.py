@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import functools
-from typing import Any, Callable, Dict, Generic, List, Union
+from typing import Any, Dict, Generic, List, Union
 
 from di._inspect import DependencyParameter
 from di._task import AsyncTask, SyncTask
@@ -25,7 +25,6 @@ class SolvedDependency(Generic[DependencyType]):
         DependantProtocol[Any], Dict[str, DependencyParameter[DependantProtocol[Any]]]
     ]
     _tasks: List[List[Union[AsyncTask[Dependency], SyncTask[Dependency]]]]
-    _get_results: Callable[[], DependencyType]
 
     @functools.cached_property
     def flat_subdependants(self) -> List[DependantProtocol[Any]]:

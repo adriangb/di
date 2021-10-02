@@ -7,11 +7,11 @@ from typing import (
     Any,
     Callable,
     ContextManager,
+    Coroutine,
     Deque,
     Dict,
     List,
     Optional,
-    Tuple,
     Union,
     cast,
 )
@@ -162,15 +162,8 @@ class Container:
                         q.append(subdep)
 
         topsorted_groups = topsort(dependency, dep_dag)
-        tasks, get_results = self._build_tasks(
-            topsorted_groups, dependency, param_graph
-        )
-        return SolvedDependency(
-            dependency=dependency,
-            dag=param_graph,
-            _tasks=tasks,
-            _get_results=get_results,
-        )
+        tasks = self._build_tasks(topsorted_groups, param_graph)
+        return SolvedDependency(dependency=dependency, dag=param_graph, _tasks=tasks)  # type: ignore
 
     def _build_task(
         self,
@@ -201,15 +194,11 @@ class Container:
     def _build_tasks(
         self,
         topsort: List[List[DependantProtocol[Any]]],
-        dependency: DependantProtocol[DependencyType],
         dag: Dict[
             DependantProtocol[Any],
             Dict[str, DependencyParameter[DependantProtocol[Any]]],
         ],
-    ) -> Tuple[
-        List[List[Union[AsyncTask[Dependency], SyncTask[Dependency]]]],
-        Callable[[], DependencyType],
-    ]:
+    ) -> List[List[Union[AsyncTask[Dependency], SyncTask[Dependency]]]]:
         tasks: Dict[
             DependantProtocol[Any], Union[AsyncTask[Dependency], SyncTask[Dependency]]
         ] = {}
@@ -217,11 +206,7 @@ class Container:
             for dep in group:
                 if dep not in tasks:
                     tasks[dep] = self._build_task(dep, tasks, dag)
-        get_result = tasks[dependency].get_result
-        return (
-            list(reversed([[tasks[dep] for dep in group] for group in topsort])),
-            get_result,
-        )
+        return list(reversed([[tasks[dep] for dep in group] for group in topsort]))
 
     def _validate_scopes(self, solved: SolvedDependency[Dependency]) -> None:
         """Validate that dependencies all have a valid scope and
@@ -265,11 +250,12 @@ class Container:
         If you are not dynamically changing scopes, you can run once with `validate_scopes=True`
         and then disable scope validation in subsequent runs with `validate_scope=False`.
         """
+        results: Dict[Task[Any], Any] = {}
         with self.enter_local_scope(None):
             if validate_scopes:
                 self._validate_scopes(solved)
 
-            tasks, get_results = solved._tasks, solved._get_results  # type: ignore
+            tasks = solved._tasks  # type: ignore
 
             if not hasattr(self._executor, "execute_sync"):
                 raise TypeError(
@@ -278,11 +264,10 @@ class Container:
             executor = cast(SyncExecutor, self._executor)
 
             stateful_tasks = [
-                [functools.partial(t.compute, self._state) for t in group]
+                [functools.partial(t.compute, self._state, results) for t in group]
                 for group in tasks
             ]
-
-            return executor.execute_sync(stateful_tasks, get_results)  # type: ignore
+            return executor.execute_sync(stateful_tasks, lambda: results[tasks[-1][0]])  # type: ignore
 
     async def execute_async(
         self,
@@ -294,11 +279,12 @@ class Container:
         If you are not dynamically changing scopes, you can run once with `validate_scopes=True`
         and then disable scope validation in subsequent runs with `validate_scope=False`.
         """
+        results: Dict[Task[Any], Any] = {}
         async with self.enter_local_scope(None):
             if validate_scopes:
                 self._validate_scopes(solved)
 
-            tasks, get_results = solved._tasks, solved._get_results  # type: ignore
+            tasks = solved._tasks  # type: ignore
 
             if not hasattr(self._executor, "execute_async"):
                 raise TypeError(
@@ -306,9 +292,10 @@ class Container:
                 )
             executor = cast(AsyncExecutor, self._executor)
 
-            stateful_tasks = [
-                [functools.partial(t.compute, self._state) for t in group]
+            stateful_tasks: List[
+                List[Callable[[], Union[Coroutine[Any, Any, None], None]]]
+            ] = [
+                [functools.partial(t.compute, self._state, results) for t in group]
                 for group in tasks
             ]
-
-            return await executor.execute_async(stateful_tasks, get_results)  # type: ignore
+            return await executor.execute_async(stateful_tasks, lambda: results[tasks[-1][0]])  # type: ignore
