@@ -1,7 +1,9 @@
+import contextvars
+import functools
 import threading
 import time
 from contextlib import contextmanager
-from typing import Any, AsyncGenerator, Generator
+from typing import Any, AsyncGenerator, Generator, List, Literal
 
 import anyio
 import pytest
@@ -271,3 +273,85 @@ async def test_concurrency(dep1: Any, dep2: Any):
         ...
 
     await container.execute_async(container.solve(Dependant(collector)))
+
+
+@pytest.mark.anyio
+async def test_concurrent_executions_do_not_share_results():
+    """If the same solved depedant is executed twice concurrently we should not
+    overwrite the result of any sub-dependencies.
+    """
+    delays = {1: 0, 2: 0.01}
+    ctx = contextvars.ContextVar[int]("id")
+
+    def get_id() -> int:
+        return ctx.get()
+
+    async def dep1(id: int = Depends(get_id)) -> int:
+        await anyio.sleep(delays[id])
+        return id
+
+    async def dep2(id: int = Depends(get_id), one: int = Depends(dep1)) -> None:
+        # let the other branch run
+        await anyio.sleep(max(delays.values()))
+        # check if the other branch replaced our value
+        # ctx.get() serves as the source of truth
+        expected = ctx.get()
+        # and we check if the result was shared via caching or a bug in the
+        # internal state of tasks (see https://github.com/adriangb/di/issues/18)
+        assert id == expected  # replaced via caching
+        assert one == expected  # replaced in results state
+
+    container = Container()
+    solved = container.solve(Dependant(dep2))
+
+    async def execute_in_ctx(id: int) -> None:
+        ctx.set(id)
+        await container.execute_async(solved)
+
+    async with anyio.create_task_group() as tg:
+        async with container.enter_global_scope("app"):
+            tg.start_soon(functools.partial(execute_in_ctx, 1))  # type: ignore
+            tg.start_soon(functools.partial(execute_in_ctx, 2))  # type: ignore
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("scope,shared", [(None, False), ("global", True)])
+async def test_concurrent_executions_share_cache(
+    scope: Literal[None, "global"], shared: bool
+):
+    """Check that global / local scopes are respected during concurrent execution"""
+    objects: List[object] = []
+
+    def get_obj() -> object:
+        return object()
+
+    # use dependencies as delyas to ensure that
+    # collect2 and collect1 do not execute at the exact same time
+    # otherwise they might not share the cache
+
+    async def dep1() -> None:
+        await anyio.sleep(1e-3)
+
+    async def dep2() -> None:
+        ...
+
+    async def collect1(
+        one: None = Depends(dep1), obj: object = Depends(get_obj, scope=scope)
+    ) -> None:
+        objects.append(obj)
+
+    async def collect2(
+        two: None = Depends(dep2), obj: object = Depends(get_obj, scope=scope)
+    ) -> None:
+        objects.append(obj)
+
+    container = Container()
+    solved1 = container.solve(Dependant(collect1))
+    solved2 = container.solve(Dependant(collect2))
+
+    async with container.enter_global_scope("global"):
+        async with anyio.create_task_group() as tg:
+            tg.start_soon(functools.partial(container.execute_async, solved1))  # type: ignore
+            tg.start_soon(functools.partial(container.execute_async, solved2))  # type: ignore
+
+    assert (objects[0] is objects[1]) is shared
