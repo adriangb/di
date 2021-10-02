@@ -88,11 +88,11 @@ These code fragments are tested as part of unit tests to ensure that the documen
 ## Releases
 
 This project uses continious integration and continious delivery (CI/CD) and a trunk based workflow.
-We do not want any long lived feature branches (although we won't stop you from making them in your fork),
-and every merge into `main` should be fully functional code in a releasable state.
-Because we intend to release every merge into `main` automatically, pull requests will check that you bump the project version.
-The project version is stored in our [pyproject.toml] and uses semantic versioning.
+We do not want any long lived feature branches (although we won't stop you from making them in your fork), and every merge into `main` should be fully functional code in a releasable state.
 As part of your pull request, you should propose what type of change is being made and determine the right version bump appropriately.
+While [conventional commits] are appreciated as a means of communication, especially for the merge commit, they are not *required* or enforced.
+Instead, you are required to bump the package version in [pyproject.toml].
+Every commit into `main` needs a version bump so that a release can be made, even if it is a refactor or "chore" type change.
 
 Once your change is merged, the new docs and PyPi package will be released automatically.
 Every time a release is made on PyPi, a corresponding GitHub release will be created to allow correlating PyPi versions to VCS versions.
@@ -104,3 +104,4 @@ Every time a release is made on PyPi, a corresponding GitHub release will be cre
 [pre-commit-config.yaml]: https://github.com/adriangb/di/blob/main/.pre-commit-config.yaml
 [pyproject.toml]: https://github.com/adriangb/di/blob/main/pyproject.toml
 [vscode devcontainers]: https://code.visualstudio.com/docs/remote/containers
+[conventional commits]: https://www.conventionalcommits.org/en/v1.0.0/
