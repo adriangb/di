@@ -1,4 +1,4 @@
-.PHONY: install-poetry .clear test docs-build docs-serve
+.PHONY: install-poetry .clear test test-mutation docs-build docs-serve
 
 GIT_SHA = $(shell git rev-parse --short HEAD)
 PACKAGE_VERSION = $(shell poetry version -s | cut -d+ -f1)
@@ -52,6 +52,7 @@ test: .test
 
 test-mutation: .test
 	@echo ---- ⏳ Running mutation testing ----
+	@poetry run python -m pip install mutmut
 	@(poetry run pytest --cov && poetry run mutmut run --use-coverage && echo "---- ✅ Passed ----" && exit 0 || echo "---- ❌ Failed ----" && exit 1)
 
 .netlify-build-docs: .init
