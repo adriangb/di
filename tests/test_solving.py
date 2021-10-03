@@ -34,12 +34,12 @@ def test_variable_arguments():
 
     with pytest.raises(
         WiringError,
-        match="Dependencies may not use variable positional or keyword arguments",
+        match="^Dependencies may not use variable positional or keyword arguments$",
     ):
         container.execute_sync(container.solve(Dependant(args_func)))
     with pytest.raises(
         WiringError,
-        match="Dependencies may not use variable positional or keyword arguments",
+        match="^Dependencies may not use variable positional or keyword arguments$",
     ):
         container.execute_sync(container.solve(Dependant(kwargs_func)))
 

@@ -9,6 +9,7 @@ import anyio
 import pytest
 
 from di import Container, Dependant, Depends
+from di.exceptions import IncompatibleDependencyError
 
 
 class vZero:
@@ -355,3 +356,18 @@ async def test_concurrent_executions_share_cache(
             tg.start_soon(functools.partial(container.execute_async, solved2))  # type: ignore
 
     assert (objects[0] is objects[1]) is shared
+
+
+@pytest.mark.anyio
+async def test_async_cm_de_in_sync_scope():
+    """Cannot execute an async contextmanager-like dependency from within a sync scope"""
+
+    async def dep() -> AsyncGenerator[None, None]:
+        yield
+
+    container = Container()
+    with container.enter_local_scope("test"):
+        with pytest.raises(
+            IncompatibleDependencyError, match="canot be used in the sync scope"
+        ):
+            await container.execute_async(container.solve(Dependant(dep, scope="test")))

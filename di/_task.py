@@ -21,8 +21,6 @@ class Task(Generic[DependencyType]):
     dependant: DependantProtocol[DependencyType]
     dependencies: Dict[str, DependencyParameter[Task[Dependency]]]
 
-    __slots__ = ("dependant", "dependencies")
-
     def __init__(
         self,
         dependant: DependantProtocol[DependencyType],

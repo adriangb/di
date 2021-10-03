@@ -48,14 +48,12 @@ class DefaultExecutor(AsyncExecutor, SyncExecutor):
                         raise exc
                     if inspect.isawaitable(future.result()):
                         raise TypeError(
-                            "Cannot execute async dependencies in a SyncExecutor"
+                            "Cannot execute async dependencies in execute_sync"
                         )
             else:
                 v = task_group[0]()
                 if inspect.isawaitable(v):
-                    raise TypeError(
-                        "Cannot execute async dependencies in a SyncExecutor"
-                    )
+                    raise TypeError("Cannot execute async dependencies in execute_sync")
         return get_result()
 
     async def execute_async(

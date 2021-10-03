@@ -28,8 +28,6 @@ class ScopeMap(Generic[KT, VT]):
 
     mappings: Dict[Scope, Dict[KT, VT]]
 
-    __slots__ = ("mappings",)
-
     def __init__(self) -> None:
         self.mappings = {}
 

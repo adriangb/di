@@ -40,6 +40,7 @@ textual = "0.1.12"
 httpx = "^0.19.0"
 requests = "^2.26.0"
 starlette = "^0.16.0"
+mutmut = "^2.2.0"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "~1"
@@ -56,10 +57,12 @@ build-backend = "poetry.core.masonry.api"
 profile = "black"
 
 [tool.coverage.run]
+branch = true
 source = ["di", "tests", "docs"]
+dynamic_context = "test_function"
 
 [tool.coverage.report]
-exclude_lines = ["pragma: no cover", '\.\.\.', "raise NotImplementedError", "TYPE_CHECKING"]
+exclude_lines = ["pragma: no cover", '\.\.\.', "raise NotImplementedError", "TYPE_CHECKING", "__repr__"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

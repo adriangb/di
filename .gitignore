@@ -20,6 +20,8 @@
 !/codecov.yml
 !/LICENSE.txt
 !/benchmarks
+!/mutmut_config.py
+!/mutmut.sh
 
 **/__pycache__
 **/.DS_Store
