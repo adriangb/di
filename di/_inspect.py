@@ -35,9 +35,6 @@ DependencyProvider = Union[
 T = TypeVar("T")
 
 
-VARIABLE_ARGS = (inspect.Parameter.VAR_KEYWORD, inspect.Parameter.VAR_POSITIONAL)
-
-
 # this should be a NamedTuple
 # but https://github.com/python/mypy/issues/685
 # we need the generic type
@@ -92,12 +89,7 @@ def get_annotations(call: DependencyProvider) -> Dict[str, Any]:
 @lru_cache(maxsize=1024)
 def get_parameters(call: DependencyProvider) -> Dict[str, inspect.Parameter]:
     params: Mapping[str, inspect.Parameter]
-    if (
-        inspect.isclass(call)
-        and hasattr(call, "__new__")
-        and call.__new__ is not object.__new__
-        and hasattr(call, "__init__")
-    ):
+    if inspect.isclass(call) and call.__new__ is not object.__new__:
         # classes overriding __new__, including some generic metaclasses, result in __new__ getting read
         # instead of __init__
         params = inspect.signature(call.__init__).parameters  # type: ignore
@@ -108,7 +100,7 @@ def get_parameters(call: DependencyProvider) -> Dict[str, inspect.Parameter]:
     annotations: Optional[Dict[str, Any]] = None
     processed_params: Dict[str, inspect.Parameter] = {}
     for param_name, param in params.items():
-        if isinstance(param.annotation, str) or param_name == "self":
+        if isinstance(param.annotation, str):
             if annotations is None:
                 annotations = get_annotations(call)
             param = param.replace(

@@ -5,7 +5,6 @@ from typing import Dict, Generic, Hashable, List, TypeVar
 from di.exceptions import DuplicateScopeError, UnknownScopeError
 from di.types.scopes import Scope
 
-T = TypeVar("T")
 KT = TypeVar("KT", bound=Hashable)
 VT = TypeVar("VT")
 

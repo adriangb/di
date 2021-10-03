@@ -50,9 +50,9 @@ test: .test
 	@echo ---- ⏳ Running tests ----
 	@(poetry run pytest -v --cov --cov-report term && echo "---- ✅ Tests passed ----" && exit 0 || echo "---- ❌ Tests failed ----" && exit 1)
 
-mutation-test: .test
+test-mutation: .test
 	@echo ---- ⏳ Running mutation testing ----
-	@(poetry run pytest run --cov && mutmut run --use-coverage && echo "---- ✅ Tests passed ----" && exit 0 || echo "---- ❌ Tests failed ----" && exit 1)
+	@(poetry run pytest --cov && poetry run mutmut run --use-coverage && echo "---- ✅ Passed ----" && exit 0 || echo "---- ❌ Failed ----" && exit 1)
 
 .netlify-build-docs: .init
 	rm -rf public && mkdir public

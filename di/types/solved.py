@@ -10,7 +10,7 @@ from di.types.dependencies import DependantProtocol
 from di.types.providers import Dependency, DependencyType
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class SolvedDependency(Generic[DependencyType]):
     """Representation of a fully solved dependency.
 

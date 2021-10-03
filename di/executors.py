@@ -10,7 +10,6 @@ from di._concurrency import curry_context, gurantee_awaitable
 from di.types.executor import AsyncExecutor, SyncExecutor, Task
 
 ResultType = typing.TypeVar("ResultType")
-T = typing.TypeVar("T")
 
 
 def _all_sync(tasks: typing.List[Task]) -> bool:
