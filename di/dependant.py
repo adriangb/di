@@ -93,7 +93,7 @@ class Dependant(DependantProtocol[DependencyType], object):
 
     @join_docstring_from(DependantProtocol[Any].__hash__)
     def __hash__(self) -> int:
-        return hash(self.call)
+        return id(self.call)
 
     @join_docstring_from(DependantProtocol[Any].__eq__)
     def __eq__(self, o: object) -> bool:

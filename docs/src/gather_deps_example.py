@@ -1,4 +1,4 @@
-from typing import Any, Iterable, List
+from typing import Any, FrozenSet, Iterable, List
 
 from di import Container, Dependant
 from di.types.dependencies import DependantProtocol
@@ -10,9 +10,11 @@ class Request:
 
 
 class SecurityDependant(Dependant[bool]):
+    scopes: FrozenSet[str]
+
     def __init__(self, scopes: Iterable[str]) -> None:
-        self.scopes = set(scopes)
-        super().__init__(call=self.__call__, scope=None, share=False)
+        self.scopes = frozenset(scopes)
+        super().__init__(call=self.__call__, share=False)
 
     async def __call__(self, request: Request) -> bool:
         return self.scopes.issubset(request.scopes)
@@ -26,7 +28,7 @@ def gather_scopes(deps: List[DependantProtocol[Any]]) -> List[str]:
     scopes: List[str] = []
     for dep in deps:
         if isinstance(dep, SecurityDependant):
-            scopes.extend(dep.scopes)
+            scopes.extend(getattr(dep, "scopes", frozenset()))
     return scopes
 
 
@@ -37,7 +39,7 @@ async def web_framework() -> None:
     # about not knowing how to build a Request
     with container.bind(Dependant(lambda: Request(scopes=[])), Request):
         scopes = gather_scopes(
-            container.solve(Dependant(controller)).flat_subdependants
+            container.solve(Dependant(controller)).get_flat_subdependants()
         )
 
     assert set(scopes) == {"scope1", "scope2"}

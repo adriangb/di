@@ -1,9 +1,15 @@
 import contextvars
 import functools
+import sys
 import threading
 import time
 from contextlib import contextmanager
-from typing import Any, AsyncGenerator, Generator, List, Literal
+from typing import Any, AsyncGenerator, Generator, List
+
+if sys.version_info < (3, 8):
+    from typing_extensions import Literal
+else:
+    from typing import Literal
 
 import anyio
 import pytest

@@ -1,5 +1,11 @@
+import sys
 from dataclasses import dataclass
-from typing import List, Protocol
+from typing import List
+
+if sys.version_info < (3, 8):
+    from typing_extensions import Protocol
+else:
+    from typing import Protocol
 
 from di import Container, Dependant
 

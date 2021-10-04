@@ -82,6 +82,7 @@ def get_annotations(call: DependencyProvider) -> Dict[str, Any]:
         # callable class
         types_from = call.__call__  # type: ignore
     else:
+        # method
         types_from = call
     return get_type_hints(types_from)
 

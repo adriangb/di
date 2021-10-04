@@ -1,7 +1,13 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, Dict, Optional, Protocol, runtime_checkable
+import sys
+from typing import Any, Dict, Optional
+
+if sys.version_info < (3, 8):
+    from typing_extensions import Protocol, runtime_checkable
+else:
+    from typing import Protocol, runtime_checkable
 
 from di._inspect import DependencyParameter
 from di.types.providers import (

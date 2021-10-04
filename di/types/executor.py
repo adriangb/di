@@ -1,23 +1,29 @@
-import typing
+import sys
+from typing import Awaitable, Callable, List, TypeVar, Union
 
-ResultType = typing.TypeVar("ResultType")
+if sys.version_info < (3, 8):
+    from typing_extensions import Protocol
+else:
+    from typing import Protocol
 
-Task = typing.Callable[[], typing.Union[None, typing.Awaitable[None]]]
+ResultType = TypeVar("ResultType")
+
+Task = Callable[[], Union[None, Awaitable[None]]]
 
 
-class SyncExecutor(typing.Protocol):
+class SyncExecutor(Protocol):
     def execute_sync(
         self,
-        tasks: typing.List[typing.List[Task]],
-        get_result: typing.Callable[[], ResultType],
+        tasks: List[List[Task]],
+        get_result: Callable[[], ResultType],
     ) -> ResultType:
         raise NotImplementedError
 
 
-class AsyncExecutor(typing.Protocol):
+class AsyncExecutor(Protocol):
     async def execute_async(
         self,
-        tasks: typing.List[typing.List[Task]],
-        get_result: typing.Callable[[], ResultType],
+        tasks: List[List[Task]],
+        get_result: Callable[[], ResultType],
     ) -> ResultType:
         raise NotImplementedError
