@@ -9,7 +9,7 @@ import pytest
 from docs.src.textual.demo import GridTest  # type: ignore
 
 
-@pytest.mark.skipif(os.name == "nt")
+@pytest.mark.skipif(os.name == "nt", reason="win")
 @pytest.mark.anyio
 @pytest.mark.parametrize("anyio_backend", ["asyncio"])
 async def test_textual():
