@@ -8,7 +8,7 @@ from typing import Any, AsyncGenerator, Generator, List
 try:
     from typing import Literal  # type: ignore
 except ImportError:
-    from typing_extensions import Literal
+    from typing_extensions import Literal  # type: ignore
 
 import anyio
 import pytest

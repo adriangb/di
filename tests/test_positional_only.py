@@ -17,7 +17,7 @@ def test_positional_only_parameters():
     return_two_def = (
         r"def return_two(one: int = Depends(return_one), /) -> int:  return one + 1"
     )
-    exec(return_two_def, globals(), locals())
+    exec(return_two_def, globals())
 
     container = Container()
     res = container.execute_sync(container.solve(Dependant(return_two)))  # type: ignore # noqa
