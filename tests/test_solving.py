@@ -1,9 +1,10 @@
+import sys
 from typing import Callable, Dict
 
-try:
-    from typing import Literal  # type: ignore
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
+if sys.version_info < (3, 7):
+    from typing_extensions import Literal
+else:
+    from typing import Literal
 
 import pytest
 

@@ -1,9 +1,10 @@
+import sys
 from typing import Awaitable, Callable, List, TypeVar, Union
 
-try:
+if sys.version_info < (3, 7):
+    from typing_extensions import Protocol
+else:
     from typing import Protocol
-except ImportError:
-    from typing_extensions import Protocol  # type: ignore
 
 ResultType = TypeVar("ResultType")
 

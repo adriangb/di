@@ -1,14 +1,15 @@
 import contextvars
 import functools
+import sys
 import threading
 import time
 from contextlib import contextmanager
 from typing import Any, AsyncGenerator, Generator, List
 
-try:
-    from typing import Literal  # type: ignore
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
+if sys.version_info < (3, 7):
+    from typing_extensions import Literal
+else:
+    from typing import Literal
 
 import anyio
 import pytest
