@@ -4,7 +4,7 @@ import inspect
 import sys
 from typing import Any, Dict, Optional
 
-if sys.version_info < (3, 7):
+if sys.version_info < (3, 8):
     from typing_extensions import Protocol, runtime_checkable
 else:
     from typing import Protocol, runtime_checkable

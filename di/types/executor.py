@@ -1,7 +1,7 @@
 import sys
 from typing import Awaitable, Callable, List, TypeVar, Union
 
-if sys.version_info < (3, 7):
+if sys.version_info < (3, 8):
     from typing_extensions import Protocol
 else:
     from typing import Protocol

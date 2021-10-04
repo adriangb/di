@@ -1,7 +1,7 @@
 import sys
 from typing import Callable, Dict
 
-if sys.version_info < (3, 7):
+if sys.version_info < (3, 8):
     from typing_extensions import Literal
 else:
     from typing import Literal
