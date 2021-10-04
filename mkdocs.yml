@@ -46,6 +46,10 @@ extra_javascript:
   - js/termynal.js
   - js/custom.js
 
+extra:
+  version:
+    provider: mike
+
 plugins:
   - mike:
       version_selector: true   # set to false to leave out the version selector
