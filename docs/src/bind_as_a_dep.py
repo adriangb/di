@@ -1,5 +1,10 @@
 from dataclasses import dataclass
-from typing import List, Protocol
+from typing import List
+
+try:
+    from typing import Protocol
+except ImportError:
+    from typing_extensions import Protocol  # type: ignore
 
 from di import Container, Dependant
 

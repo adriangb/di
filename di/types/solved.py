@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import dataclasses
-import functools
 from typing import Any, Dict, Generic, List, Union
 
 from di._inspect import DependencyParameter
@@ -26,8 +25,7 @@ class SolvedDependency(Generic[DependencyType]):
     ]
     _tasks: List[List[Union[AsyncTask[Dependency], SyncTask[Dependency]]]]
 
-    @functools.cached_property
-    def flat_subdependants(self) -> List[DependantProtocol[Any]]:
+    def get_flat_subdependants(self) -> List[DependantProtocol[Any]]:
         """Get an exhaustive list of all of the dependencies of this dependency,
         in no particular order.
         """

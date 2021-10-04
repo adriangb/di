@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, Dict, Optional, Protocol, runtime_checkable
+from typing import Any, Dict, Optional
+
+try:
+    from typing import Protocol, runtime_checkable
+except ImportError:
+    from typing_extensions import Protocol, runtime_checkable  # type: ignore
 
 from di._inspect import DependencyParameter
 from di.types.providers import (

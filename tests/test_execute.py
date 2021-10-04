@@ -3,7 +3,12 @@ import functools
 import threading
 import time
 from contextlib import contextmanager
-from typing import Any, AsyncGenerator, Generator, List, Literal
+from typing import Any, AsyncGenerator, Generator, List
+
+try:
+    from typing import Literal  # type: ignore
+except ImportError:
+    from typing_extensions import Literal
 
 import anyio
 import pytest

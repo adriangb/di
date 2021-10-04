@@ -1,4 +1,9 @@
-from typing import Callable, Dict, Literal
+from typing import Callable, Dict
+
+try:
+    from typing import Literal  # type: ignore
+except ImportError:
+    from typing_extensions import Literal
 
 import pytest
 

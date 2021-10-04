@@ -47,28 +47,28 @@ async def test_get_flat_dependencies():
 
     async with container.enter_global_scope("dummy"):
         assert_compare_call(
-            container.solve(Dependant(call=call7)).flat_subdependants,
+            container.solve(Dependant(call=call7)).get_flat_subdependants(),
             [call1, call2, call3, call4, call6],
         )
         assert_compare_call(
-            container.solve(Dependant(call=call6)).flat_subdependants,
+            container.solve(Dependant(call=call6)).get_flat_subdependants(),
             [call1, call2, call3, call4],
         )
         assert_compare_call(
-            container.solve(Dependant(call=call5)).flat_subdependants,
+            container.solve(Dependant(call=call5)).get_flat_subdependants(),
             [call1, call2, call3, call4],
         )
         assert_compare_call(
-            container.solve(Dependant(call=call4)).flat_subdependants,
+            container.solve(Dependant(call=call4)).get_flat_subdependants(),
             [call1, call2, call3],
         )
         assert_compare_call(
-            container.solve(Dependant(call=call3)).flat_subdependants, []
+            container.solve(Dependant(call=call3)).get_flat_subdependants(), []
         )
         assert_compare_call(
-            container.solve(Dependant(call=call2)).flat_subdependants,
+            container.solve(Dependant(call=call2)).get_flat_subdependants(),
             [call1],
         )
         assert_compare_call(
-            container.solve(Dependant(call=call1)).flat_subdependants, []
+            container.solve(Dependant(call=call1)).get_flat_subdependants(), []
         )
