@@ -15,7 +15,7 @@ install-poetry: .install-poetry
 .init: .install-poetry
 	@echo "---- 📦 Building package ----"
 	rm -rf .venv
-	poetry install --default --with lint
+	poetry install --default --only lint
 	touch .init
 
 .docs: .init
@@ -55,10 +55,9 @@ test-mutation: .test
 	@poetry run python -m pip install mutmut
 	@(poetry run pytest --cov && poetry run mutmut run --use-coverage && echo "---- ✅ Passed ----" && exit 0 || echo "---- ❌ Failed ----" && exit 1)
 
-.netlify-build-docs: .init
+.netlify-build-docs: .install-poetry
 	rm -rf public && mkdir public
-	poetry export -f requirements.txt --output requirements.txt --without-hashes --dev
-	pip install -r requirements.txt
+	poetry install --default --only docs
 	poetry run mkdocs build --site-dir public
 
 docs-serve: .docs
