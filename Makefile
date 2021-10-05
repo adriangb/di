@@ -57,7 +57,7 @@ test-mutation: .test
 
 .netlify-build-docs: .init
 	rm -rf public && mkdir public
-	poetry export -f requirements.txt --output requirements.txt --dev
+	poetry export -f requirements.txt --output requirements.txt --without-hashes --dev
 	pip install -r requirements.txt
 	poetry run mkdocs build --site-dir public
 
