@@ -6,7 +6,6 @@ on:
 
 jobs:
   lint:
-    fail-fast: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -22,12 +21,12 @@ jobs:
       - name: Lint
         run: make lint
   test:
-    fail-fast: false
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.7", "3.8", "3.9", "3.10", "pypy-3.7"]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "pypy-3.7", "pypy-3.8"]
     defaults:
       run:
         shell: bash
