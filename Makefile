@@ -20,17 +20,17 @@ install-poetry: .install-poetry
 
 .docs: .init
 	@echo "---- 📄 Installing doc dependencies ----"
-	poetry install --with docs
+	poetry install --only docs
 	touch .docs
 
 .test: .init
 	@echo "---- 🧪 Installing test dependencies ----"
-	poetry install --with test
+	poetry install --only test
 	touch .test
 
 .lint: .init
 	@echo "---- 👕 Installing lint dependencies ----"
-	poetry install --with lint
+	poetry install --only lint
 	git init .
 	poetry run pre-commit install --install-hooks
 	touch .lint

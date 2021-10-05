@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "di"
-version = "0.6.0"
+version = "0.6.1"
 description = "Autowiring dependency injection"
 authors = ["Adrian Garcia Badaracco <adrian@adriangb.com>"]
 readme = "README.md"
@@ -35,13 +35,14 @@ pre-commit = "~2"
 [tool.poetry.group.test.dependencies]
 pytest = "~6"
 pre-commit = "~2"
-pytest-cov = { version = "~2", extras = ["toml"] }
+pytest-cov = { version = "~2"}
 pytest-sugar = "~0"
 trio = "~0"
 textual = "0.1.12"
 httpx = "^0.19.0"
 requests = "^2.26.0"
 starlette = "^0.16.0"
+coverage = {extras = ["toml"], version = "^6.0"}
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "~1"
@@ -50,7 +51,7 @@ mkautodoc = "~0"
 mike = "~1"
 
 [build-system]
-requires = ["poetry-core>=1.0.6"]
+requires = ["poetry-core>=1.1.0a6"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.isort]
