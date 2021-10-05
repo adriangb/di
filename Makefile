@@ -15,7 +15,7 @@ install-poetry: .install-poetry
 .init: .install-poetry
 	@echo "---- 📦 Building package ----"
 	rm -rf .venv
-	poetry install --default --only lint
+	poetry install --default
 	touch .init
 
 .docs: .init
@@ -39,7 +39,7 @@ install-poetry: .install-poetry
 	rm -rf .init .docs .test .lint .mypy_cache .pytest_cache
 	poetry -V || rm -rf .install-poetry
 
-init: .clean .init
+init: .clean .init .lint
 	@echo ---- 🔧 Re-initialized project ----
 
 lint: .lint .test  # need the tests deps for linting of test fils to work
