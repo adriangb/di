@@ -288,7 +288,7 @@ async def test_concurrent_executions_do_not_share_results():
     overwrite the result of any sub-dependencies.
     """
     delays = {1: 0, 2: 0.01}
-    ctx = contextvars.ContextVar[int]("id")
+    ctx: contextvars.ContextVar[int] = contextvars.ContextVar("id")
 
     def get_id() -> int:
         return ctx.get()
