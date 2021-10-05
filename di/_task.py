@@ -3,10 +3,10 @@ from __future__ import annotations
 from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
 from typing import TYPE_CHECKING, Any, Dict, Generic, List, Tuple, cast
 
-from di._inspect import DependencyParameter, is_async_gen_callable, is_gen_callable
+from di._inspect import is_async_gen_callable, is_gen_callable
 from di._state import ContainerState
 from di.exceptions import IncompatibleDependencyError
-from di.types.dependencies import DependantProtocol
+from di.types.dependencies import DependantProtocol, DependencyParameter
 from di.types.providers import (
     AsyncGeneratorProvider,
     CallableProvider,

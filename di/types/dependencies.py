@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import inspect
 import sys
-from typing import Any, Dict, Optional
+from dataclasses import dataclass
+from typing import Any, Dict, Generic, Optional
 
 if sys.version_info < (3, 8):
     from typing_extensions import Protocol, runtime_checkable
 else:
     from typing import Protocol, runtime_checkable
 
-from di._inspect import DependencyParameter
 from di.types.providers import (
     DependencyProvider,
     DependencyProviderType,
@@ -69,3 +69,13 @@ class DependantProtocol(Protocol[DependencyType]):
         will be called with a Parameter corresponding to Something.
         """
         raise NotImplementedError
+
+
+# this could be a NamedTuple
+# but https://github.com/python/mypy/issues/685
+# we need the generic type
+# so we can use it for DependantProtocol and Task
+@dataclass
+class DependencyParameter(Generic[DependencyType]):
+    dependency: DependencyType
+    parameter: inspect.Parameter

@@ -4,9 +4,9 @@ import inspect
 from typing import Any, Dict, Optional, cast, overload
 
 from di._docstrings import join_docstring_from
-from di._inspect import DependencyParameter, get_parameters, infer_call_from_annotation
+from di._inspect import get_parameters, infer_call_from_annotation
 from di.exceptions import WiringError
-from di.types.dependencies import DependantProtocol
+from di.types.dependencies import DependantProtocol, DependencyParameter
 from di.types.providers import (
     AsyncGeneratorProvider,
     CallableProvider,

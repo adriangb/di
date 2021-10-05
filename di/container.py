@@ -16,11 +16,7 @@ from typing import (
     cast,
 )
 
-from di._inspect import (
-    DependencyParameter,
-    is_async_gen_callable,
-    is_coroutine_callable,
-)
+from di._inspect import is_async_gen_callable, is_coroutine_callable
 from di._local_scope_context import LocalScopeContext
 from di._state import ContainerState
 from di._task import AsyncTask, SyncTask, Task
@@ -33,7 +29,7 @@ from di.exceptions import (
 )
 from di.executors import DefaultExecutor
 from di.types import FusedContextManager
-from di.types.dependencies import DependantProtocol
+from di.types.dependencies import DependantProtocol, DependencyParameter
 from di.types.executor import AsyncExecutor, SyncExecutor
 from di.types.providers import (
     Dependency,

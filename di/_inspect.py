@@ -1,6 +1,5 @@
 import functools
 import inspect
-from dataclasses import dataclass
 from functools import lru_cache
 from typing import (
     Any,
@@ -9,7 +8,6 @@ from typing import (
     Coroutine,
     Dict,
     Generator,
-    Generic,
     Mapping,
     Optional,
     TypeVar,
@@ -33,16 +31,6 @@ DependencyProvider = Union[
 
 
 T = TypeVar("T")
-
-
-# this should be a NamedTuple
-# but https://github.com/python/mypy/issues/685
-# we need the generic type
-# so we can use it for DependantProtocol and Task
-@dataclass
-class DependencyParameter(Generic[T]):
-    dependency: T
-    parameter: inspect.Parameter
 
 
 @lru_cache(maxsize=4096)

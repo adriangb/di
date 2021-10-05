@@ -3,9 +3,8 @@ from __future__ import annotations
 import dataclasses
 from typing import Any, Dict, Generic, List, Union
 
-from di._inspect import DependencyParameter
 from di._task import AsyncTask, SyncTask
-from di.types.dependencies import DependantProtocol
+from di.types.dependencies import DependantProtocol, DependencyParameter
 from di.types.providers import Dependency, DependencyType
 
 
