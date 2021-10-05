@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, Dict, Optional, cast, overload
+from typing import Any, Dict, Optional, overload
 
 from di._docstrings import join_docstring_from
 from di._inspect import get_parameters, infer_call_from_annotation
@@ -22,19 +22,6 @@ _VARIABLE_PARAMETER_KINDS = (
     inspect.Parameter.VAR_POSITIONAL,
     inspect.Parameter.VAR_KEYWORD,
 )
-
-
-_expected_attributes = ("call", "scope", "share", "get_dependencies")
-
-
-def _is_dependant_protocol_instance(o: object) -> bool:
-    # run cheap attribute checks before running isinstance
-    # isinstance is expensive since it runs reflection on methods
-    # to check argument types, etc.
-    for attr in _expected_attributes:
-        if not hasattr(o, attr):
-            return False
-    return isinstance(o, DependantProtocol)
 
 
 class Dependant(DependantProtocol[DependencyType], object):
@@ -123,15 +110,14 @@ class Dependant(DependantProtocol[DependencyType], object):
         assert self.call is not None, "Cannot gather parameters without a bound call"
         return get_parameters(self.call)
 
-    @join_docstring_from(DependantProtocol[Any].infer_call_from_annotation)
-    def infer_call_from_annotation(
-        self, param: inspect.Parameter
-    ) -> DependencyProvider:
-        if param.annotation is param.empty:
-            raise WiringError(
-                "Cannot wire a parameter with no default and no type annotation"
-            )
-        return infer_call_from_annotation(param)
+    def register_parameter(self, param: inspect.Parameter) -> None:
+        if self.call is None:
+            call = infer_call_from_annotation(param)
+            if call is inspect.Parameter.empty:
+                raise WiringError(
+                    "Cannot wire a parameter with no default and no type annotation"
+                )
+            self.call = call
 
     def gather_dependencies(
         self,
@@ -150,25 +136,24 @@ class Dependant(DependantProtocol[DependencyType], object):
                 raise WiringError(
                     "Dependencies may not use variable positional or keyword arguments"
                 )
-            if _is_dependant_protocol_instance(param.default):
-                sub_dependant = cast(DependantProtocol[Any], param.default)
-                if sub_dependant.call is None:
-                    sub_dependant.call = sub_dependant.infer_call_from_annotation(param)
+            if isinstance(param.default, Dependant):
+                sub_dependant: DependantProtocol[Any] = param.default
             elif param.default is param.empty:
                 sub_dependant = self.create_sub_dependant(
-                    call=self.infer_call_from_annotation(param),
+                    call=None,
                     scope=self.scope,
                     share=self.share,
                 )
             else:
                 continue  # pragma: no cover
+            sub_dependant.register_parameter(param)
             res[param_name] = DependencyParameter(
                 dependency=sub_dependant, parameter=param
             )
         return res
 
     def create_sub_dependant(
-        self, call: DependencyProvider, scope: Scope, share: bool
+        self, call: Optional[DependencyProvider], scope: Scope, share: bool
     ) -> DependantProtocol[Any]:
         """Create a Dependant instance from a sub-dependency of this Dependency.
 

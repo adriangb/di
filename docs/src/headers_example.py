@@ -1,5 +1,5 @@
 import inspect
-from typing import Any, Callable, Mapping, Optional
+from typing import Any, Mapping, Optional
 
 from di import Container, Dependant, Depends
 
@@ -14,9 +14,7 @@ class HeaderDependant(Dependant[Any]):
         self.alias = alias
         super().__init__(call=None, scope=None, share=False)
 
-    def infer_call_from_annotation(
-        self, param: inspect.Parameter
-    ) -> Callable[[Request], Any]:
+    def register_parameter(self, param: inspect.Parameter) -> None:
         if self.alias is not None:
             name = self.alias
         else:
@@ -25,7 +23,7 @@ class HeaderDependant(Dependant[Any]):
         def get_header(request: Request = Depends()) -> str:
             return param.annotation(request.headers[name])
 
-        return get_header
+        self.call = get_header
 
 
 def Header(alias: Optional[str] = None) -> Any:

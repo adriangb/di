@@ -10,11 +10,7 @@ if sys.version_info < (3, 8):
 else:
     from typing import Protocol, runtime_checkable
 
-from di.types.providers import (
-    DependencyProvider,
-    DependencyProviderType,
-    DependencyType,
-)
+from di.types.providers import DependencyProviderType, DependencyType
 from di.types.scopes import Scope
 
 
@@ -58,15 +54,14 @@ class DependantProtocol(Protocol[DependencyType]):
         """
         raise NotImplementedError
 
-    def infer_call_from_annotation(
-        self, param: inspect.Parameter
-    ) -> DependencyProvider:
-        """Called when the dependency was not explicitly passed a callable.
+    def register_parameter(self, param: inspect.Parameter) -> None:
+        """Called by the parent so that us / this / the child can register
+        the parameter it is attached to.
 
-        It is important to note that param in this context refers to the parameter in this
-        Dependant's parent.
-        For example, in the case of `def func(thing: Something = Dependency())` this method
-        will be called with a Parameter corresponding to Something.
+        It is *required* that this method register a noe None `call` method,
+        if one is not already present.
+
+        This can also be used for recording type annotations or parameter names.
         """
         raise NotImplementedError
 
