@@ -337,7 +337,7 @@ async def test_concurrent_executions_share_cache(
     # otherwise they might not share the cache
 
     async def dep1() -> None:
-        await anyio.sleep(1e-3)
+        await anyio.sleep(5e-3)
 
     async def dep2() -> None:
         ...
