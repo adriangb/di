@@ -1,13 +1,17 @@
 import os
 import sys
 import tempfile
+from platform import python_implementation
 from unittest.mock import patch
 
 import anyio
 import pytest
 
 
-@pytest.mark.skipif(os.name == "nt", reason="win")
+@pytest.mark.skipif(os.name == "nt", reason="Textual doesn't support Windows")
+@pytest.mark.skipif(
+    python_implementation().lower() != "cpython", reason="Textual only runs on CPython"
+)
 @pytest.mark.anyio
 @pytest.mark.parametrize("anyio_backend", ["asyncio"])
 async def test_textual():
