@@ -424,17 +424,18 @@ i18n = ["babel (>=2.9.0)"]
 
 [[package]]
 name = "mkdocs-material"
-version = "7.3.1"
+version = "7.3.2"
 description = "A Material Design theme for MkDocs"
 category = "dev"
 optional = false
 python-versions = "*"
 
 [package.dependencies]
+jinja2 = ">=2.11.1"
 markdown = ">=3.2"
 mkdocs = ">=1.2.2"
 mkdocs-material-extensions = ">=1.0"
-Pygments = ">=2.4"
+pygments = ">=2.4"
 pymdown-extensions = ">=9.0"
 
 [[package]]
@@ -735,11 +736,11 @@ idna2008 = ["idna"]
 
 [[package]]
 name = "rich"
-version = "10.11.0"
+version = "10.12.0"
 description = "Render rich text, tables, progress bars, syntax highlighting, markdown and more to the terminal"
 category = "dev"
 optional = false
-python-versions = ">=3.6,<4.0"
+python-versions = ">=3.6.2,<4.0.0"
 
 [package.dependencies]
 colorama = ">=0.4.0,<0.5.0"
@@ -928,7 +929,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.0,<4"
-content-hash = "b80b904bdf26d216b9f1d3607deb63390d237e027ce4da4219da2fb28b0a200c"
+content-hash = "5ff77e340e3258c70002cb84b4c6fc051cbcd1a606a72fe84010a538da390275"
 
 [metadata.files]
 anyio = [
@@ -1195,8 +1196,8 @@ mkdocs = [
     {file = "mkdocs-1.2.2.tar.gz", hash = "sha256:a334f5bd98ec960638511366eb8c5abc9c99b9083a0ed2401d8791b112d6b078"},
 ]
 mkdocs-material = [
-    {file = "mkdocs-material-7.3.1.tar.gz", hash = "sha256:d1ab269da2025f22b8fba079d7eadc05cd97ac2a21d87b09d414e69915f247a7"},
-    {file = "mkdocs_material-7.3.1-py2.py3-none-any.whl", hash = "sha256:8d59c8ac241d59eef1a883c49ca685c8d8446eb054675a212fb748daff24099c"},
+    {file = "mkdocs-material-7.3.2.tar.gz", hash = "sha256:02aeb2f9d9826b5c5ba4e320b4008bdc89f7b30ca00ded72ee43385a1690eaa4"},
+    {file = "mkdocs_material-7.3.2-py2.py3-none-any.whl", hash = "sha256:a9b7c6432ebadd0e192e3b341b25bd41bd1c1b167061ea629a9887a1e4129176"},
 ]
 mkdocs-material-extensions = [
     {file = "mkdocs-material-extensions-1.0.3.tar.gz", hash = "sha256:bfd24dfdef7b41c312ede42648f9eb83476ea168ec163b613f9abd12bbfddba2"},
@@ -1389,8 +1390,8 @@ rfc3986 = [
     {file = "rfc3986-1.5.0.tar.gz", hash = "sha256:270aaf10d87d0d4e095063c65bf3ddbc6ee3d0b226328ce21e036f946e421835"},
 ]
 rich = [
-    {file = "rich-10.11.0-py3-none-any.whl", hash = "sha256:44bb3f9553d00b3c8938abf89828df870322b9ba43caf3b12bb7758debdc6dec"},
-    {file = "rich-10.11.0.tar.gz", hash = "sha256:016fa105f34b69c434e7f908bb5bd7fefa9616efdb218a2917117683a6394ce5"},
+    {file = "rich-10.12.0-py3-none-any.whl", hash = "sha256:c30d6808d1cd3defd56a7bd2d587d13e53b5f55de6cf587f035bcbb56bc3f37b"},
+    {file = "rich-10.12.0.tar.gz", hash = "sha256:83fb3eff778beec3c55201455c17cccde1ccdf66d5b4dade8ef28f56b50c4bd4"},
 ]
 six = [
     {file = "six-1.16.0-py2.py3-none-any.whl", hash = "sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254"},

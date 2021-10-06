@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "di"
-version = "0.7.3"
+version = "0.7.4"
 description = "Autowiring dependency injection"
 authors = ["Adrian Garcia Badaracco <adrian@adriangb.com>"]
 readme = "README.md"
@@ -34,7 +34,6 @@ pre-commit = "~2"
 
 [tool.poetry.group.test.dependencies]
 pytest = "~6"
-pre-commit = "~2"
 pytest-cov = { version = "~2"}
 pytest-sugar = "~0"
 trio = "~0"
