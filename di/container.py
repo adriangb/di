@@ -42,17 +42,18 @@ from di.types.solved import SolvedDependency
 
 
 class Container:
+    _context: ContextVar[ContainerState]
+    _executor: Union[AsyncExecutor, SyncExecutor]
+
     def __init__(
         self, executor: Optional[Union[AsyncExecutor, SyncExecutor]] = None
     ) -> None:
-        self._context = ContextVar[ContainerState]("context")
+        self._context = ContextVar("context")
         state = ContainerState()
         state.cached_values.add_scope("container")
         state.cached_values.set(Container, self, scope="container")
         self._context.set(state)
-        self._executor: Union[AsyncExecutor, SyncExecutor] = (
-            executor or DefaultExecutor()
-        )
+        self._executor = executor or DefaultExecutor()
 
     @property
     def _state(self) -> ContainerState:

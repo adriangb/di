@@ -288,7 +288,7 @@ async def test_concurrent_executions_do_not_share_results():
     overwrite the result of any sub-dependencies.
     """
     delays = {1: 0, 2: 0.01}
-    ctx = contextvars.ContextVar[int]("id")
+    ctx: contextvars.ContextVar[int] = contextvars.ContextVar("id")
 
     def get_id() -> int:
         return ctx.get()
@@ -337,7 +337,7 @@ async def test_concurrent_executions_share_cache(
     # otherwise they might not share the cache
 
     async def dep1() -> None:
-        await anyio.sleep(1e-3)
+        await anyio.sleep(5e-3)
 
     async def dep2() -> None:
         ...

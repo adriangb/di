@@ -10,7 +10,7 @@ from starlette.routing import Route
 
 from di import Container, Dependant
 
-_req = contextvars.ContextVar[Request]("req")
+_req: contextvars.ContextVar[Request] = contextvars.ContextVar("req")
 
 
 def get_request() -> Request:

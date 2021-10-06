@@ -17,7 +17,7 @@ class RequestLog(List[Request]):
     ...
 
 
-request_ctx = ContextVar[Request]("request_ctx")
+request_ctx: ContextVar[Request] = ContextVar("request_ctx")
 
 
 def get_request() -> Request:
