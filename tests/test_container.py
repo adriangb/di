@@ -11,3 +11,12 @@ def test_default_scope() -> None:
 
     res = container.execute_sync(container.solve(Dependant(dep, scope=1234)))
     assert res == 1
+
+
+def test_scopes_property() -> None:
+    container = Container()
+    assert container.scopes == []
+    with container.enter_global_scope("test"):
+        assert container.scopes == ["test"]
+        with container.enter_local_scope("another"):
+            assert container.scopes == ["test", "another"]

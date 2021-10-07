@@ -63,6 +63,10 @@ class Container:
     def _state(self) -> ContainerState:
         return self._context.get()
 
+    @property
+    def scopes(self) -> List[Scope]:
+        return self._state.scopes
+
     def enter_global_scope(self, scope: Scope) -> FusedContextManager[None]:
         """Enter a global scope that is share amongst threads and coroutines.
 

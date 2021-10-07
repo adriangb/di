@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "di"
-version = "0.8.0"
+version = "0.9.0"
 description = "Autowiring dependency injection"
 authors = ["Adrian Garcia Badaracco <adrian@adriangb.com>"]
 readme = "README.md"
