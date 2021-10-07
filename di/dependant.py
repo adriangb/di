@@ -75,7 +75,7 @@ class Dependant(DependantProtocol[DependencyType], object):
         self.share = share
 
     def __repr__(self) -> str:
-        share = "" if self.share is False else ", share=False"
+        share = "" if self.share is False else ", share=True"
         return f"{self.__class__.__name__}(call={self.call}, scope={self.scope}{share})"
 
     @join_docstring_from(DependantProtocol[Any].__hash__)

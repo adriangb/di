@@ -10,6 +10,7 @@ from typing import (
     Coroutine,
     Deque,
     Dict,
+    Iterable,
     List,
     Optional,
     Union,
@@ -111,13 +112,16 @@ class Container:
         return self._state.binds[provider]
 
     def solve(
-        self, dependency: DependantProtocol[DependencyType]
+        self,
+        dependency: DependantProtocol[DependencyType],
+        siblings: Optional[Iterable[DependantProtocol[Any]]] = None,
     ) -> SolvedDependency[DependencyType]:
         """Solve a dependency.
 
-        This is done automatically when calling `execute`, but you can store the returned value
-        from this function and call `execute_solved` instead if you know that your binds
-        will not be changing between calls.
+        Returns a SolvedDependency that can be executed to get the dependency's value.
+
+        The `siblings` paramter can be used to pass additional dependencies that should be executed
+        that aren't strictly needed to solve `dependency`.
         """
 
         if dependency.call in self._state.binds:
@@ -174,7 +178,18 @@ class Container:
                     if subdep not in dep_registry:
                         q.append(subdep)
 
-        topsorted_groups = topsort(dependency, dep_dag)
+        siblings = siblings or ()
+        for sibling in siblings:
+            solved = self.solve(sibling)
+            param_graph.update(solved.dag)
+            dep_dag.update(
+                {
+                    dep: [p.dependency for p in params.values()]
+                    for dep, params in solved.dag.items()
+                }
+            )
+
+        topsorted_groups = topsort(dep_dag)
         tasks = self._build_tasks(topsorted_groups, param_graph)
         return SolvedDependency(dependency=dependency, dag=param_graph, _tasks=tasks)  # type: ignore
 

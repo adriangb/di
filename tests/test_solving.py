@@ -131,3 +131,32 @@ def test_dependency_with_multiple_scopes():
             match = r"have the same lookup \(__hash__ and __eq__\) but have different scopes"
             with pytest.raises(DependencyRegistryError, match=match):
                 container.execute_sync(container.solve(Dependant(D)))
+
+
+def test_siblings() -> None:
+    class DepOne:
+        calls: int = 0
+
+        def __call__(self) -> int:
+            self.calls += 1
+            return 1
+
+    dep1 = DepOne()
+
+    class Sibling:
+        called = False
+
+        def __call__(self, one: int = Depends(dep1)) -> None:
+            assert one == 1
+            self.called = True
+
+    def dep2(one: int = Depends(dep1)) -> int:
+        return one + 1
+
+    container = Container()
+
+    siblings = [Sibling(), Sibling()]
+    solved = container.solve(Dependant(dep2), siblings=[Dependant(s) for s in siblings])
+    container.execute_sync(solved)
+    assert all(s.called for s in siblings)
+    assert dep1.calls == 1  # they all shared the dependency
