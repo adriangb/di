@@ -3,6 +3,7 @@ coverage:
     project:
       default:
         target: auto  # auto compares coverage to the previous base commit
+        threshold: 3%  # for diffs from removing code and such
 comment:
   layout: "diff, files"
   require_changes: true
