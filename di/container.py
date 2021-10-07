@@ -46,7 +46,10 @@ class Container:
     _executor: Union[AsyncExecutor, SyncExecutor]
 
     def __init__(
-        self, executor: Optional[Union[AsyncExecutor, SyncExecutor]] = None
+        self,
+        *,
+        default_scope: Scope = None,
+        executor: Optional[Union[AsyncExecutor, SyncExecutor]] = None,
     ) -> None:
         self._context = ContextVar("context")
         state = ContainerState()
@@ -54,6 +57,7 @@ class Container:
         state.cached_values.set(Container, self, scope="container")
         self._context.set(state)
         self._executor = executor or DefaultExecutor()
+        self._default_scope = default_scope
 
     @property
     def _state(self) -> ContainerState:
@@ -248,7 +252,7 @@ class Container:
         and then disable scope validation in subsequent runs with `validate_scope=False`.
         """
         results: Dict[Task[Any], Any] = {}
-        with self.enter_local_scope(None):
+        with self.enter_local_scope(self._default_scope):
             if validate_scopes:
                 self._validate_scopes(solved)
 
@@ -277,7 +281,7 @@ class Container:
         and then disable scope validation in subsequent runs with `validate_scope=False`.
         """
         results: Dict[Task[Any], Any] = {}
-        async with self.enter_local_scope(None):
+        async with self.enter_local_scope(self._default_scope):
             if validate_scopes:
                 self._validate_scopes(solved)
 
