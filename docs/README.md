@@ -10,7 +10,7 @@ Key features:
 - **Flexible**: with no fixed scopes, `di` can work within any framework, web or otherwise.
 - **Lifespans**: `di` manages lifespans for dependencies by binding them to scopes.
 - **Caching**: `di` caches values from dependencies to avoid duplicate computation.
-- **Scalability**: `di` executes dependencies in parallel.
+- **Scalability**: `di` executes dependencies in parallel and only needs to solve them once.
 - **Performant**: `di` moves sync dependencies into a threadpool to avoid blocking the event loop.
 
 ## Installation
