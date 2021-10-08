@@ -1,9 +1,8 @@
-from contextvars import ContextVar
 from typing import List, TypeVar
 
 import anyio
 
-from di import Container, Dependant
+from di import Container, Dependant, UnwiredDependant
 from di.types.solved import SolvedDependency
 
 T = TypeVar("T")
@@ -17,29 +16,18 @@ class RequestLog(List[Request]):
     ...
 
 
-request_ctx: ContextVar[Request] = ContextVar("request_ctx")
-
-
-def get_request() -> Request:
-    return request_ctx.get()
-
-
 async def execute_request(
     request: Request, container: Container, solved: SolvedDependency[T]
 ) -> T:
     async with container.enter_local_scope("request"):
-        token = request_ctx.set(request)
-        try:
-            return await container.execute_async(solved)
-        finally:
-            request_ctx.reset(token)
+        return await container.execute_async(solved, values={Request: request})
 
 
 async def framework() -> None:
     container = Container()
     request_log = RequestLog()
     container.bind(Dependant(lambda: request_log, scope="app"), RequestLog)
-    container.bind(Dependant(get_request, scope="request"), Request)
+    container.bind(UnwiredDependant(Request, scope="request"), Request)
     solved = container.solve(Dependant(controller, scope="request"))
     async with container.enter_global_scope("app"):
         # simulate concurrent requests

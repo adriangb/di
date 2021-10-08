@@ -1,20 +1,13 @@
 from __future__ import annotations
 
 import contextlib
-import contextvars
 from typing import Any, Callable
 
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.routing import Route
 
-from di import Container, Dependant
-
-_req: contextvars.ContextVar[Request] = contextvars.ContextVar("req")
-
-
-def get_request() -> Request:
-    return _req.get()
+from di import Container, Dependant, UnwiredDependant
 
 
 class WiredGetRoute(Route):
@@ -29,8 +22,9 @@ class WiredGetRoute(Route):
         solved_endpoint = container.solve(Dependant(endpoint))
 
         async def wrapped_endpoint(request: Request) -> Any:
-            _req.set(request)
-            return await container.execute_async(solved_endpoint)
+            return await container.execute_async(
+                solved_endpoint, values={Request: request}
+            )
 
         super().__init__(path=path, endpoint=wrapped_endpoint, methods=["GET"])  # type: ignore
 
@@ -38,7 +32,7 @@ class WiredGetRoute(Route):
 class App(Starlette):
     def __init__(self, container: Container | None = None, **kwargs: Any) -> None:
         self.container = container or Container()
-        self.container.bind(Dependant(get_request), Request)
+        self.container.bind(UnwiredDependant(Request), Request)
 
         @contextlib.asynccontextmanager
         async def lifespan(app: App):

@@ -19,7 +19,7 @@ from di.types.scopes import Scope
 def Depends(
     call: Optional[AsyncGeneratorProvider[DependencyType]] = None,
     *,
-    scope: Optional[Scope] = None,
+    scope: Scope = None,
     share: bool = True
 ) -> DependencyType:
     ...
@@ -29,7 +29,7 @@ def Depends(
 def Depends(
     call: Optional[CoroutineProvider[DependencyType]] = None,
     *,
-    scope: Optional[Scope] = None,
+    scope: Scope = None,
     share: bool = True
 ) -> DependencyType:
     ...
@@ -39,7 +39,7 @@ def Depends(
 def Depends(
     call: Optional[GeneratorProvider[DependencyType]] = None,
     *,
-    scope: Optional[Scope] = None,
+    scope: Scope = None,
     share: bool = True
 ) -> DependencyType:
     ...
@@ -49,7 +49,7 @@ def Depends(
 def Depends(
     call: Optional[CallableProvider[DependencyType]] = None,
     *,
-    scope: Optional[Scope] = None,
+    scope: Scope = None,
     share: bool = True
 ) -> DependencyType:
     ...
@@ -58,7 +58,7 @@ def Depends(
 def Depends(
     call: Optional[DependencyProviderType[DependencyType]] = None,
     *,
-    scope: Optional[Scope] = None,
+    scope: Scope = None,
     share: bool = True
 ) -> DependencyType:
     return Dependant(call=call, scope=scope, share=share)  # type: ignore

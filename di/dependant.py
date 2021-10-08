@@ -11,6 +11,7 @@ from di.types.providers import (
     AsyncGeneratorProvider,
     CallableProvider,
     CoroutineProvider,
+    Dependency,
     DependencyProvider,
     DependencyProviderType,
     DependencyType,
@@ -172,3 +173,12 @@ class Dependant(DependantProtocol[DependencyType], object):
         It is recommended to transfer `scope` and possibly `share` to sub-dependencies created in this manner.
         """
         return Dependant[Any](call=call, scope=scope, share=share)
+
+
+class UnwiredDependant(Dependant[Dependency]):
+    """A Dependant that does not autowire"""
+
+    def get_dependencies(
+        self,
+    ) -> Dict[str, DependencyParameter[DependantProtocol[Any]]]:
+        return {}

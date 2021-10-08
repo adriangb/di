@@ -31,7 +31,7 @@ from di.exceptions import (
 from di.executors import DefaultExecutor
 from di.types import FusedContextManager
 from di.types.dependencies import DependantProtocol, DependencyParameter
-from di.types.executor import AsyncExecutor, SyncExecutor
+from di.types.executor import AsyncExecutor, SyncExecutor, Values
 from di.types.providers import (
     Dependency,
     DependencyProvider,
@@ -271,7 +271,9 @@ class Container:
     def execute_sync(
         self,
         solved: SolvedDependency[DependencyType],
+        *,
         validate_scopes: bool = True,
+        values: Optional[Values] = None,
     ) -> DependencyType:
         """Execute an already solved dependency.
 
@@ -279,6 +281,7 @@ class Container:
         and then disable scope validation in subsequent runs with `validate_scope=False`.
         """
         results: Dict[Task[Any], Any] = {}
+        values = values or {}
         with self.enter_local_scope(self._default_scope):
             if validate_scopes:
                 self._validate_scopes(solved)
@@ -295,12 +298,14 @@ class Container:
                 [functools.partial(t.compute, self._state, results) for t in group]
                 for group in tasks
             ]
-            return executor.execute_sync(stateful_tasks, lambda: results[tasks[-1][0]])  # type: ignore
+            return executor.execute_sync(stateful_tasks, lambda: results[tasks[-1][0]], values)  # type: ignore
 
     async def execute_async(
         self,
         solved: SolvedDependency[DependencyType],
+        *,
         validate_scopes: bool = True,
+        values: Optional[Values] = None,
     ) -> DependencyType:
         """Execute an already solved dependency.
 
@@ -308,6 +313,7 @@ class Container:
         and then disable scope validation in subsequent runs with `validate_scope=False`.
         """
         results: Dict[Task[Any], Any] = {}
+        values = values or {}
         async with self.enter_local_scope(self._default_scope):
             if validate_scopes:
                 self._validate_scopes(solved)
@@ -326,4 +332,4 @@ class Container:
                 [functools.partial(t.compute, self._state, results) for t in group]
                 for group in tasks
             ]
-            return await executor.execute_async(stateful_tasks, lambda: results[tasks[-1][0]])  # type: ignore
+            return await executor.execute_async(stateful_tasks, lambda: results[tasks[-1][0]], values)  # type: ignore

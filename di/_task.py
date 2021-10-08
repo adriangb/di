@@ -7,6 +7,7 @@ from di._inspect import is_async_gen_callable, is_gen_callable
 from di._state import ContainerState
 from di.exceptions import IncompatibleDependencyError
 from di.types.dependencies import DependantProtocol, DependencyParameter
+from di.types.executor import Values
 from di.types.providers import (
     AsyncGeneratorProvider,
     CallableProvider,
@@ -44,13 +45,18 @@ class Task(Generic[DependencyType]):
 
 class AsyncTask(Task[DependencyType]):
     async def compute(
-        self, state: ContainerState, results: Dict[Task[Any], Any]
+        self,
+        state: ContainerState,
+        results: Dict[Task[Any], Any],
+        values: Values,
     ) -> None:
         assert self.dependant.call is not None
         call = self.dependant.call
         args, kwargs = self._gather_params(results)
 
-        if self.dependant.share and state.cached_values.contains(self.dependant.call):
+        if self.dependant.call in values:
+            results[self] = values[self.dependant.call]
+        elif self.dependant.share and state.cached_values.contains(self.dependant.call):
             # use cached value
             results[self] = state.cached_values.get(self.dependant.call)
         else:
@@ -78,12 +84,19 @@ class AsyncTask(Task[DependencyType]):
 
 
 class SyncTask(Task[DependencyType]):
-    def compute(self, state: ContainerState, results: Dict[Task[Any], Any]) -> None:
+    def compute(
+        self,
+        state: ContainerState,
+        results: Dict[Task[Any], Any],
+        values: Values,
+    ) -> None:
         assert self.dependant.call is not None
         call = self.dependant.call
         args, kwargs = self._gather_params(results)
 
-        if self.dependant.share and state.cached_values.contains(self.dependant.call):
+        if call in values:
+            results[self] = values[call]
+        elif self.dependant.share and state.cached_values.contains(self.dependant.call):
             # use cached value
             results[self] = state.cached_values.get(self.dependant.call)
         else:

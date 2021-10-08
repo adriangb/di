@@ -3,9 +3,10 @@ from typing import Awaitable, Callable, List
 import pytest
 
 from di.executors import DefaultExecutor
+from di.types.executor import Values
 
 
-async def task() -> None:
+async def task(values: Values) -> None:
     ...
 
 
@@ -16,4 +17,4 @@ async def test_async_dep_execute_sync(tasks: List[List[Callable[[], Awaitable[No
     with pytest.raises(
         TypeError, match="Cannot execute async dependencies in execute_sync"
     ):
-        exc.execute_sync(tasks, lambda: None)  # type: ignore
+        exc.execute_sync(tasks, lambda: None, {})  # type: ignore

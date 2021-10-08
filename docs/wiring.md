@@ -60,11 +60,7 @@ For example, `di` will let you "solve" a dependency into a DAG (directed acyclic
 You can then provide this solved dependency back to `di` and it will execute it _without any introspection or reflection_.
 This means that if you are not dynamically changing your dependency graph, you incurr basically no cost for autowiring.
 
-For example, here is a more advanced use case where the framework takes control of binding the request itself while still allowing the `di` to controll the rest of the dependencies.
-We achieve this by:
-
-1. Binding a static function to provide the current request instance.
-1. Using an external method (in this case, [convetxvars]) to inject this instance.
+For example, here is a more advanced use case where the framework solves the endpoint and then provides the `Request` as a value each time the endpoint is called.
 
 This means that `di` does *not* do any reflection for each request, nor does it have to do dependency resolution.
 Instead, only some basic checks on scopes are done and the dependencies are executed with almost no overhead.
@@ -72,6 +68,8 @@ Instead, only some basic checks on scopes are done and the dependencies are exec
 ```Python hl_lines="20-35 42"
 --8<-- "docs/src/solved_dependant.py"
 ```
+
+To disable scope checks (perhaps something reasonable to do in a web framework after 1 request is processed), you can pass the `validate_scopes=False` parameter to `execute_sync` or `execute_async`.
 
 [binds]: binds.md
 [convetxvars]: https://docs.python.org/3/library/contextvars.html

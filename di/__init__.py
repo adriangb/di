@@ -11,7 +11,7 @@ except importlib_metadata.PackageNotFoundError:  # type: ignore # for py 3.7
 
 
 from di.container import Container
-from di.dependant import Dependant
+from di.dependant import Dependant, UnwiredDependant
 from di.params import Depends
 
-__all__ = ("Container", "Dependant", "Depends")
+__all__ = ("Container", "Dependant", "Depends", "UnwiredDependant")
