@@ -12,7 +12,6 @@ from di.types.providers import (
     CallableProvider,
     CoroutineProvider,
     Dependency,
-    DependencyProvider,
     DependencyProviderType,
     DependencyType,
     GeneratorProvider,
@@ -113,12 +112,7 @@ class Dependant(DependantProtocol[DependencyType], object):
 
     def register_parameter(self, param: inspect.Parameter) -> None:
         if self.call is None:
-            call = infer_call_from_annotation(param)
-            if call is inspect.Parameter.empty:
-                raise WiringError(
-                    "Cannot wire a parameter with no default and no type annotation"
-                )
-            self.call = call
+            self.call = infer_call_from_annotation(param)
 
     def gather_dependencies(
         self,
@@ -140,11 +134,7 @@ class Dependant(DependantProtocol[DependencyType], object):
             if isinstance(param.default, Dependant):
                 sub_dependant: DependantProtocol[Any] = param.default
             elif param.default is param.empty:
-                sub_dependant = self.create_sub_dependant(
-                    call=None,
-                    scope=self.scope,
-                    share=self.share,
-                )
+                sub_dependant = self.create_sub_dependant(param)
             else:
                 continue  # pragma: no cover
             sub_dependant.register_parameter(param)
@@ -153,9 +143,7 @@ class Dependant(DependantProtocol[DependencyType], object):
             )
         return res
 
-    def create_sub_dependant(
-        self, call: Optional[DependencyProvider], scope: Scope, share: bool
-    ) -> DependantProtocol[Any]:
+    def create_sub_dependant(self, param: inspect.Parameter) -> DependantProtocol[Any]:
         """Create a Dependant instance from a sub-dependency of this Dependency.
 
         This is used in the scenario where a transient dependency is inferred from a type hint.
@@ -172,7 +160,11 @@ class Dependant(DependantProtocol[DependencyType], object):
 
         It is recommended to transfer `scope` and possibly `share` to sub-dependencies created in this manner.
         """
-        return Dependant[Any](call=call, scope=scope, share=share)
+        if param.annotation is inspect.Parameter.empty:
+            raise WiringError(
+                "Cannot wire a parameter with no default and no type annotation"
+            )
+        return Dependant[Any](call=param.annotation, scope=self.scope, share=self.share)
 
 
 class UnwiredDependant(Dependant[Dependency]):
