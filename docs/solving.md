@@ -41,7 +41,7 @@ To disable scope checks (perhaps something reasonable to do in a web framework a
 
 This can be used in conjunction with custom classes implementing the `DependantProtocol` to determine what headers or scopes an HTTP endpoint needs, amongst other uses:
 
-```Python hl_lines="25-30 36-41"
+```Python hl_lines="27-32 38-42"
 --8<-- "docs/src/gather_deps_example.py"
 ```
 
