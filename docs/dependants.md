@@ -2,7 +2,7 @@
 
 Most of these docs use `Depends` and `Dependency` as the main markers and containers for dependencies.
 But the container doesn't actually know about either of these two things!
-In fact, the container only knows about the `DependantProtocol`, which you can find in `di.dependency`.
+In fact, the container only knows about the `DependantProtocol`, which you can find in `di.types.dependencies`.
 `Dependency` is just a concrete implementation of the `DependantProtocol`, and `Depends` is in turn a wrapper function around `Dependency` for the sole purpose of overriding the types that type checkers see.
 
 You can easily build your own version of `Dependency` and `Depends`, either by inheriting from `Dependency` or by writing a `DependantProtocol` implementation from scratch.
