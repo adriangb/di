@@ -11,7 +11,6 @@ from di.types.providers import (
     AsyncGeneratorProvider,
     CallableProvider,
     CoroutineProvider,
-    Dependency,
     DependencyProviderType,
     DependencyType,
     GeneratorProvider,
@@ -31,6 +30,7 @@ class Dependant(DependantProtocol[DependencyType], object):
         call: Optional[AsyncGeneratorProvider[DependencyType]] = None,
         scope: Optional[Scope] = None,
         share: bool = True,
+        autowire: bool = True,
     ) -> None:
         ...
 
@@ -40,6 +40,7 @@ class Dependant(DependantProtocol[DependencyType], object):
         call: Optional[CoroutineProvider[DependencyType]] = None,
         scope: Optional[Scope] = None,
         share: bool = True,
+        autowire: bool = True,
     ) -> None:
         ...
 
@@ -49,6 +50,7 @@ class Dependant(DependantProtocol[DependencyType], object):
         call: Optional[GeneratorProvider[DependencyType]] = None,
         scope: Optional[Scope] = None,
         share: bool = True,
+        autowire: bool = True,
     ) -> None:
         ...
 
@@ -58,6 +60,7 @@ class Dependant(DependantProtocol[DependencyType], object):
         call: Optional[CallableProvider[DependencyType]] = None,
         scope: Optional[Scope] = None,
         share: bool = True,
+        autowire: bool = True,
     ) -> None:
         ...
 
@@ -66,6 +69,7 @@ class Dependant(DependantProtocol[DependencyType], object):
         call: Optional[DependencyProviderType[DependencyType]] = None,
         scope: Scope = None,
         share: bool = True,
+        autowire: bool = True,
     ) -> None:
         self.call = call
         self.scope = scope
@@ -73,6 +77,7 @@ class Dependant(DependantProtocol[DependencyType], object):
             Dict[str, DependencyParameter[DependantProtocol[Any]]]
         ] = None
         self.share = share
+        self.autowire = autowire
 
     def __repr__(self) -> str:
         share = "" if self.share is False else ", share=True"
@@ -133,7 +138,7 @@ class Dependant(DependantProtocol[DependencyType], object):
                 )
             if isinstance(param.default, Dependant):
                 sub_dependant: DependantProtocol[Any] = param.default
-            elif param.default is param.empty:
+            elif param.default is param.empty and self.autowire:
                 sub_dependant = self.create_sub_dependant(param)
             else:
                 continue  # pragma: no cover
@@ -164,13 +169,9 @@ class Dependant(DependantProtocol[DependencyType], object):
             raise WiringError(
                 "Cannot wire a parameter with no default and no type annotation"
             )
-        return Dependant[Any](call=param.annotation, scope=self.scope, share=self.share)
-
-
-class UnwiredDependant(Dependant[Dependency]):
-    """A Dependant that does not autowire"""
-
-    def get_dependencies(
-        self,
-    ) -> Dict[str, DependencyParameter[DependantProtocol[Any]]]:
-        return {}
+        return Dependant[Any](
+            call=param.annotation,
+            scope=self.scope,
+            share=self.share,
+            autowire=self.autowire,
+        )

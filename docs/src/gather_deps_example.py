@@ -1,7 +1,6 @@
 from typing import Any, FrozenSet, Iterable, List
 
 from di import Container, Dependant
-from di.dependant import UnwiredDependant
 from di.types.dependencies import DependantProtocol
 
 
@@ -36,9 +35,8 @@ def gather_scopes(deps: List[DependantProtocol[Any]]) -> List[str]:
 async def web_framework() -> None:
     container = Container()
 
-    # note: use UnwiredDependant so that the container doesn't try
-    # to wire the Request itself
-    with container.bind(UnwiredDependant(Request), Request):
+    # note: use autowire=False so that the container doesn't try to wire the Request itself
+    with container.bind(Dependant(Request, autowire=False), Request):
         scopes = gather_scopes(
             container.solve(Dependant(controller)).get_flat_subdependants()
         )

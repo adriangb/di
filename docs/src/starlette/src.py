@@ -7,7 +7,7 @@ from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.routing import Route
 
-from di import Container, Dependant, UnwiredDependant
+from di import Container, Dependant
 
 
 class WiredGetRoute(Route):
@@ -32,7 +32,7 @@ class WiredGetRoute(Route):
 class App(Starlette):
     def __init__(self, container: Container | None = None, **kwargs: Any) -> None:
         self.container = container or Container()
-        self.container.bind(UnwiredDependant(Request), Request)
+        self.container.bind(Dependant(Request, autowire=False), Request)
 
         @contextlib.asynccontextmanager
         async def lifespan(app: App):

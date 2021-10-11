@@ -2,7 +2,7 @@ from typing import List, TypeVar
 
 import anyio
 
-from di import Container, Dependant, UnwiredDependant
+from di import Container, Dependant
 from di.types.solved import SolvedDependency
 
 T = TypeVar("T")
@@ -27,7 +27,7 @@ async def framework() -> None:
     container = Container()
     request_log = RequestLog()
     container.bind(Dependant(lambda: request_log, scope="app"), RequestLog)
-    container.bind(UnwiredDependant(Request, scope="request"), Request)
+    container.bind(Dependant(Request, scope="request", autowire=False), Request)
     solved = container.solve(Dependant(controller, scope="request"))
     async with container.enter_global_scope("app"):
         # simulate concurrent requests
