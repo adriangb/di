@@ -54,6 +54,7 @@ jobs:
           env_vars: OS,PYTHON
           fail_ci_if_error: true
   docs:
+    concurrency: docs-branch
     name: 🚀 Deploy Docs 📄
     runs-on: ubuntu-latest
     needs: ["test", "lint"]
