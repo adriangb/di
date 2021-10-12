@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, Dict, Optional, overload
+from typing import Any, Dict, List, Optional, overload
 
 from di._docstrings import join_docstring_from
 from di._inspect import get_parameters, infer_call_from_annotation
@@ -74,7 +74,7 @@ class Dependant(DependantProtocol[DependencyType], object):
         self.call = call
         self.scope = scope
         self.dependencies: Optional[
-            Dict[str, DependencyParameter[DependantProtocol[Any]]]
+            List[DependencyParameter[DependantProtocol[Any]]]
         ] = None
         self.share = share
         self.autowire = autowire
@@ -99,7 +99,7 @@ class Dependant(DependantProtocol[DependencyType], object):
     @join_docstring_from(DependantProtocol[Any].get_dependencies)
     def get_dependencies(
         self,
-    ) -> Dict[str, DependencyParameter[DependantProtocol[Any]]]:
+    ) -> List[DependencyParameter[DependantProtocol[Any]]]:
         """For the Dependant implementation, this serves as a cache layer on
         top of gather_dependencies.
         """
@@ -121,7 +121,7 @@ class Dependant(DependantProtocol[DependencyType], object):
 
     def gather_dependencies(
         self,
-    ) -> Dict[str, DependencyParameter[DependantProtocol[Any]]]:
+    ) -> List[DependencyParameter[DependantProtocol[Any]]]:
         """Collect this dependencies sub dependencies.
 
         The returned dict corresponds to keyword arguments that will be passed
@@ -130,8 +130,8 @@ class Dependant(DependantProtocol[DependencyType], object):
         assert (
             self.call is not None
         ), "Container should have assigned call; this is a bug!"
-        res: Dict[str, DependencyParameter[DependantProtocol[Any]]] = {}
-        for param_name, param in self.gather_parameters().items():
+        res: List[DependencyParameter[DependantProtocol[Any]]] = []
+        for param in self.gather_parameters().values():
             if param.kind in _VARIABLE_PARAMETER_KINDS:
                 raise WiringError(
                     "Dependencies may not use variable positional or keyword arguments"
@@ -143,9 +143,7 @@ class Dependant(DependantProtocol[DependencyType], object):
             else:
                 continue  # pragma: no cover
             sub_dependant.register_parameter(param)
-            res[param_name] = DependencyParameter(
-                dependency=sub_dependant, parameter=param
-            )
+            res.append(DependencyParameter(dependency=sub_dependant, parameter=param))
         return res
 
     def create_sub_dependant(self, param: inspect.Parameter) -> DependantProtocol[Any]:

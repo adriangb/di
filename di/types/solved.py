@@ -19,9 +19,7 @@ class SolvedDependency(Generic[DependencyType]):
     """
 
     dependency: DependantProtocol[DependencyType]
-    dag: Dict[
-        DependantProtocol[Any], Dict[str, DependencyParameter[DependantProtocol[Any]]]
-    ]
+    dag: Dict[DependantProtocol[Any], List[DependencyParameter[DependantProtocol[Any]]]]
     _tasks: List[List[Union[AsyncTask[Dependency], SyncTask[Dependency]]]]
 
     def get_flat_subdependants(self) -> List[DependantProtocol[Any]]:

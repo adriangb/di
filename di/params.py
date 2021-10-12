@@ -20,7 +20,8 @@ def Depends(
     call: Optional[AsyncGeneratorProvider[DependencyType]] = None,
     *,
     scope: Scope = None,
-    share: bool = True
+    share: bool = True,
+    autowire: bool = True,
 ) -> DependencyType:
     ...
 
@@ -30,7 +31,8 @@ def Depends(
     call: Optional[CoroutineProvider[DependencyType]] = None,
     *,
     scope: Scope = None,
-    share: bool = True
+    share: bool = True,
+    autowire: bool = True,
 ) -> DependencyType:
     ...
 
@@ -40,7 +42,8 @@ def Depends(
     call: Optional[GeneratorProvider[DependencyType]] = None,
     *,
     scope: Scope = None,
-    share: bool = True
+    share: bool = True,
+    autowire: bool = True,
 ) -> DependencyType:
     ...
 
@@ -50,7 +53,8 @@ def Depends(
     call: Optional[CallableProvider[DependencyType]] = None,
     *,
     scope: Scope = None,
-    share: bool = True
+    share: bool = True,
+    autowire: bool = True,
 ) -> DependencyType:
     ...
 
@@ -59,6 +63,7 @@ def Depends(
     call: Optional[DependencyProviderType[DependencyType]] = None,
     *,
     scope: Scope = None,
-    share: bool = True
+    share: bool = True,
+    autowire: bool = True,
 ) -> DependencyType:
-    return Dependant(call=call, scope=scope, share=share)  # type: ignore
+    return Dependant(call=call, scope=scope, share=share, autowire=autowire)  # type: ignore

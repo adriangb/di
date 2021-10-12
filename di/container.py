@@ -32,12 +32,7 @@ from di.executors import DefaultExecutor
 from di.types import FusedContextManager
 from di.types.dependencies import DependantProtocol, DependencyParameter
 from di.types.executor import AsyncExecutor, SyncExecutor, Values
-from di.types.providers import (
-    Dependency,
-    DependencyProvider,
-    DependencyProviderType,
-    DependencyType,
-)
+from di.types.providers import Dependency, DependencyProviderType, DependencyType
 from di.types.scopes import Scope
 from di.types.solved import SolvedDependency
 
@@ -129,7 +124,7 @@ class Container:
 
         param_graph: Dict[
             DependantProtocol[Any],
-            Dict[str, DependencyParameter[DependantProtocol[Any]]],
+            List[DependencyParameter[DependantProtocol[Any]]],
         ] = {}
 
         dep_registry: Dict[DependantProtocol[Any], DependantProtocol[Any]] = {}
@@ -138,13 +133,13 @@ class Container:
 
         def get_params(
             dep: DependantProtocol[Any],
-        ) -> Dict[str, DependencyParameter[DependantProtocol[Any]]]:
+        ) -> List[DependencyParameter[DependantProtocol[Any]]]:
             params = dep.get_dependencies().copy()
-            for keyword, param in params.items():
+            for idx, param in enumerate(params):
                 assert param.dependency.call is not None
                 if param.dependency.call in self._state.binds:
-                    params[keyword] = DependencyParameter[Any](
-                        dependency=self._state.binds.get(param.dependency.call),
+                    params[idx] = DependencyParameter[Any](
+                        dependency=self._state.binds[param.dependency.call],
                         parameter=param.parameter,
                     )
             return params
@@ -172,7 +167,7 @@ class Container:
                 params = get_params(dep)
                 param_graph[dep] = params
                 dep_dag[dep] = []
-                for param in params.values():
+                for param in params:
                     subdep = param.dependency
                     dep_dag[dep].append(subdep)
                     if subdep not in dep_registry:
@@ -184,7 +179,7 @@ class Container:
             param_graph.update(solved.dag)
             dep_dag.update(
                 {
-                    dep: [p.dependency for p in params.values()]
+                    dep: [p.dependency for p in params]
                     for dep, params in solved.dag.items()
                 }
             )
@@ -201,16 +196,16 @@ class Container:
         ],
         dag: Dict[
             DependantProtocol[Any],
-            Dict[str, DependencyParameter[DependantProtocol[Any]]],
+            List[DependencyParameter[DependantProtocol[Any]]],
         ],
     ) -> Union[AsyncTask[DependencyType], SyncTask[DependencyType]]:
 
-        task_dependencies: Dict[str, DependencyParameter[Task[DependencyProvider]]] = {}
-
-        for param_name, param in dag[dependency].items():
-            task_dependencies[param_name] = DependencyParameter(
+        task_dependencies: List[DependencyParameter[Task[Any]]] = [
+            DependencyParameter(
                 dependency=tasks[param.dependency], parameter=param.parameter
             )
+            for param in dag[dependency]
+        ]
 
         if is_async_gen_callable(dependency.call) or is_coroutine_callable(
             dependency.call
@@ -224,7 +219,7 @@ class Container:
         topsort: List[List[DependantProtocol[Any]]],
         dag: Dict[
             DependantProtocol[Any],
-            Dict[str, DependencyParameter[DependantProtocol[Any]]],
+            List[DependencyParameter[DependantProtocol[Any]]],
         ],
     ) -> List[List[Union[AsyncTask[Dependency], SyncTask[Dependency]]]]:
         tasks: Dict[
@@ -263,7 +258,7 @@ class Container:
 
         for dep, params in solved.dag.items():
             check_scope(dep)
-            for param in params.values():
+            for param in params:
                 subdep = param.dependency
                 check_scope(subdep)
                 check_is_inner(dep, subdep)

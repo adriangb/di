@@ -19,13 +19,10 @@ from di.types.providers import (
 
 
 class Task(Generic[DependencyType]):
-    dependant: DependantProtocol[DependencyType]
-    dependencies: Dict[str, DependencyParameter[Task[Dependency]]]
-
     def __init__(
         self,
         dependant: DependantProtocol[DependencyType],
-        dependencies: Dict[str, DependencyParameter[Task[Dependency]]],
+        dependencies: List[DependencyParameter[Task[Dependency]]],
     ) -> None:
         self.dependant = dependant
         self.dependencies = dependencies
@@ -35,11 +32,12 @@ class Task(Generic[DependencyType]):
     ) -> Tuple[List[Dependency], Dict[str, Dependency]]:
         positional: List[Dependency] = []
         keyword: Dict[str, Dependency] = {}
-        for param_name, dep in self.dependencies.items():
-            if dep.parameter.kind is dep.parameter.kind.POSITIONAL_ONLY:
-                positional.append(results[dep.dependency])
-            else:
-                keyword[param_name] = results[dep.dependency]
+        for dep in self.dependencies:
+            if dep.parameter is not None:
+                if dep.parameter.kind is dep.parameter.kind.POSITIONAL_ONLY:
+                    positional.append(results[dep.dependency])
+                else:
+                    keyword[dep.parameter.name] = results[dep.dependency]
         return positional, keyword
 
     def use_value(

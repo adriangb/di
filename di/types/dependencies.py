@@ -3,7 +3,7 @@ from __future__ import annotations
 import inspect
 import sys
 from dataclasses import dataclass
-from typing import Any, Dict, Generic, Optional
+from typing import Any, Generic, List, Optional
 
 if sys.version_info < (3, 8):
     from typing_extensions import Protocol, runtime_checkable
@@ -24,7 +24,7 @@ class DependantProtocol(Protocol[DependencyType]):
     """
 
     call: Optional[DependencyProviderType[DependencyType]]
-    dependencies: Optional[Dict[str, DependencyParameter[DependantProtocol[Any]]]]
+    dependencies: Optional[List[DependencyParameter[DependantProtocol[Any]]]]
     scope: Scope
     share: bool
 
@@ -48,10 +48,8 @@ class DependantProtocol(Protocol[DependencyType]):
 
     def get_dependencies(
         self,
-    ) -> Dict[str, DependencyParameter[DependantProtocol[Any]]]:
-        """Collect all of the sub dependencies for this dependant into a mapping
-        of parameter name => parameter spec.
-        """
+    ) -> List[DependencyParameter[DependantProtocol[Any]]]:
+        """Collect all of the sub dependencies for this dependant"""
         raise NotImplementedError
 
     def register_parameter(self, param: inspect.Parameter) -> None:
@@ -73,4 +71,4 @@ class DependantProtocol(Protocol[DependencyType]):
 @dataclass
 class DependencyParameter(Generic[DependencyType]):
     dependency: DependencyType
-    parameter: inspect.Parameter
+    parameter: Optional[inspect.Parameter]

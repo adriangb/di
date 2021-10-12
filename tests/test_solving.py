@@ -1,5 +1,5 @@
 import sys
-from typing import Callable, Dict
+from typing import Any, Callable, Dict, List
 
 if sys.version_info < (3, 8):
     from typing_extensions import Literal
@@ -10,6 +10,7 @@ import pytest
 
 from di import Container, Dependant, Depends
 from di.exceptions import DependencyRegistryError, ScopeViolationError, WiringError
+from di.types.dependencies import DependantProtocol, DependencyParameter
 
 
 def test_no_annotations():
@@ -160,3 +161,40 @@ def test_siblings() -> None:
     container.execute_sync(solved)
     assert all(s.called for s in siblings)
     assert dep1.calls == 1  # they all shared the dependency
+
+
+def test_non_parameter_dependency():
+    """Dependencies can be declared as not call parameters but rather just computationally required"""
+
+    calls: List[bool] = []
+
+    class CustomDependant(Dependant[None]):
+        called: bool = False
+
+        def gather_dependencies(
+            self,
+        ) -> List[DependencyParameter[DependantProtocol[Any]]]:
+            return [
+                DependencyParameter(Dependant(call=lambda: calls.append(True)), None)
+            ]
+
+    container = Container()
+
+    dep = CustomDependant(lambda: None)
+    container.execute_sync(container.solve(dep))  # type: ignore
+    assert calls == [True]
+
+
+def test_no_autowire() -> None:
+    """Specifying autowire=False skips autowiring non explicit dependencies"""
+
+    class CannotBeAutoWired:
+        # cannot be autowired because of *args, **kwargs
+        def __init__(self, *args, **kwargs) -> None:
+            ...
+
+    def collect(thing: CannotBeAutoWired) -> None:
+        ...
+
+    container = Container()
+    container.solve(Dependant(collect, autowire=False))
