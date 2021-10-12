@@ -30,6 +30,7 @@ class Dependant(DependantProtocol[DependencyType], object):
         call: Optional[AsyncGeneratorProvider[DependencyType]] = None,
         scope: Optional[Scope] = None,
         share: bool = True,
+        wire: bool = True,
         autowire: bool = True,
     ) -> None:
         ...
@@ -40,6 +41,7 @@ class Dependant(DependantProtocol[DependencyType], object):
         call: Optional[CoroutineProvider[DependencyType]] = None,
         scope: Optional[Scope] = None,
         share: bool = True,
+        wire: bool = True,
         autowire: bool = True,
     ) -> None:
         ...
@@ -50,6 +52,7 @@ class Dependant(DependantProtocol[DependencyType], object):
         call: Optional[GeneratorProvider[DependencyType]] = None,
         scope: Optional[Scope] = None,
         share: bool = True,
+        wire: bool = True,
         autowire: bool = True,
     ) -> None:
         ...
@@ -60,6 +63,7 @@ class Dependant(DependantProtocol[DependencyType], object):
         call: Optional[CallableProvider[DependencyType]] = None,
         scope: Optional[Scope] = None,
         share: bool = True,
+        wire: bool = True,
         autowire: bool = True,
     ) -> None:
         ...
@@ -69,6 +73,7 @@ class Dependant(DependantProtocol[DependencyType], object):
         call: Optional[DependencyProviderType[DependencyType]] = None,
         scope: Scope = None,
         share: bool = True,
+        wire: bool = True,
         autowire: bool = True,
     ) -> None:
         self.call = call
@@ -78,6 +83,7 @@ class Dependant(DependantProtocol[DependencyType], object):
         ] = None
         self.share = share
         self.autowire = autowire
+        self.wire = wire
 
     def __repr__(self) -> str:
         share = "" if self.share is False else ", share=True"
@@ -127,6 +133,8 @@ class Dependant(DependantProtocol[DependencyType], object):
         The returned dict corresponds to keyword arguments that will be passed
         to this dependencies `call` after all sub-dependencies are themselves resolved.
         """
+        if self.wire is False:
+            return []
         assert (
             self.call is not None
         ), "Container should have assigned call; this is a bug!"

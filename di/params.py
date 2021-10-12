@@ -21,6 +21,7 @@ def Depends(
     *,
     scope: Scope = None,
     share: bool = True,
+    wire: bool = True,
     autowire: bool = True,
 ) -> DependencyType:
     ...
@@ -32,6 +33,7 @@ def Depends(
     *,
     scope: Scope = None,
     share: bool = True,
+    wire: bool = True,
     autowire: bool = True,
 ) -> DependencyType:
     ...
@@ -43,6 +45,7 @@ def Depends(
     *,
     scope: Scope = None,
     share: bool = True,
+    wire: bool = True,
     autowire: bool = True,
 ) -> DependencyType:
     ...
@@ -54,6 +57,7 @@ def Depends(
     *,
     scope: Scope = None,
     share: bool = True,
+    wire: bool = True,
     autowire: bool = True,
 ) -> DependencyType:
     ...
@@ -64,6 +68,7 @@ def Depends(
     *,
     scope: Scope = None,
     share: bool = True,
+    wire: bool = True,
     autowire: bool = True,
 ) -> DependencyType:
-    return Dependant(call=call, scope=scope, share=share, autowire=autowire)  # type: ignore
+    return Dependant(call=call, scope=scope, share=share, wire=wire, autowire=autowire)  # type: ignore

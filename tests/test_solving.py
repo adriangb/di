@@ -185,16 +185,24 @@ def test_non_parameter_dependency():
     assert calls == [True]
 
 
+class CannotBeWired:
+    # cannot be autowired because of *args, **kwargs
+    def __init__(self, *args, **kwargs) -> None:
+        ...
+
+
 def test_no_autowire() -> None:
-    """Specifying autowire=False skips autowiring non explicit dependencies"""
+    """Specifying autowire=False skips autowiring non explicit sub dependencies"""
 
-    class CannotBeAutoWired:
-        # cannot be autowired because of *args, **kwargs
-        def __init__(self, *args, **kwargs) -> None:
-            ...
-
-    def collect(thing: CannotBeAutoWired) -> None:
+    def collect(bad: CannotBeWired) -> None:
         ...
 
     container = Container()
     container.solve(Dependant(collect, autowire=False))
+
+
+def test_no_wire() -> None:
+    """Specifying wire=False skips wiring on the dependency itself"""
+
+    container = Container()
+    container.solve(Dependant(CannotBeWired, wire=False))
