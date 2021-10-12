@@ -83,5 +83,5 @@ class ConcurrentSyncExecutor(SyncExecutor):
         return get_result()
 
 
-class DefaultExecutor(ConcurrentAsyncExecutor, ConcurrentSyncExecutor):
+class DefaultExecutor(ConcurrentSyncExecutor, ConcurrentAsyncExecutor):
     ...
