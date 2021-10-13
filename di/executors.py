@@ -51,6 +51,7 @@ class ConcurrentAsyncExecutor(AsyncExecutor):
 
 class ConcurrentSyncExecutor(SyncExecutor):
     def __init__(self) -> None:
+        super().__init__()
         self._threadpool = concurrent.futures.ThreadPoolExecutor()
 
     def execute_sync(

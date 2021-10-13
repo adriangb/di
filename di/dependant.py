@@ -24,6 +24,9 @@ _VARIABLE_PARAMETER_KINDS = (
 
 
 class Dependant(DependantProtocol[DependencyType], object):
+    wire: bool
+    autowire: bool
+
     @overload
     def __init__(
         self,

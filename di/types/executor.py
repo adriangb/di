@@ -1,7 +1,7 @@
 import sys
-from typing import Awaitable, Callable, List, Mapping, TypeVar, Union
+from typing import Any, Awaitable, Callable, List, Mapping, TypeVar, Union
 
-from di.types.providers import Dependency, DependencyProvider
+from di.types.providers import DependencyProvider
 
 if sys.version_info < (3, 8):
     from typing_extensions import Protocol
@@ -9,6 +9,7 @@ else:
     from typing import Protocol
 
 ResultType = TypeVar("ResultType")
+Dependency = Any
 
 Values = Mapping[DependencyProvider, Dependency]
 
