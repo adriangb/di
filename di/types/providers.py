@@ -15,11 +15,9 @@ DependencyProviderType = Union[
 ]
 
 
-Dependency = Any
-
 DependencyProvider = Union[
-    AsyncGeneratorProvider[Dependency],
-    CoroutineProvider[Dependency],
-    GeneratorProvider[Dependency],
-    CallableProvider[Dependency],
+    AsyncGeneratorProvider[Any],
+    CoroutineProvider[Any],
+    GeneratorProvider[Any],
+    CallableProvider[Any],
 ]

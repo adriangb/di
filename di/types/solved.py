@@ -5,7 +5,9 @@ from typing import Any, Dict, Generic, List, Union
 
 from di._task import AsyncTask, SyncTask
 from di.types.dependencies import DependantProtocol, DependencyParameter
-from di.types.providers import Dependency, DependencyType
+from di.types.providers import DependencyType
+
+Dependency = Any
 
 
 @dataclasses.dataclass

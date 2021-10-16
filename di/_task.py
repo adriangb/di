@@ -12,7 +12,6 @@ from di.types.providers import (
     AsyncGeneratorProvider,
     CallableProvider,
     CoroutineProvider,
-    Dependency,
     DependencyType,
     GeneratorProvider,
 )
@@ -22,16 +21,16 @@ class Task(Generic[DependencyType]):
     def __init__(
         self,
         dependant: DependantProtocol[DependencyType],
-        dependencies: List[DependencyParameter[Task[Dependency]]],
+        dependencies: List[DependencyParameter[Task[Any]]],
     ) -> None:
         self.dependant = dependant
         self.dependencies = dependencies
 
     def _gather_params(
         self, results: Dict[Task[Any], Any]
-    ) -> Tuple[List[Dependency], Dict[str, Dependency]]:
-        positional: List[Dependency] = []
-        keyword: Dict[str, Dependency] = {}
+    ) -> Tuple[List[Any], Dict[str, Any]]:
+        positional: List[Any] = []
+        keyword: Dict[str, Any] = {}
         for dep in self.dependencies:
             if dep.parameter is not None:
                 if dep.parameter.kind is dep.parameter.kind.POSITIONAL_ONLY:

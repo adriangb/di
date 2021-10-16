@@ -32,9 +32,11 @@ from di.executors import DefaultExecutor
 from di.types import FusedContextManager
 from di.types.dependencies import DependantProtocol, DependencyParameter
 from di.types.executor import AsyncExecutor, SyncExecutor, Values
-from di.types.providers import Dependency, DependencyProviderType, DependencyType
+from di.types.providers import DependencyProviderType, DependencyType
 from di.types.scopes import Scope
 from di.types.solved import SolvedDependency
+
+Dependency = Any
 
 
 class Container:
@@ -96,7 +98,7 @@ class Container:
         The bind will be automatically cleared when that scope is exited.
         If no scope is provided, the current scope is used.
         """
-        return self._state.bind(provider=provider, dependency=dependency)
+        return self._state.bind(provider=provider, dependency=dependency)  # type: ignore
 
     def __contains__(self, o: object) -> bool:
         return o in self._state.binds
