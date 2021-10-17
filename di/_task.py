@@ -18,6 +18,8 @@ from di.types.providers import (
 
 
 class Task(Generic[DependencyType]):
+    __slots__ = ("dependant", "dependencies")
+
     def __init__(
         self,
         dependant: DependantProtocol[DependencyType],
@@ -54,6 +56,8 @@ class Task(Generic[DependencyType]):
 
 
 class AsyncTask(Task[DependencyType]):
+    __slots__ = ()
+
     async def compute(
         self,
         state: ContainerState,
@@ -89,6 +93,8 @@ class AsyncTask(Task[DependencyType]):
 
 
 class SyncTask(Task[DependencyType]):
+    __slots__ = ()
+
     def compute(
         self,
         state: ContainerState,

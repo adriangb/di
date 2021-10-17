@@ -23,7 +23,7 @@ _VARIABLE_PARAMETER_KINDS = (
 )
 
 
-class Dependant(DependantProtocol[DependencyType], object):
+class Dependant(DependantProtocol[DependencyType]):
     wire: bool
     autowire: bool
 

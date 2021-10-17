@@ -12,6 +12,7 @@ from di.types.scopes import Scope
 
 
 class LocalScopeContext(FusedContextManager[None]):
+    __slots__ = ("context", "scope", "token", "_sync_cm", "_async_cm")
     context: contextvars.ContextVar[ContainerState]
     scope: Scope
     token: contextvars.Token[ContainerState]

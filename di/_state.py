@@ -27,6 +27,7 @@ from di.types.scopes import Scope
 
 
 class ContainerState(object):
+    __slots__ = ("binds", "cached_values", "stacks")
     binds: Dict[DependencyProvider, DependantProtocol[Any]]
     cached_values: ScopeMap[DependencyProvider, Any]
     stacks: Dict[Scope, Union[AsyncExitStack, ExitStack]]
@@ -72,6 +73,8 @@ class ContainerState(object):
 
 
 class ScopeContext(FusedContextManager[None]):
+    __slots__ = ("state", "scope")
+
     def __init__(self, state: ContainerState, scope: Scope) -> None:
         self.state = state
         self.scope = scope
