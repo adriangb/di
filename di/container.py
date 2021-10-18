@@ -12,6 +12,7 @@ from typing import (
     Dict,
     Iterable,
     List,
+    Mapping,
     Optional,
     Union,
     cast,
@@ -31,12 +32,18 @@ from di.exceptions import (
 from di.executors import DefaultExecutor
 from di.types import FusedContextManager
 from di.types.dependencies import DependantProtocol, DependencyParameter
-from di.types.executor import AsyncExecutor, SyncExecutor, Values
-from di.types.providers import DependencyProviderType, DependencyType
+from di.types.executor import AsyncExecutor, SyncExecutor
+from di.types.providers import (
+    DependencyProvider,
+    DependencyProviderType,
+    DependencyType,
+)
 from di.types.scopes import Scope
 from di.types.solved import SolvedDependency
 
 Dependency = Any
+
+_BoundTaskGroup = List[Callable[[], Union[Coroutine[Any, Any, None], None]]]
 
 
 class Container:
@@ -270,7 +277,7 @@ class Container:
         solved: SolvedDependency[DependencyType],
         *,
         validate_scopes: bool = True,
-        values: Optional[Values] = None,
+        values: Optional[Mapping[DependencyProvider, Any]] = None,
     ) -> DependencyType:
         """Execute an already solved dependency.
 
@@ -291,18 +298,33 @@ class Container:
                 )
             executor = cast(SyncExecutor, self._executor)
 
-            stateful_tasks = [
-                [functools.partial(t.compute, self._state, results) for t in group]
-                for group in tasks
-            ]
-            return executor.execute_sync(stateful_tasks, lambda: results[tasks[-1][0]], values)  # type: ignore
+            bound_groups: List[_BoundTaskGroup] = []
+            for task_group in tasks:
+                group: _BoundTaskGroup = []
+                for task in task_group:
+                    assert task.dependant.call is not None
+                    if task.dependant.call in values:
+                        results[task] = values[task.dependant.call]
+                    elif task.dependant.share and self._state.cached_values.contains(
+                        task.dependant.call
+                    ):
+                        results[task] = self._state.cached_values.get(
+                            task.dependant.call
+                        )
+                    else:
+                        group.append(
+                            functools.partial(task.compute, self._state, results)
+                        )
+                if group:
+                    bound_groups.append(group)
+            return executor.execute_sync(bound_groups, lambda: results[tasks[-1][0]])  # type: ignore
 
     async def execute_async(
         self,
         solved: SolvedDependency[DependencyType],
         *,
         validate_scopes: bool = True,
-        values: Optional[Values] = None,
+        values: Optional[Mapping[DependencyProvider, Any]] = None,
     ) -> DependencyType:
         """Execute an already solved dependency.
 
@@ -323,10 +345,23 @@ class Container:
                 )
             executor = cast(AsyncExecutor, self._executor)
 
-            stateful_tasks: List[
-                List[Callable[[], Union[Coroutine[Any, Any, None], None]]]
-            ] = [
-                [functools.partial(t.compute, self._state, results) for t in group]
-                for group in tasks
-            ]
-            return await executor.execute_async(stateful_tasks, lambda: results[tasks[-1][0]], values)  # type: ignore
+            bound_groups: List[_BoundTaskGroup] = []
+            for task_group in tasks:
+                group: _BoundTaskGroup = []
+                for task in task_group:
+                    assert task.dependant.call is not None
+                    if task.dependant.call in values:
+                        results[task] = values[task.dependant.call]
+                    elif task.dependant.share and self._state.cached_values.contains(
+                        task.dependant.call
+                    ):
+                        results[task] = self._state.cached_values.get(
+                            task.dependant.call
+                        )
+                    else:
+                        group.append(
+                            functools.partial(task.compute, self._state, results)
+                        )
+                if group:
+                    bound_groups.append(group)
+            return await executor.execute_async(bound_groups, lambda: results[tasks[-1][0]])  # type: ignore

@@ -6,7 +6,7 @@ import anyio
 import anyio.abc
 
 from di._concurrency import curry_context, gurantee_awaitable
-from di.types.executor import AsyncExecutor, SyncExecutor, Task, Values
+from di.types.executor import AsyncExecutor, SyncExecutor, Task
 
 ResultType = typing.TypeVar("ResultType")
 
@@ -16,11 +16,10 @@ class SimpleSyncExecutor(SyncExecutor):
         self,
         tasks: typing.List[typing.List[Task]],
         get_result: typing.Callable[[], ResultType],
-        values: Values,
     ) -> ResultType:
         for task_group in tasks:
             for task in task_group:
-                result = task(values)
+                result = task()
                 if inspect.isawaitable(result):
                     raise TypeError("Cannot execute async dependencies in execute_sync")
         return get_result()
@@ -31,7 +30,6 @@ class ConcurrentAsyncExecutor(AsyncExecutor):
         self,
         tasks: typing.List[typing.List[Task]],
         get_result: typing.Callable[[], ResultType],
-        values: Values,
     ) -> ResultType:
         # note: there are 2 task group concepts in this function that should not be confused
         # to di, tasks groups are a set of Task's that can be executed in parallel
@@ -43,9 +41,9 @@ class ConcurrentAsyncExecutor(AsyncExecutor):
                     tg = anyio.create_task_group()
                 async with tg:
                     for task in task_group:
-                        tg.start_soon(gurantee_awaitable(task), values)  # type: ignore
+                        tg.start_soon(gurantee_awaitable(task))  # type: ignore
             else:
-                await gurantee_awaitable(next(iter(task_group)))(values)
+                await gurantee_awaitable(next(iter(task_group)))()
         return get_result()
 
 
@@ -57,7 +55,6 @@ class ConcurrentSyncExecutor(SyncExecutor):
         self,
         tasks: typing.List[typing.List[Task]],
         get_result: typing.Callable[[], ResultType],
-        values: Values,
     ) -> ResultType:
         for task_group in tasks:
             if len(task_group) > 1:
@@ -67,7 +64,7 @@ class ConcurrentSyncExecutor(SyncExecutor):
                     ]
                 ] = []
                 for task in task_group:
-                    futures.append(self._threadpool.submit(curry_context(task), values))
+                    futures.append(self._threadpool.submit(curry_context(task)))
                 for future in concurrent.futures.as_completed(futures):
                     exc = future.exception()
                     if exc is not None:
@@ -77,7 +74,7 @@ class ConcurrentSyncExecutor(SyncExecutor):
                             "Cannot execute async dependencies in execute_sync"
                         )
             else:
-                v = task_group[0](values)
+                v = task_group[0]()
                 if inspect.isawaitable(v):
                     raise TypeError("Cannot execute async dependencies in execute_sync")
         return get_result()

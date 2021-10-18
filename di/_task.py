@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import typing
 from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
 from typing import TYPE_CHECKING, Any, Dict, Generic, List, Tuple, cast
 
@@ -7,7 +8,6 @@ from di._inspect import is_async_gen_callable, is_gen_callable
 from di._state import ContainerState
 from di.exceptions import IncompatibleDependencyError
 from di.types.dependencies import DependantProtocol, DependencyParameter
-from di.types.executor import Values
 from di.types.providers import (
     AsyncGeneratorProvider,
     CallableProvider,
@@ -15,6 +15,10 @@ from di.types.providers import (
     DependencyType,
     GeneratorProvider,
 )
+
+
+class Value(typing.NamedTuple):
+    value: Any
 
 
 class Task(Generic[DependencyType]):
@@ -41,19 +45,6 @@ class Task(Generic[DependencyType]):
                     keyword[dep.parameter.name] = results[dep.dependency]
         return positional, keyword
 
-    def use_value(
-        self, state: ContainerState, results: Dict[Task[Any], Any], values: Values
-    ) -> bool:
-        assert self.dependant.call is not None
-        if self.dependant.call in values:
-            results[self] = values[self.dependant.call]
-            return True
-        if self.dependant.share and state.cached_values.contains(self.dependant.call):
-            # use cached value
-            results[self] = state.cached_values.get(self.dependant.call)
-            return True
-        return False
-
 
 class AsyncTask(Task[DependencyType]):
     __slots__ = ()
@@ -62,14 +53,12 @@ class AsyncTask(Task[DependencyType]):
         self,
         state: ContainerState,
         results: Dict[Task[Any], Any],
-        values: Values,
     ) -> None:
-        if self.use_value(state, results, values):
-            return  # pragma: no cover
+        args, kwargs = self._gather_params(results)
+
         assert self.dependant.call is not None
         call = self.dependant.call
-        args, kwargs = self._gather_params(results)
-        if is_async_gen_callable(self.dependant.call):
+        if is_async_gen_callable(call):
             stack = state.stacks[self.dependant.scope]
             if not isinstance(stack, AsyncExitStack):
                 raise IncompatibleDependencyError(
@@ -99,13 +88,12 @@ class SyncTask(Task[DependencyType]):
         self,
         state: ContainerState,
         results: Dict[Task[Any], Any],
-        values: Values,
     ) -> None:
-        if self.use_value(state, results, values):
-            return
+
+        args, kwargs = self._gather_params(results)
+
         assert self.dependant.call is not None
         call = self.dependant.call
-        args, kwargs = self._gather_params(results)
         if is_gen_callable(self.dependant.call):
             if TYPE_CHECKING:
                 call = cast(GeneratorProvider[DependencyType], call)

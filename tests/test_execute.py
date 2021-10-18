@@ -332,24 +332,10 @@ async def test_concurrent_executions_share_cache(
     def get_obj() -> object:
         return object()
 
-    # use dependencies as delyas to ensure that
-    # collect2 and collect1 do not execute at the exact same time
-    # otherwise they might not share the cache
-
-    async def dep1() -> None:
-        await anyio.sleep(5e-3)
-
-    async def dep2() -> None:
-        ...
-
-    async def collect1(
-        one: None = Depends(dep1), obj: object = Depends(get_obj, scope=scope)
-    ) -> None:
+    async def collect1(obj: object = Depends(get_obj, scope=scope)) -> None:
         objects.append(obj)
 
-    async def collect2(
-        two: None = Depends(dep2), obj: object = Depends(get_obj, scope=scope)
-    ) -> None:
+    async def collect2(obj: object = Depends(get_obj, scope=scope)) -> None:
         objects.append(obj)
 
     container = Container()
@@ -359,6 +345,7 @@ async def test_concurrent_executions_share_cache(
     async with container.enter_global_scope("global"):
         async with anyio.create_task_group() as tg:
             tg.start_soon(functools.partial(container.execute_async, solved1))  # type: ignore
+            await anyio.sleep(0.05)
             tg.start_soon(functools.partial(container.execute_async, solved2))  # type: ignore
 
     assert (objects[0] is objects[1]) is shared

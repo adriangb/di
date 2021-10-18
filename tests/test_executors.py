@@ -4,10 +4,10 @@ from typing import Awaitable, Callable, List
 import pytest
 
 from di.executors import ConcurrentSyncExecutor, DefaultExecutor, SimpleSyncExecutor
-from di.types.executor import SyncExecutor, Values
+from di.types.executor import SyncExecutor
 
 
-async def task(values: Values) -> None:
+async def task() -> None:
     ...
 
 
@@ -22,18 +22,18 @@ def test_executing_async_dependencies_in_sync_executor(
     with pytest.raises(
         TypeError, match="Cannot execute async dependencies in execute_sync"
     ):
-        exc.execute_sync(tasks, lambda: None, {})  # type: ignore
+        exc.execute_sync(tasks, lambda: None)  # type: ignore
 
 
 def test_simple_sync_executor():
     class Dep:
         called = False
 
-        def __call__(self, values: Values) -> None:
+        def __call__(self) -> None:
             self.called = True
 
     tasks = [[Dep()], [Dep(), Dep()]]
 
     exc = SimpleSyncExecutor()
 
-    exc.execute_sync(tasks, lambda: None, {})
+    exc.execute_sync(tasks, lambda: None)  # type: ignore
