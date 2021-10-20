@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, Dict, List, Optional, overload
+from typing import Any, Dict, Iterable, List, Optional, overload
 
 from di._docstrings import join_docstring_from
 from di._inspect import get_parameters, infer_call_from_annotation
@@ -31,6 +31,7 @@ class Dependant(DependantProtocol[DependencyType]):
     def __init__(
         self,
         call: Optional[AsyncGeneratorProvider[DependencyType]] = None,
+        *,
         scope: Optional[Scope] = None,
         share: bool = True,
         wire: bool = True,
@@ -42,6 +43,7 @@ class Dependant(DependantProtocol[DependencyType]):
     def __init__(
         self,
         call: Optional[CoroutineProvider[DependencyType]] = None,
+        *,
         scope: Optional[Scope] = None,
         share: bool = True,
         wire: bool = True,
@@ -53,6 +55,7 @@ class Dependant(DependantProtocol[DependencyType]):
     def __init__(
         self,
         call: Optional[GeneratorProvider[DependencyType]] = None,
+        *,
         scope: Optional[Scope] = None,
         share: bool = True,
         wire: bool = True,
@@ -64,6 +67,7 @@ class Dependant(DependantProtocol[DependencyType]):
     def __init__(
         self,
         call: Optional[CallableProvider[DependencyType]] = None,
+        *,
         scope: Optional[Scope] = None,
         share: bool = True,
         wire: bool = True,
@@ -74,6 +78,7 @@ class Dependant(DependantProtocol[DependencyType]):
     def __init__(
         self,
         call: Optional[DependencyProviderType[DependencyType]] = None,
+        *,
         scope: Scope = None,
         share: bool = True,
         wire: bool = True,
@@ -112,7 +117,7 @@ class Dependant(DependantProtocol[DependencyType]):
         """For the Dependant implementation, this serves as a cache layer on
         top of gather_dependencies.
         """
-        if self.dependencies is None:  # type: ignore
+        if self.dependencies is None:
             self.dependencies = self.gather_dependencies()
         return self.dependencies
 
@@ -184,3 +189,30 @@ class Dependant(DependantProtocol[DependencyType]):
             share=self.share,
             autowire=self.autowire,
         )
+
+
+class JoinedDependant(Dependant[DependencyType]):
+    def __init__(
+        self,
+        dependant: DependantProtocol[DependencyType],
+        *,
+        siblings: Iterable[DependantProtocol[Any]],
+        scope: Scope = None,
+        share: bool = True,
+        autowire: bool = True,
+    ) -> None:
+        self.call = dependant.call
+        self.dependant = dependant
+        self.siblings = siblings
+        self.scope = scope
+        self.dependencies: Optional[
+            List[DependencyParameter[DependantProtocol[Any]]]
+        ] = None
+        self.share = share
+        self.autowire = autowire
+
+    def gather_dependencies(self) -> List[DependencyParameter[DependantProtocol[Any]]]:
+        return [
+            *self.dependant.get_dependencies(),
+            *(DependencyParameter(dep, None) for dep in self.siblings),
+        ]

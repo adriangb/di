@@ -317,8 +317,8 @@ async def test_concurrent_executions_do_not_share_results():
 
     async with anyio.create_task_group() as tg:
         async with container.enter_global_scope("app"):
-            tg.start_soon(functools.partial(execute_in_ctx, 1))  # type: ignore
-            tg.start_soon(functools.partial(execute_in_ctx, 2))  # type: ignore
+            tg.start_soon(functools.partial(execute_in_ctx, 1))
+            tg.start_soon(functools.partial(execute_in_ctx, 2))
 
 
 @pytest.mark.anyio
@@ -344,9 +344,9 @@ async def test_concurrent_executions_share_cache(
 
     async with container.enter_global_scope("global"):
         async with anyio.create_task_group() as tg:
-            tg.start_soon(functools.partial(container.execute_async, solved1))  # type: ignore
+            tg.start_soon(functools.partial(container.execute_async, solved1))
             await anyio.sleep(0.05)
-            tg.start_soon(functools.partial(container.execute_async, solved2))  # type: ignore
+            tg.start_soon(functools.partial(container.execute_async, solved2))
 
     assert (objects[0] is objects[1]) is shared
 

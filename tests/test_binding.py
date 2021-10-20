@@ -73,7 +73,7 @@ async def test_concurrent_binds():
             container.bind(Dependant(lambda: -20), inject2)
             async with anyio.create_task_group() as tg:
                 for i in range(10):
-                    tg.start_soon(run_endpoint2, (-10, -20, i), container)  # type: ignore
+                    tg.start_soon(run_endpoint2, (-10, -20, i), container)
 
 
 def raises_exception() -> None:

@@ -63,12 +63,12 @@ def is_gen_callable(call: Any) -> bool:
 def get_annotations(call: DependencyProvider) -> Dict[str, Any]:
     types_from: DependencyProvider
     if inspect.isclass(call):
-        types_from = call.__init__  # type: ignore
+        types_from = call.__init__  # type: ignore[misc] # accessing __init__ directly
     elif not (inspect.isfunction(call) or inspect.ismethod(call)) and hasattr(
         call, "__call__"
     ):
         # callable class
-        types_from = call.__call__  # type: ignore
+        types_from = call.__call__  # type: ignore[misc,operator] # accessing __init__ directly
     else:
         # method
         types_from = call
@@ -81,7 +81,7 @@ def get_parameters(call: DependencyProvider) -> Dict[str, inspect.Parameter]:
     if inspect.isclass(call) and call.__new__ is not object.__new__:
         # classes overriding __new__, including some generic metaclasses, result in __new__ getting read
         # instead of __init__
-        params = inspect.signature(call.__init__).parameters  # type: ignore
+        params = inspect.signature(call.__init__).parameters  # type: ignore[misc] # accessing __init__ directly
         params = dict(params)
         params.pop(next(iter(params.keys())))  # first parameter to __init__ is self
     else:

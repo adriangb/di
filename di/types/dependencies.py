@@ -3,15 +3,17 @@ from __future__ import annotations
 import inspect
 import sys
 from dataclasses import dataclass
-from typing import Any, Generic, List, Optional
+from typing import Any, Generic, List, Optional, TypeVar
 
 if sys.version_info < (3, 8):
     from typing_extensions import Protocol, runtime_checkable
 else:
     from typing import Protocol, runtime_checkable
 
-from di.types.providers import DependencyProviderType, DependencyType
+from di.types.providers import DependencyProviderType
 from di.types.scopes import Scope
+
+DependencyType = TypeVar("DependencyType")
 
 
 @runtime_checkable
