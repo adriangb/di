@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 import functools
-from collections import deque
+from collections import defaultdict, deque
 from contextvars import ContextVar
 from typing import (
     Any,
     ContextManager,
+    DefaultDict,
     Deque,
     Dict,
     List,
     Mapping,
     Optional,
-    Set,
     Tuple,
     Union,
     cast,
@@ -21,7 +21,7 @@ from di._inspect import is_async_gen_callable, is_coroutine_callable
 from di._local_scope_context import LocalScopeContext
 from di._state import ContainerState
 from di._task import AsyncTask, SyncTask, Task
-from di._topsort import gather_dependants, topsort
+from di._topsort import topsort
 from di.exceptions import (
     DependencyRegistryError,
     DuplicateScopeError,
@@ -178,13 +178,18 @@ class Container:
                     dep_dag[dep].append(subdep)
                     if subdep not in dep_registry:
                         q.append(subdep)
-        dependant_dag = gather_dependants(dep_dag)
         tasks = self._build_tasks(param_graph, topsort(dep_dag))
+        dependency_dag = {dep: set(subdeps) for dep, subdeps in dep_dag.items()}
+        # we store several things:
+        # - the dependency itself
+        # - dag, which includes parameter information and is public
+        # - _dependency_dag: same as dag but without param info and w/o repeated params (so a set instead of a list)
+        # - _tasks: a mapping of dependency to tasks
         return SolvedDependency(
             dependency=dependency,
             dag=param_graph,
+            _dependency_dag=dependency_dag,
             _tasks=tasks,
-            _dependant_dag=dependant_dag,
         )
 
     def _build_tasks(
@@ -276,7 +281,10 @@ class Container:
         unvisited = deque([solved.dependency])
         # Make DAG values a set to account for dependencies that depend on the the same
         # sub dependency in more than one param (`def func(a: A, a_again: A)`)
-        dag: Dict[DependantProtocol[Any], Set[DependantProtocol[Any]]] = {}
+        dag: Dict[DependantProtocol[Any], List[DependantProtocol[Any]]] = {}
+        dependant_dag: DefaultDict[
+            DependantProtocol[Any], List[Task[Any]]
+        ] = defaultdict(list)
         while unvisited:
             dep = unvisited.pop()
             if dep in dag:
@@ -286,17 +294,16 @@ class Container:
             # we don't need to compute it or any of it's dependencies
             if not task.from_cache_or_values(self._state, results, values):
                 # otherwise, we add it to our DAG and visit it's children
-                dag[dep] = set()
-                for subdep in (param.dependency for param in solved.dag[dep]):
+                dag[dep] = []
+                for subdep in solved._dependency_dag[dep]:
                     if not tasks[subdep].from_cache_or_values(
                         self._state, results, values
                     ):
-                        dag[dep].add(subdep)
-                        unvisited.append(subdep)
+                        dependant_dag[subdep].append(tasks[dep])
+                        dag[dep].append(subdep)
+                        if subdep not in dag:
+                            unvisited.append(subdep)
 
-        dependant_dag = {
-            dep: [tasks[subdep] for subdep in solved._dependant_dag[dep]] for dep in dag
-        }
         dependency_counts = {dep: len(subdeps) for dep, subdeps in dag.items()}
 
         leafs: List[ExecutorTask] = []

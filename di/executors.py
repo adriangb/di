@@ -7,13 +7,14 @@ import anyio
 import anyio.abc
 
 from di._concurrency import curry_context, gurantee_awaitable
+from di._inspect import is_coroutine_callable
 from di.types.executor import AsyncExecutor, SyncExecutor, Task
 
 
 def _check_not_coro(
     task: typing.Optional[Task],
 ) -> typing.Callable[[], typing.Iterable[typing.Optional[Task]]]:
-    if inspect.iscoroutinefunction(task):
+    if task is not None and is_coroutine_callable(task):
         raise TypeError("Cannot execute async dependencies in execute_sync")
     return task  # type: ignore[return-value]
 
@@ -42,7 +43,7 @@ class SimpleAsyncExecutor(AsyncExecutor):
             if task is None:
                 return
             maybe_coro = task()
-            if inspect.iscoroutine(maybe_coro):
+            if inspect.isawaitable(maybe_coro):
                 newtasks = await typing.cast(_AsyncTaskRetval, maybe_coro)
             else:
                 newtasks = typing.cast(_SyncTaskRetval, maybe_coro)

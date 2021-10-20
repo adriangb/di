@@ -1,6 +1,6 @@
 import functools
 import inspect
-from functools import lru_cache
+from functools import lru_cache, wraps
 from typing import (
     Any,
     AsyncGenerator,
@@ -33,33 +33,48 @@ DependencyProvider = Union[
 T = TypeVar("T")
 
 
-@lru_cache(maxsize=4096)
+def cached_accept_callable_class(
+    maxsize: int,
+) -> Callable[[Callable[..., T]], Callable[..., T]]:
+    def wrapper(func: Callable[..., T]) -> Callable[..., T]:
+        func = lru_cache(maxsize=maxsize)(func)
+
+        @wraps(func)
+        def inner(call: Any):
+            if not callable(call):
+                return False
+            if inspect.isclass(call):
+                return False
+            if isinstance(call, functools.partial):
+                call = call.func
+            if func(call):
+                return True
+            _call = getattr(call, "__call__", None)
+            if _call is None:
+                return False
+            return func(_call)
+
+        return inner  # type: ignore[return-value]
+
+    return wrapper
+
+
+@cached_accept_callable_class(maxsize=2048)
 def is_coroutine_callable(call: DependencyProvider) -> bool:
-    if isinstance(call, functools.partial):
-        call = call.func
-    if inspect.isroutine(call):
-        return inspect.iscoroutinefunction(call)
-    if inspect.isclass(call):
-        return False
-    return inspect.iscoroutinefunction(getattr(call, "__call__", None))
+    return inspect.iscoroutinefunction(call)
 
 
-@lru_cache(maxsize=4096)
+@cached_accept_callable_class(maxsize=2048)
 def is_async_gen_callable(call: DependencyProvider) -> bool:
-    if inspect.isasyncgenfunction(call):
-        return True
-    return inspect.isasyncgenfunction(getattr(call, "__call__", None))
+    return inspect.isasyncgenfunction(call)
 
 
-@lru_cache(maxsize=4096)
+@cached_accept_callable_class(maxsize=2048)
 def is_gen_callable(call: Any) -> bool:
-    if inspect.isgeneratorfunction(call):
-        return True
-    call = getattr(call, "__call__", None)
     return inspect.isgeneratorfunction(call)
 
 
-@lru_cache(maxsize=1024)
+@lru_cache(maxsize=2048)
 def get_annotations(call: DependencyProvider) -> Dict[str, Any]:
     types_from: DependencyProvider
     if inspect.isclass(call):
@@ -75,7 +90,7 @@ def get_annotations(call: DependencyProvider) -> Dict[str, Any]:
     return get_type_hints(types_from)
 
 
-@lru_cache(maxsize=1024)
+@lru_cache(maxsize=2048)
 def get_parameters(call: DependencyProvider) -> Dict[str, inspect.Parameter]:
     params: Mapping[str, inspect.Parameter]
     if inspect.isclass(call) and call.__new__ is not object.__new__:
@@ -99,7 +114,6 @@ def get_parameters(call: DependencyProvider) -> Dict[str, inspect.Parameter]:
     return processed_params
 
 
-@lru_cache(maxsize=1024)
 def infer_call_from_annotation(parameter: inspect.Parameter) -> DependencyProvider:
     if not callable(parameter.annotation):
         raise WiringError(

@@ -12,20 +12,17 @@ Dependency = Any
 
 @dataclasses.dataclass
 class SolvedDependency(Generic[DependencyType]):
-    """Representation of a fully solved dependency.
-
-    A fully solved dependency consists of:
-    - A DAG of sub-dependency paramters.
-    - A topologically sorted order of execution, where each sublist represents a
-    group of dependencies that can be executed in parallel.
-    """
+    """Representation of a fully solved dependency as DAG"""
 
     dependency: DependantProtocol[DependencyType]
     dag: Mapping[
         DependantProtocol[Any], List[DependencyParameter[DependantProtocol[Any]]]
     ]
+    # the following attributes are used to cache data for solved dependencies
+    # they are put on SolvedDependency so that they can be garbage collected along with it
+    # these are implementation details and are subject to change at any time
     _tasks: Mapping[DependantProtocol[Any], Task[Any]]
-    _dependant_dag: Mapping[DependantProtocol[Any], Set[DependantProtocol[Any]]]
+    _dependency_dag: Mapping[DependantProtocol[Any], Set[DependantProtocol[Any]]]
 
     def get_flat_subdependants(self) -> List[DependantProtocol[Any]]:
         """Get an exhaustive list of all of the dependencies of this dependency,

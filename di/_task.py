@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import functools
 import typing
+from collections import deque
 from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
 from typing import (
     TYPE_CHECKING,
     Any,
     Awaitable,
+    Deque,
     Dict,
     Generic,
+    Iterable,
     List,
     MutableMapping,
     Optional,
@@ -50,7 +53,9 @@ class Task(Generic[DependencyType]):
         values: typing.Mapping[DependencyProvider, Any],
         dependency_counts: MutableMapping[DependantProtocol[Any], int],
         dependants: MutableMapping[DependantProtocol[Any], List[Task[Any]]],
-    ) -> Union[Awaitable[List[Optional[ExecutorTask]]], List[Optional[ExecutorTask]]]:
+    ) -> Union[
+        Awaitable[Iterable[Optional[ExecutorTask]]], Iterable[Optional[ExecutorTask]]
+    ]:
         raise NotImplementedError
 
     def from_cache_or_values(
@@ -93,12 +98,12 @@ class Task(Generic[DependencyType]):
         values: typing.Mapping[DependencyProvider, Any],
         dependency_counts: MutableMapping[DependantProtocol[Any], int],
         dependants: MutableMapping[DependantProtocol[Any], List[Task[Any]]],
-    ) -> List[Optional[ExecutorTask]]:
+    ) -> Iterable[Optional[ExecutorTask]]:
         """Look amongst our dependants to see if any of them are now dependency free"""
-        new_tasks: List[Optional[ExecutorTask]] = []
+        new_tasks: Deque[Optional[ExecutorTask]] = deque()
         for dependant in dependants[self.dependant]:
-            dependency_counts[dependant.dependant] -= 1
-            if dependency_counts[dependant.dependant] == 0:
+            count = dependency_counts[dependant.dependant]
+            if count == 1:
                 # this dependant has no further dependencies, so we can compute it now
                 newtask = functools.partial(
                     dependant.compute,
@@ -112,11 +117,10 @@ class Task(Generic[DependencyType]):
                 # pop it from dependency counts so that we can
                 # tell when we've satisfied all dependencies below
                 dependency_counts.pop(dependant.dependant)
+            else:
+                dependency_counts[dependant.dependant] = count - 1
         # also pop ourselves if we have no deps
-        if (
-            self.dependant in dependency_counts
-            and dependency_counts[self.dependant] == 0
-        ):
+        if dependency_counts.get(self.dependant, -1) == 0:
             dependency_counts.pop(self.dependant)
         if not dependency_counts:
             # all dependencies are taken care of, insert sentinel None value
@@ -137,7 +141,7 @@ class AsyncTask(Task[DependencyType]):
         values: typing.Mapping[DependencyProvider, Any],
         dependency_counts: MutableMapping[DependantProtocol[Any], int],
         dependants: MutableMapping[DependantProtocol[Any], List[Task[Any]]],
-    ) -> List[Optional[ExecutorTask]]:
+    ) -> Iterable[Optional[ExecutorTask]]:
         args, kwargs = self.gather_params(results)
 
         assert self.dependant.call is not None
@@ -183,7 +187,7 @@ class SyncTask(Task[DependencyType]):
         values: typing.Mapping[DependencyProvider, Any],
         dependency_counts: MutableMapping[DependantProtocol[Any], int],
         dependants: MutableMapping[DependantProtocol[Any], List[Task[Any]]],
-    ) -> List[Optional[ExecutorTask]]:
+    ) -> Iterable[Optional[ExecutorTask]]:
 
         args, kwargs = self.gather_params(results)
 
