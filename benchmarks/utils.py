@@ -1,14 +1,21 @@
 from random import Random
 from typing import Any, Callable, Dict
 
-template = "async def func_{}({}): ..."
 random = Random(0)
 
 
 def generate_dag(
-    depends: Any, levels: int, nodes_per_level: int, dependencies_per_node: int
+    depends: Any,
+    levels: int,
+    nodes_per_level: int,
+    dependencies_per_node: int,
+    *,
+    sync: bool = False,
 ) -> Callable[..., None]:
     """Build a complex DAG of async dependencies"""
+
+    template = "def func_{}({}): ..." if sync else "async def func_{}({}): ..."
+
     funcs: Dict[str, Callable[..., Any]] = {}
     for level in range(levels):
         for node in range(nodes_per_level):

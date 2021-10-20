@@ -6,35 +6,37 @@ snakeviz bench.prof
 
 import cProfile
 import pstats
+import timeit
 
 from benchmarks.utils import generate_dag
 from di import Container, Dependant, Depends
+from di.executors import SimpleSyncExecutor
 
-root = generate_dag(Depends, 1, 1, 1)
+root = generate_dag(Depends, 1, 1, 1, sync=True)
 
 
-async def endpoint(dag: None = Depends(root)):
+def endpoint(dag: None = Depends(root)):
     return ...
 
 
-container = Container()
+container = Container(executor=SimpleSyncExecutor())
 solved = container.solve(Dependant(endpoint))
 
 
-async def bench():
-    await container.execute_async(solved)
+def bench():
+    container.execute_sync(solved)
 
 
-async def main():
+def main():
     profiler = cProfile.Profile()
     profiler.enable()
-    await bench()
+    bench()
     profiler.disable()
     stats = pstats.Stats(profiler)
     stats.dump_stats(filename="bench.prof")
+    print("Dumped cProfile stats to bench.prof")
+    print(timeit.timeit("bench()", globals=globals(), number=10000))
 
 
 if __name__ == "__main__":
-    import asyncio
-
-    asyncio.run(main())
+    main()
