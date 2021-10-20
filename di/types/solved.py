@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Dict, Generic, List, Union
+from typing import Any, Generic, List, Mapping, Set
 
-from di._task import AsyncTask, SyncTask
+from di._task import Task
 from di.types.dependencies import DependantProtocol, DependencyParameter
 from di.types.providers import DependencyType
 
@@ -21,8 +21,11 @@ class SolvedDependency(Generic[DependencyType]):
     """
 
     dependency: DependantProtocol[DependencyType]
-    dag: Dict[DependantProtocol[Any], List[DependencyParameter[DependantProtocol[Any]]]]
-    _tasks: List[List[Union[AsyncTask[Dependency], SyncTask[Dependency]]]]
+    dag: Mapping[
+        DependantProtocol[Any], List[DependencyParameter[DependantProtocol[Any]]]
+    ]
+    _tasks: Mapping[DependantProtocol[Any], Task[Any]]
+    _dependant_dag: Mapping[DependantProtocol[Any], Set[DependantProtocol[Any]]]
 
     def get_flat_subdependants(self) -> List[DependantProtocol[Any]]:
         """Get an exhaustive list of all of the dependencies of this dependency,

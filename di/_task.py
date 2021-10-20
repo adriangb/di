@@ -1,28 +1,40 @@
 from __future__ import annotations
 
+import functools
 import typing
 from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
-from typing import TYPE_CHECKING, Any, Dict, Generic, List, Tuple, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Awaitable,
+    Dict,
+    Generic,
+    List,
+    MutableMapping,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+    cast,
+)
 
 from di._inspect import is_async_gen_callable, is_gen_callable
 from di._state import ContainerState
 from di.exceptions import IncompatibleDependencyError
 from di.types.dependencies import DependantProtocol, DependencyParameter
+from di.types.executor import Task as ExecutorTask
 from di.types.providers import (
     AsyncGeneratorProvider,
     CallableProvider,
     CoroutineProvider,
+    DependencyProvider,
     DependencyType,
     GeneratorProvider,
 )
 
 
-class Value(typing.NamedTuple):
-    value: Any
-
-
 class Task(Generic[DependencyType]):
-    __slots__ = ("dependant", "dependencies")
+    __slots__ = ("dependant", "dependencies", "result")
 
     def __init__(
         self,
@@ -31,19 +43,91 @@ class Task(Generic[DependencyType]):
     ) -> None:
         self.dependant = dependant
         self.dependencies = dependencies
+        self.result = Any
 
-    def _gather_params(
-        self, results: Dict[Task[Any], Any]
+    def compute(
+        self,
+        state: ContainerState,
+        results: Dict[DependantProtocol[Any], Any],
+        values: typing.Mapping[DependencyProvider, Any],
+        dependency_counts: MutableMapping[DependantProtocol[Any], int],
+        dependants: MutableMapping[DependantProtocol[Any], Set[Task[Any]]],
+    ) -> Union[Awaitable[List[Optional[ExecutorTask]]], List[Optional[ExecutorTask]]]:
+        raise NotImplementedError
+
+    def from_cache_or_values(
+        self,
+        state: ContainerState,
+        results: Dict[DependantProtocol[Any], Any],
+        values: typing.Mapping[DependencyProvider, Any],
+    ) -> bool:
+        assert self.dependant.call is not None
+        if self.dependant.call in values:
+            value = values[self.dependant.call]
+            results[self.dependant] = value
+            if self.dependant.share:
+                state.cached_values.set(
+                    self.dependant.call, value, scope=self.dependant.scope
+                )
+            return True
+        elif self.dependant.share and state.cached_values.contains(self.dependant.call):
+            results[self.dependant] = state.cached_values.get(self.dependant.call)
+            return True
+        return False
+
+    def gather_params(
+        self, results: Dict[DependantProtocol[Any], Any]
     ) -> Tuple[List[Any], Dict[str, Any]]:
         positional: List[Any] = []
         keyword: Dict[str, Any] = {}
         for dep in self.dependencies:
             if dep.parameter is not None:
                 if dep.parameter.kind is dep.parameter.kind.POSITIONAL_ONLY:
-                    positional.append(results[dep.dependency])
+                    positional.append(results[dep.dependency.dependant])
                 else:
-                    keyword[dep.parameter.name] = results[dep.dependency]
+                    keyword[dep.parameter.name] = results[dep.dependency.dependant]
         return positional, keyword
+
+    def gather_new_tasks(
+        self,
+        state: ContainerState,
+        results: Dict[DependantProtocol[Any], Any],
+        values: typing.Mapping[DependencyProvider, Any],
+        dependency_counts: MutableMapping[DependantProtocol[Any], int],
+        dependants: MutableMapping[DependantProtocol[Any], Set[Task[Any]]],
+    ) -> List[Optional[ExecutorTask]]:
+        """Look amongst our dependants to see if any of them are now dependency free"""
+        new_tasks: List[Optional[ExecutorTask]] = []
+        for dependant in dependants[self.dependant]:
+            dependency_counts[dependant.dependant] -= 1
+            if dependency_counts[dependant.dependant] == 0:
+                # this dependant has no further dependencies, so we can compute it now
+                new_tasks.append(
+                    functools.partial(
+                        dependant.compute,
+                        state=state,
+                        results=results,
+                        values=values,
+                        dependency_counts=dependency_counts,
+                        dependants=dependants,
+                    )  # type: ignore
+                )
+                # pop it from dependency counts so that we can
+                # tell when we've satisfied all dependencies below
+                dependency_counts.pop(dependant.dependant)
+        # also pop ourselves if we have no deps
+        if (
+            self.dependant in dependency_counts
+            and dependency_counts[self.dependant] == 0
+        ):
+            dependency_counts.pop(self.dependant)
+        if not dependency_counts:
+            # all dependencies are taken care of, insert sentinel None value
+            new_tasks.append(None)
+        return new_tasks
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({repr(self.dependant)}, {repr(self.dependencies)})"
 
 
 class AsyncTask(Task[DependencyType]):
@@ -52,9 +136,12 @@ class AsyncTask(Task[DependencyType]):
     async def compute(
         self,
         state: ContainerState,
-        results: Dict[Task[Any], Any],
-    ) -> None:
-        args, kwargs = self._gather_params(results)
+        results: Dict[DependantProtocol[Any], Any],
+        values: typing.Mapping[DependencyProvider, Any],
+        dependency_counts: MutableMapping[DependantProtocol[Any], int],
+        dependants: MutableMapping[DependantProtocol[Any], Set[Task[Any]]],
+    ) -> List[Optional[ExecutorTask]]:
+        args, kwargs = self.gather_params(results)
 
         assert self.dependant.call is not None
         call = self.dependant.call
@@ -67,18 +154,26 @@ class AsyncTask(Task[DependencyType]):
                 )
             if TYPE_CHECKING:
                 call = cast(AsyncGeneratorProvider[DependencyType], call)
-            results[self] = await stack.enter_async_context(
+            results[self.dependant] = await stack.enter_async_context(
                 asynccontextmanager(call)(*args, **kwargs)
             )
         else:
             if TYPE_CHECKING:
                 call = cast(CoroutineProvider[DependencyType], call)
-            results[self] = await call(*args, **kwargs)
+            results[self.dependant] = await call(*args, **kwargs)
         if self.dependant.share:
             # caching is allowed, now that we have a value we can save it and start using the cache
             state.cached_values.set(
-                self.dependant.call, results[self], scope=self.dependant.scope
+                self.dependant.call, results[self.dependant], scope=self.dependant.scope
             )
+
+        return self.gather_new_tasks(
+            state=state,
+            results=results,
+            values=values,
+            dependency_counts=dependency_counts,
+            dependants=dependants,
+        )
 
 
 class SyncTask(Task[DependencyType]):
@@ -87,10 +182,13 @@ class SyncTask(Task[DependencyType]):
     def compute(
         self,
         state: ContainerState,
-        results: Dict[Task[Any], Any],
-    ) -> None:
+        results: Dict[DependantProtocol[Any], Any],
+        values: typing.Mapping[DependencyProvider, Any],
+        dependency_counts: MutableMapping[DependantProtocol[Any], int],
+        dependants: MutableMapping[DependantProtocol[Any], Set[Task[Any]]],
+    ) -> List[Optional[ExecutorTask]]:
 
-        args, kwargs = self._gather_params(results)
+        args, kwargs = self.gather_params(results)
 
         assert self.dependant.call is not None
         call = self.dependant.call
@@ -98,13 +196,23 @@ class SyncTask(Task[DependencyType]):
             if TYPE_CHECKING:
                 call = cast(GeneratorProvider[DependencyType], call)
             stack = state.stacks[self.dependant.scope]
-            results[self] = stack.enter_context(contextmanager(call)(*args, **kwargs))
+            results[self.dependant] = stack.enter_context(
+                contextmanager(call)(*args, **kwargs)
+            )
         else:
             if TYPE_CHECKING:
                 call = cast(CallableProvider[DependencyType], call)
-            results[self] = call(*args, **kwargs)
+            results[self.dependant] = call(*args, **kwargs)
         if self.dependant.share:
             # caching is allowed, now that we have a value we can save it and start using the cache
             state.cached_values.set(
-                self.dependant.call, results[self], scope=self.dependant.scope
+                self.dependant.call, results[self.dependant], scope=self.dependant.scope
             )
+
+        return self.gather_new_tasks(
+            state=state,
+            results=results,
+            values=values,
+            dependency_counts=dependency_counts,
+            dependants=dependants,
+        )

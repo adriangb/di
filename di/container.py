@@ -5,15 +5,15 @@ from collections import deque
 from contextvars import ContextVar
 from typing import (
     Any,
-    Callable,
     ContextManager,
-    Coroutine,
     Deque,
     Dict,
     Iterable,
     List,
     Mapping,
     Optional,
+    Set,
+    Tuple,
     Union,
     cast,
 )
@@ -22,7 +22,7 @@ from di._inspect import is_async_gen_callable, is_coroutine_callable
 from di._local_scope_context import LocalScopeContext
 from di._state import ContainerState
 from di._task import AsyncTask, SyncTask, Task
-from di._topsort import topsort
+from di._topsort import gather_dependants, topsort
 from di.exceptions import (
     DependencyRegistryError,
     DuplicateScopeError,
@@ -33,6 +33,7 @@ from di.executors import DefaultExecutor
 from di.types import FusedContextManager
 from di.types.dependencies import DependantProtocol, DependencyParameter
 from di.types.executor import AsyncExecutor, SyncExecutor
+from di.types.executor import Task as ExecutorTask
 from di.types.providers import (
     DependencyProvider,
     DependencyProviderType,
@@ -42,8 +43,6 @@ from di.types.scopes import Scope
 from di.types.solved import SolvedDependency
 
 Dependency = Any
-
-_BoundTaskGroup = List[Callable[[], Union[Coroutine[Any, Any, None], None]]]
 
 
 class Container:
@@ -181,33 +180,38 @@ class Container:
                     dep_dag[dep].append(subdep)
                     if subdep not in dep_registry:
                         q.append(subdep)
+        dependant_dag = gather_dependants(dep_dag)
+        tasks = self._build_tasks(param_graph, topsort(dep_dag))
+        return SolvedDependency(
+            dependency=dependency,
+            dag=param_graph,
+            _tasks=tasks,
+            _dependant_dag=dependant_dag,
+        )
 
-        siblings = siblings or ()
-        for sibling in siblings:
-            solved = self.solve(sibling)
-            param_graph.update(solved.dag)
-            dep_dag.update(
-                {
-                    dep: [p.dependency for p in params]
-                    for dep, params in solved.dag.items()
-                }
-            )
-
-        topsorted_groups = topsort(dep_dag)
-        tasks = self._build_tasks(topsorted_groups, param_graph)
-        return SolvedDependency(dependency=dependency, dag=param_graph, _tasks=tasks)  # type: ignore
-
-    def _build_task(
+    def _build_tasks(
         self,
-        dependency: DependantProtocol[DependencyType],
-        tasks: Dict[
-            DependantProtocol[Any], Union[AsyncTask[Dependency], SyncTask[Dependency]]
-        ],
         dag: Dict[
             DependantProtocol[Any],
             List[DependencyParameter[DependantProtocol[Any]]],
         ],
-    ) -> Union[AsyncTask[DependencyType], SyncTask[DependencyType]]:
+        topsorted: List[List[DependantProtocol[Any]]],
+    ) -> Dict[DependantProtocol[Any], Union[AsyncTask[Any], SyncTask[Any]]]:
+        tasks: Dict[DependantProtocol[Any], Union[AsyncTask[Any], SyncTask[Any]]] = {}
+        for group in reversed(topsorted):
+            for dep in group:
+                tasks[dep] = self._build_task(dep, tasks, dag)
+        return tasks
+
+    def _build_task(
+        self,
+        dependency: DependantProtocol[Any],
+        tasks: Dict[DependantProtocol[Any], Union[AsyncTask[Any], SyncTask[Any]]],
+        dag: Dict[
+            DependantProtocol[Any],
+            List[DependencyParameter[DependantProtocol[Any]]],
+        ],
+    ) -> Union[AsyncTask[Any], SyncTask[Any]]:
 
         task_dependencies: List[DependencyParameter[Task[Any]]] = [
             DependencyParameter(
@@ -222,23 +226,6 @@ class Container:
             return AsyncTask(dependant=dependency, dependencies=task_dependencies)
         else:
             return SyncTask(dependant=dependency, dependencies=task_dependencies)
-
-    def _build_tasks(
-        self,
-        topsort: List[List[DependantProtocol[Any]]],
-        dag: Dict[
-            DependantProtocol[Any],
-            List[DependencyParameter[DependantProtocol[Any]]],
-        ],
-    ) -> List[List[Union[AsyncTask[Dependency], SyncTask[Dependency]]]]:
-        tasks: Dict[
-            DependantProtocol[Any], Union[AsyncTask[Dependency], SyncTask[Dependency]]
-        ] = {}
-        for group in reversed(topsort):
-            for dep in group:
-                if dep not in tasks:
-                    tasks[dep] = self._build_task(dep, tasks, dag)
-        return list(reversed([[tasks[dep] for dep in group] for group in topsort]))
 
     def _validate_scopes(self, solved: SolvedDependency[Dependency]) -> None:
         """Validate that dependencies all have a valid scope and
@@ -272,6 +259,61 @@ class Container:
                 check_scope(subdep)
                 check_is_inner(dep, subdep)
 
+    def _prepare_execution(
+        self,
+        solved: SolvedDependency[Any],
+        *,
+        validate_scopes: bool = True,
+        values: Optional[Mapping[DependencyProvider, Any]] = None,
+    ) -> Tuple[Dict[DependantProtocol[Any], Any], List[ExecutorTask]]:
+        results: Dict[DependantProtocol[Any], Any] = {}
+        values = values or {}
+        if validate_scopes:
+            self._validate_scopes(solved)
+
+        tasks = solved._tasks  # type: ignore
+
+        # Build a DAG of Tasks that we actually need to execute
+        # this allows us to prune subtrees that will come from cached values
+        unvisited = deque([solved.dependency])
+        dag: Dict[DependantProtocol[Any], Set[DependantProtocol[Any]]] = {}
+        while unvisited:
+            dep = unvisited.pop()
+            task = tasks[dep]
+            # task the dependency is cached or was provided by value
+            # we don't need to compute it or any of it's dependencies
+            if not task.from_cache_or_values(self._state, results, values):
+                # otherwise, we add it to our DAG and visit it's children
+                subdeps = {param.dependency for param in solved.dag[dep]}
+                dag[dep] = set()
+                for subdep in subdeps:
+                    if not tasks[subdep].from_cache_or_values(
+                        self._state, results, values
+                    ):
+                        dag[dep].add(subdep)
+                        unvisited.append(subdep)
+
+        dependant_dag = {
+            dep: {tasks[subdep] for subdep in solved._dependant_dag[dep]} for dep in dag
+        }
+        dependency_counts = {dep: len(subdeps) for dep, subdeps in dag.items()}
+
+        leafs: List[ExecutorTask] = []
+        for dep, depcount in dependency_counts.items():
+            if depcount == 0:
+                leafs.append(
+                    functools.partial(
+                        tasks[dep].compute,
+                        state=self._state,
+                        results=results,
+                        values=values,
+                        dependency_counts=dependency_counts,
+                        dependants=dependant_dag,
+                    )  # type: ignore
+                )
+
+        return results, leafs
+
     def execute_sync(
         self,
         solved: SolvedDependency[DependencyType],
@@ -284,40 +326,18 @@ class Container:
         If you are not dynamically changing scopes, you can run once with `validate_scopes=True`
         and then disable scope validation in subsequent runs with `validate_scope=False`.
         """
-        results: Dict[Task[Any], Any] = {}
-        values = values or {}
         with self.enter_local_scope(self._default_scope):
-            if validate_scopes:
-                self._validate_scopes(solved)
-
-            tasks = solved._tasks  # type: ignore
-
+            results, queue = self._prepare_execution(
+                solved, validate_scopes=validate_scopes, values=values
+            )
             if not hasattr(self._executor, "execute_sync"):
                 raise TypeError(
                     "execute_sync requires an executor implementing the SyncExecutor protocol"
                 )
             executor = cast(SyncExecutor, self._executor)
-
-            bound_groups: List[_BoundTaskGroup] = []
-            for task_group in tasks:
-                group: _BoundTaskGroup = []
-                for task in task_group:
-                    assert task.dependant.call is not None
-                    if task.dependant.call in values:
-                        results[task] = values[task.dependant.call]
-                    elif task.dependant.share and self._state.cached_values.contains(
-                        task.dependant.call
-                    ):
-                        results[task] = self._state.cached_values.get(
-                            task.dependant.call
-                        )
-                    else:
-                        group.append(
-                            functools.partial(task.compute, self._state, results)
-                        )
-                if group:
-                    bound_groups.append(group)
-            return executor.execute_sync(bound_groups, lambda: results[tasks[-1][0]])  # type: ignore
+            if queue:
+                executor.execute_sync(queue)
+            return results[solved.dependency]
 
     async def execute_async(
         self,
@@ -331,37 +351,15 @@ class Container:
         If you are not dynamically changing scopes, you can run once with `validate_scopes=True`
         and then disable scope validation in subsequent runs with `validate_scope=False`.
         """
-        results: Dict[Task[Any], Any] = {}
-        values = values or {}
         async with self.enter_local_scope(self._default_scope):
-            if validate_scopes:
-                self._validate_scopes(solved)
-
-            tasks = solved._tasks  # type: ignore
-
+            results, queue = self._prepare_execution(
+                solved, validate_scopes=validate_scopes, values=values
+            )
             if not hasattr(self._executor, "execute_async"):
                 raise TypeError(
                     "execute_async requires an executor implementing the AsyncExecutor protocol"
                 )
             executor = cast(AsyncExecutor, self._executor)
-
-            bound_groups: List[_BoundTaskGroup] = []
-            for task_group in tasks:
-                group: _BoundTaskGroup = []
-                for task in task_group:
-                    assert task.dependant.call is not None
-                    if task.dependant.call in values:
-                        results[task] = values[task.dependant.call]
-                    elif task.dependant.share and self._state.cached_values.contains(
-                        task.dependant.call
-                    ):
-                        results[task] = self._state.cached_values.get(
-                            task.dependant.call
-                        )
-                    else:
-                        group.append(
-                            functools.partial(task.compute, self._state, results)
-                        )
-                if group:
-                    bound_groups.append(group)
-            return await executor.execute_async(bound_groups, lambda: results[tasks[-1][0]])  # type: ignore
+            if queue:
+                await executor.execute_async(queue)
+            return results[solved.dependency]
