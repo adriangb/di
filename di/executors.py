@@ -6,7 +6,7 @@ from collections import deque
 import anyio
 import anyio.abc
 
-from di._concurrency import curry_context, gurantee_awaitable
+from di._concurrency import curry_context, guarantee_awaitable
 from di._inspect import is_coroutine_callable
 from di.types.executor import AsyncExecutor, SyncExecutor, Task
 
@@ -79,7 +79,7 @@ async def _async_worker(
     stream: anyio.abc.ObjectSendStream[typing.Optional[Task]],
 ) -> None:
     try:
-        newtasks = typing.cast(_SyncTaskRetval, await gurantee_awaitable(task)())
+        newtasks = typing.cast(_SyncTaskRetval, await guarantee_awaitable(task)())
     except Exception:
         try:
             await stream.send(None)

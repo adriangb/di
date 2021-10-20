@@ -35,18 +35,18 @@ def callable_in_thread_pool(call: Callable[..., T]) -> Callable[..., Awaitable[T
 
 
 @overload
-def gurantee_awaitable(
+def guarantee_awaitable(
     call: Callable[..., Awaitable[T]]
 ) -> Callable[..., Awaitable[T]]:
     ...
 
 
 @overload
-def gurantee_awaitable(call: Callable[..., T]) -> Callable[..., Awaitable[T]]:
+def guarantee_awaitable(call: Callable[..., T]) -> Callable[..., Awaitable[T]]:
     ...
 
 
-def gurantee_awaitable(
+def guarantee_awaitable(
     call: Union[Callable[..., Awaitable[T]], Callable[..., T]]
 ) -> Callable[..., Awaitable[T]]:
     if not is_coroutine_callable(call):
