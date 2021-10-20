@@ -1,5 +1,5 @@
 import typing
-from typing import Iterable, Optional
+from typing import Iterable, List, Optional
 
 import pytest
 
@@ -35,11 +35,13 @@ def test_simple_sync_executor():
     class Dep:
         called = False
 
-        def __call__(self) -> None:
-            self.called = True
+        def __init__(self, deps: List[Optional[Task]]) -> None:
+            self.tasks = deps
 
-    tasks = [[Dep()], [Dep(), Dep()]]
+        def __call__(self) -> Iterable[Optional[Task]]:
+            res, self.tasks = self.tasks[:2], self.tasks[2:]
+            return res
 
     exc = SimpleSyncExecutor()
 
-    exc.execute_sync(tasks, lambda: None)  # type: ignore
+    exc.execute_sync([Dep([Dep([]), Dep([])])])

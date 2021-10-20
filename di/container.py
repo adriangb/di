@@ -8,7 +8,6 @@ from typing import (
     ContextManager,
     Deque,
     Dict,
-    Iterable,
     List,
     Mapping,
     Optional,
@@ -117,7 +116,6 @@ class Container:
     def solve(
         self,
         dependency: DependantProtocol[DependencyType],
-        siblings: Optional[Iterable[DependantProtocol[Any]]] = None,
     ) -> SolvedDependency[DependencyType]:
         """Solve a dependency.
 
@@ -276,17 +274,20 @@ class Container:
         # Build a DAG of Tasks that we actually need to execute
         # this allows us to prune subtrees that will come from cached values
         unvisited = deque([solved.dependency])
+        # Make DAG values a set to account for dependencies that depend on the the same
+        # sub dependency in more than one param (`def func(a: A, a_again: A)`)
         dag: Dict[DependantProtocol[Any], Set[DependantProtocol[Any]]] = {}
         while unvisited:
             dep = unvisited.pop()
+            if dep in dag:
+                continue
             task = tasks[dep]
             # task the dependency is cached or was provided by value
             # we don't need to compute it or any of it's dependencies
             if not task.from_cache_or_values(self._state, results, values):
                 # otherwise, we add it to our DAG and visit it's children
-                subdeps = {param.dependency for param in solved.dag[dep]}
                 dag[dep] = set()
-                for subdep in subdeps:
+                for subdep in (param.dependency for param in solved.dag[dep]):
                     if not tasks[subdep].from_cache_or_values(
                         self._state, results, values
                     ):
@@ -294,7 +295,7 @@ class Container:
                         unvisited.append(subdep)
 
         dependant_dag = {
-            dep: {tasks[subdep] for subdep in solved._dependant_dag[dep]} for dep in dag
+            dep: [tasks[subdep] for subdep in solved._dependant_dag[dep]] for dep in dag
         }
         dependency_counts = {dep: len(subdeps) for dep, subdeps in dag.items()}
 

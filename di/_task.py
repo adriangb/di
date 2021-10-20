@@ -12,7 +12,6 @@ from typing import (
     List,
     MutableMapping,
     Optional,
-    Set,
     Tuple,
     Union,
     cast,
@@ -51,7 +50,7 @@ class Task(Generic[DependencyType]):
         results: Dict[DependantProtocol[Any], Any],
         values: typing.Mapping[DependencyProvider, Any],
         dependency_counts: MutableMapping[DependantProtocol[Any], int],
-        dependants: MutableMapping[DependantProtocol[Any], Set[Task[Any]]],
+        dependants: MutableMapping[DependantProtocol[Any], List[Task[Any]]],
     ) -> Union[Awaitable[List[Optional[ExecutorTask]]], List[Optional[ExecutorTask]]]:
         raise NotImplementedError
 
@@ -94,7 +93,7 @@ class Task(Generic[DependencyType]):
         results: Dict[DependantProtocol[Any], Any],
         values: typing.Mapping[DependencyProvider, Any],
         dependency_counts: MutableMapping[DependantProtocol[Any], int],
-        dependants: MutableMapping[DependantProtocol[Any], Set[Task[Any]]],
+        dependants: MutableMapping[DependantProtocol[Any], List[Task[Any]]],
     ) -> List[Optional[ExecutorTask]]:
         """Look amongst our dependants to see if any of them are now dependency free"""
         new_tasks: List[Optional[ExecutorTask]] = []
@@ -139,7 +138,7 @@ class AsyncTask(Task[DependencyType]):
         results: Dict[DependantProtocol[Any], Any],
         values: typing.Mapping[DependencyProvider, Any],
         dependency_counts: MutableMapping[DependantProtocol[Any], int],
-        dependants: MutableMapping[DependantProtocol[Any], Set[Task[Any]]],
+        dependants: MutableMapping[DependantProtocol[Any], List[Task[Any]]],
     ) -> List[Optional[ExecutorTask]]:
         args, kwargs = self.gather_params(results)
 
@@ -185,7 +184,7 @@ class SyncTask(Task[DependencyType]):
         results: Dict[DependantProtocol[Any], Any],
         values: typing.Mapping[DependencyProvider, Any],
         dependency_counts: MutableMapping[DependantProtocol[Any], int],
-        dependants: MutableMapping[DependantProtocol[Any], Set[Task[Any]]],
+        dependants: MutableMapping[DependantProtocol[Any], List[Task[Any]]],
     ) -> List[Optional[ExecutorTask]]:
 
         args, kwargs = self.gather_params(results)

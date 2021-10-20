@@ -2,13 +2,11 @@ import concurrent.futures
 import inspect
 import typing
 from collections import deque
-from queue import Queue
 
 import anyio
 import anyio.abc
 
 from di._concurrency import curry_context, gurantee_awaitable
-from di._inspect import is_coroutine_callable
 from di.types.executor import AsyncExecutor, SyncExecutor, Task
 
 
@@ -19,7 +17,7 @@ class SimpleSyncExecutor(SyncExecutor):
             task = q.popleft()
             if task is None:
                 return
-            if is_coroutine_callable(task):
+            if inspect.iscoroutinefunction(task):
                 raise TypeError("Cannot execute async dependencies in execute_sync")
             newtasks = task()
             assert not isinstance(newtasks, typing.Awaitable)
@@ -41,67 +39,65 @@ class SimpleAsyncExecutor(AsyncExecutor):
             q.extend(newtasks)
 
 
-def _sync_worker(task: Task, queue: Queue[typing.Optional[Task]]) -> None:
-    try:
-        newtasks = task()
-        assert not isinstance(newtasks, typing.Awaitable)
-        for newtask in newtasks:
-            queue.put(newtask)
-    finally:
-        queue.task_done()
-
-
 class ConcurrentSyncExecutor(AsyncExecutor):
     def execute_sync(self, tasks: typing.Iterable[Task]) -> None:
-        queue: Queue[typing.Optional[Task]] = Queue()
-        for task in tasks:
-            queue.put(task)
-        futures: typing.Set[concurrent.futures.Future[None]] = set()
+        futures: typing.Set[
+            concurrent.futures.Future[typing.Iterable[typing.Optional[Task]]]
+        ] = set()
         with concurrent.futures.ThreadPoolExecutor() as exec:
-            while True:
-                newtask = queue.get()
-                if is_coroutine_callable(newtask):
-                    raise TypeError("Cannot execute async dependencies in execute_sync")
-                if newtask is None:
-                    queue.task_done()
-                    queue.join()
-                    for future in concurrent.futures.as_completed(futures):
-                        future.result()
-                    return
-                # check for errors
-                _, futures = concurrent.futures.wait(
-                    futures, return_when=concurrent.futures.FIRST_EXCEPTION
-                )
-                futures.add(exec.submit(_sync_worker, curry_context(newtask), queue))
+            for task in tasks:
+                futures.add(exec.submit(curry_context(task)))  # type: ignore[arg-type]
+            while futures:
+                for future in concurrent.futures.as_completed(futures):
+                    newtasks = future.result()
+                    futures.remove(future)
+                    if inspect.isawaitable(newtasks):
+                        raise TypeError(
+                            "Cannot execute async dependencies in execute_sync"
+                        )
+                    for newtask in newtasks:
+                        if newtask is None:
+                            break
+                        futures.add(exec.submit(curry_context(newtask)))  # type: ignore[arg-type]
 
 
 async def _async_worker(
-    task: Task, stream: anyio.abc.ObjectSendStream[typing.Optional[Task]]
+    task: Task,
+    stream: anyio.abc.ObjectSendStream[typing.Optional[Task]],
 ) -> None:
-    newtasks: typing.Iterable[typing.Optional[Task]] = await gurantee_awaitable(task)()  # type: ignore
+    try:
+        newtasks: typing.Iterable[typing.Optional[Task]] = await gurantee_awaitable(task)()  # type: ignore
+    except Exception:
+        try:
+            await stream.send(None)
+        except anyio.ClosedResourceError:
+            pass
+        raise
     for newtask in newtasks:
         try:
             await stream.send(newtask)
         except anyio.ClosedResourceError:
-            if newtask is None:
-                # extra sentinel, ignore
-                return None
-            raise
+            pass
+
+
+Streams = typing.Tuple[
+    anyio.abc.ObjectSendStream[typing.Optional[Task]],
+    anyio.abc.ObjectReceiveStream[typing.Optional[Task]],
+]
 
 
 class ConcurrentAsyncExecutor(AsyncExecutor):
     async def execute_async(self, tasks: typing.Iterable[Task]) -> None:
-        send, receive = anyio.create_memory_object_stream(
-            float("inf"), item_type=typing.Optional[Task]
-        )
+        streams = typing.cast(Streams, anyio.create_memory_object_stream(float("inf")))  # type: ignore
+        send, receive = streams
         for task in tasks:
             await send.send(task)
         async with anyio.create_task_group() as taskgroup, send, receive:
             while True:
-                task = await receive.receive()
-                if task is None:
+                newtask = await receive.receive()
+                if newtask is None:
                     return None
-                taskgroup.start_soon(_async_worker, task, send)
+                taskgroup.start_soon(_async_worker, newtask, send)  # type: ignore
 
 
 class DefaultExecutor(ConcurrentSyncExecutor, ConcurrentAsyncExecutor):

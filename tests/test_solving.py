@@ -1,6 +1,8 @@
 import sys
 from typing import Any, Callable, Dict, List
 
+from di.dependant import JoinedDependant
+
 if sys.version_info < (3, 8):
     from typing_extensions import Literal
 else:
@@ -157,7 +159,8 @@ def test_siblings() -> None:
     container = Container()
 
     siblings = [Sibling(), Sibling()]
-    solved = container.solve(Dependant(dep2), siblings=[Dependant(s) for s in siblings])
+    dep = JoinedDependant(Dependant(dep2), siblings=[Dependant(s) for s in siblings])
+    solved = container.solve(dep)
     container.execute_sync(solved)
     assert all(s.called for s in siblings)
     assert dep1.calls == 1  # they all shared the dependency

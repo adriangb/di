@@ -1,6 +1,6 @@
 from typing import Any, AsyncGenerator, Callable, Coroutine, Generator, TypeVar, Union
 
-DependencyType = TypeVar("DependencyType")
+DependencyType = TypeVar("DependencyType", covariant=True)
 
 CallableProvider = Callable[..., DependencyType]
 CoroutineProvider = Callable[..., Coroutine[Any, Any, DependencyType]]
