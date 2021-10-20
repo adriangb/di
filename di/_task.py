@@ -33,7 +33,7 @@ from di.types.providers import (
 
 
 class Task(Generic[DependencyType]):
-    __slots__ = ("dependant", "dependencies", "result")
+    __slots__ = ("dependant", "dependencies")
 
     def __init__(
         self,
@@ -42,7 +42,6 @@ class Task(Generic[DependencyType]):
     ) -> None:
         self.dependant = dependant
         self.dependencies = dependencies
-        self.result = Any
 
     def compute(
         self,
