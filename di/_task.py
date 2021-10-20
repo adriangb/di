@@ -101,16 +101,15 @@ class Task(Generic[DependencyType]):
             dependency_counts[dependant.dependant] -= 1
             if dependency_counts[dependant.dependant] == 0:
                 # this dependant has no further dependencies, so we can compute it now
-                new_tasks.append(
-                    functools.partial(
-                        dependant.compute,
-                        state=state,
-                        results=results,
-                        values=values,
-                        dependency_counts=dependency_counts,
-                        dependants=dependants,
-                    )  # type: ignore
+                newtask = functools.partial(
+                    dependant.compute,
+                    state=state,
+                    results=results,
+                    values=values,
+                    dependency_counts=dependency_counts,
+                    dependants=dependants,
                 )
+                new_tasks.append(newtask)  # type: ignore[arg-type] # because of partial
                 # pop it from dependency counts so that we can
                 # tell when we've satisfied all dependencies below
                 dependency_counts.pop(dependant.dependant)

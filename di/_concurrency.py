@@ -1,6 +1,15 @@
 import contextvars
 import functools
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, TypeVar, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Awaitable,
+    Callable,
+    TypeVar,
+    Union,
+    cast,
+    overload,
+)
 
 import anyio
 
@@ -20,9 +29,21 @@ def curry_context(call: Callable[..., T]) -> Callable[..., T]:
 
 def callable_in_thread_pool(call: Callable[..., T]) -> Callable[..., Awaitable[T]]:
     def inner(*args: Any, **kwargs: Any) -> Awaitable[T]:
-        return anyio.to_thread.run_sync(curry_context(call), *args, **kwargs)  # type: ignore
+        return anyio.to_thread.run_sync(curry_context(call), *args, **kwargs)
 
     return inner
+
+
+@overload
+def gurantee_awaitable(
+    call: Callable[..., Awaitable[T]]
+) -> Callable[..., Awaitable[T]]:
+    ...
+
+
+@overload
+def gurantee_awaitable(call: Callable[..., T]) -> Callable[..., Awaitable[T]]:
+    ...
 
 
 def gurantee_awaitable(
@@ -32,4 +53,4 @@ def gurantee_awaitable(
         if TYPE_CHECKING:
             call = cast(Callable[..., T], call)
         return callable_in_thread_pool(call)
-    return call  # type: ignore
+    return call  # type: ignore[return-value] # is faster than a cast or re-assign

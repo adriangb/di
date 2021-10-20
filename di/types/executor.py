@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from typing import Iterable, Optional, Union
+from typing import Awaitable, Iterable, Optional, Union
 
 if sys.version_info < (3, 8):
     from typing_extensions import Protocol
@@ -9,17 +9,11 @@ else:
     from typing import Protocol
 
 
-class AsyncTask(Protocol):
-    async def __call__(self) -> Iterable[Optional[Union[SyncTask, AsyncTask]]]:
+class Task(Protocol):
+    def __call__(
+        self,
+    ) -> Union[Awaitable[Iterable[Optional[Task]]], Iterable[Optional[Task]]]:
         ...
-
-
-class SyncTask(Protocol):
-    def __call__(self) -> Iterable[Optional[Union[SyncTask, AsyncTask]]]:
-        ...
-
-
-Task = Union[AsyncTask, SyncTask]
 
 
 class SyncExecutor(Protocol):

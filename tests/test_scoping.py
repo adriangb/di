@@ -170,5 +170,5 @@ async def test_concurrent_local_scopes():
             )
 
     async with anyio.create_task_group() as tg:
-        tg.start_soon(endpoint)  # type: ignore
-        tg.start_soon(endpoint)  # type: ignore
+        tg.start_soon(endpoint)
+        tg.start_soon(endpoint)

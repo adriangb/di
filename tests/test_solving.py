@@ -18,7 +18,7 @@ from di.types.dependencies import DependantProtocol, DependencyParameter
 def test_no_annotations():
     """Dependencies must provide annotations or a default value"""
 
-    def badfunc(value):  # type: ignore
+    def badfunc(value):
         ...
 
     container = Container()
@@ -27,7 +27,7 @@ def test_no_annotations():
         WiringError,
         match="Cannot wire a parameter with no default and no type annotation",
     ):
-        container.execute_sync(container.solve(Dependant(badfunc)))  # type: ignore
+        container.execute_sync(container.solve(Dependant(badfunc)))
 
 
 def test_variable_arguments():
@@ -56,19 +56,19 @@ def test_variable_arguments():
 def test_default_argument():
     """No type annotations are required if default values are provided"""
 
-    def default_func(value=2) -> int:  # type: ignore
-        return value  # type: ignore
+    def default_func(value=2) -> int:
+        return value
 
     container = Container()
 
-    res = container.execute_sync(container.solve(Dependant(default_func)))  # type: ignore
+    res = container.execute_sync(container.solve(Dependant(default_func)))
     assert res == 2
 
 
 def test_invalid_non_callable_annotation():
     """The type annotation value: int is not a valid identifier since 1 is not a callable"""
 
-    def func(value: 1 = Depends()) -> int:  # type: ignore
+    def func(value: 1 = Depends()) -> int:
         return value
 
     container = Container()
@@ -184,7 +184,7 @@ def test_non_parameter_dependency():
     container = Container()
 
     dep = CustomDependant(lambda: None)
-    container.execute_sync(container.solve(dep))  # type: ignore
+    container.execute_sync(container.solve(dep))
     assert calls == [True]
 
 

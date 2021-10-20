@@ -103,7 +103,7 @@ class Container:
         The bind will be automatically cleared when that scope is exited.
         If no scope is provided, the current scope is used.
         """
-        return self._state.bind(provider=provider, dependency=dependency)  # type: ignore
+        return self._state.bind(provider=provider, dependency=dependency)
 
     def __contains__(self, o: object) -> bool:
         return o in self._state.binds
@@ -126,7 +126,7 @@ class Container:
         """
 
         if dependency.call in self._state.binds:
-            dependency = self._state.binds[dependency.call]  # type: ignore
+            dependency = self._state.binds[dependency.call]
 
         param_graph: Dict[
             DependantProtocol[Any],
@@ -269,7 +269,7 @@ class Container:
         if validate_scopes:
             self._validate_scopes(solved)
 
-        tasks = solved._tasks  # type: ignore
+        tasks = solved._tasks
 
         # Build a DAG of Tasks that we actually need to execute
         # this allows us to prune subtrees that will come from cached values
@@ -302,16 +302,15 @@ class Container:
         leafs: List[ExecutorTask] = []
         for dep, depcount in dependency_counts.items():
             if depcount == 0:
-                leafs.append(
-                    functools.partial(
-                        tasks[dep].compute,
-                        state=self._state,
-                        results=results,
-                        values=values,
-                        dependency_counts=dependency_counts,
-                        dependants=dependant_dag,
-                    )  # type: ignore
+                leaf = functools.partial(
+                    tasks[dep].compute,
+                    state=self._state,
+                    results=results,
+                    values=values,
+                    dependency_counts=dependency_counts,
+                    dependants=dependant_dag,
                 )
+                leafs.append(leaf)  # type: ignore[arg-type] # beacuse of partial
 
         return results, leafs
 

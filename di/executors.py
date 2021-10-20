@@ -10,6 +10,18 @@ from di._concurrency import curry_context, gurantee_awaitable
 from di.types.executor import AsyncExecutor, SyncExecutor, Task
 
 
+def _check_not_coro(
+    task: typing.Optional[Task],
+) -> typing.Callable[[], typing.Iterable[typing.Optional[Task]]]:
+    if inspect.iscoroutinefunction(task):
+        raise TypeError("Cannot execute async dependencies in execute_sync")
+    return task  # type: ignore[return-value]
+
+
+_AsyncTaskRetval = typing.Awaitable[typing.Iterable[Task]]
+_SyncTaskRetval = typing.Iterable[Task]
+
+
 class SimpleSyncExecutor(SyncExecutor):
     def execute_sync(self, tasks: typing.Iterable[Task]) -> None:
         q: typing.Deque[typing.Optional[Task]] = deque(tasks)
@@ -17,9 +29,7 @@ class SimpleSyncExecutor(SyncExecutor):
             task = q.popleft()
             if task is None:
                 return
-            if inspect.iscoroutinefunction(task):
-                raise TypeError("Cannot execute async dependencies in execute_sync")
-            newtasks = task()
+            newtasks = _check_not_coro(task)()
             assert not isinstance(newtasks, typing.Awaitable)
             q.extend(newtasks)
 
@@ -31,11 +41,11 @@ class SimpleAsyncExecutor(AsyncExecutor):
             task = q.popleft()
             if task is None:
                 return
-            newtasks = task()
-            if inspect.isawaitable(newtasks):
-                assert isinstance(newtasks, typing.Awaitable)
-                newtasks = await newtasks
-            assert not isinstance(newtasks, typing.Awaitable)
+            maybe_coro = task()
+            if inspect.iscoroutine(maybe_coro):
+                newtasks = await typing.cast(_AsyncTaskRetval, maybe_coro)
+            else:
+                newtasks = typing.cast(_SyncTaskRetval, maybe_coro)
             q.extend(newtasks)
 
 
@@ -46,7 +56,7 @@ class ConcurrentSyncExecutor(AsyncExecutor):
         ] = set()
         with concurrent.futures.ThreadPoolExecutor() as exec:
             for task in tasks:
-                futures.add(exec.submit(curry_context(task)))  # type: ignore[arg-type]
+                futures.add(exec.submit(curry_context(_check_not_coro(task))))
             while futures:
                 for future in concurrent.futures.as_completed(futures):
                     newtasks = future.result()
@@ -58,7 +68,9 @@ class ConcurrentSyncExecutor(AsyncExecutor):
                     for newtask in newtasks:
                         if newtask is None:
                             break
-                        futures.add(exec.submit(curry_context(newtask)))  # type: ignore[arg-type]
+                        futures.add(
+                            exec.submit(curry_context(_check_not_coro(newtask)))
+                        )
 
 
 async def _async_worker(
@@ -66,7 +78,7 @@ async def _async_worker(
     stream: anyio.abc.ObjectSendStream[typing.Optional[Task]],
 ) -> None:
     try:
-        newtasks: typing.Iterable[typing.Optional[Task]] = await gurantee_awaitable(task)()  # type: ignore
+        newtasks = typing.cast(_SyncTaskRetval, await gurantee_awaitable(task)())
     except Exception:
         try:
             await stream.send(None)
@@ -88,7 +100,7 @@ Streams = typing.Tuple[
 
 class ConcurrentAsyncExecutor(AsyncExecutor):
     async def execute_async(self, tasks: typing.Iterable[Task]) -> None:
-        streams = typing.cast(Streams, anyio.create_memory_object_stream(float("inf")))  # type: ignore
+        streams = typing.cast(Streams, anyio.create_memory_object_stream(float("inf")))
         send, receive = streams
         for task in tasks:
             await send.send(task)
@@ -97,7 +109,7 @@ class ConcurrentAsyncExecutor(AsyncExecutor):
                 newtask = await receive.receive()
                 if newtask is None:
                     return None
-                taskgroup.start_soon(_async_worker, newtask, send)  # type: ignore
+                taskgroup.start_soon(_async_worker, newtask, send)
 
 
 class DefaultExecutor(ConcurrentSyncExecutor, ConcurrentAsyncExecutor):

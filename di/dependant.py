@@ -117,7 +117,7 @@ class Dependant(DependantProtocol[DependencyType]):
         """For the Dependant implementation, this serves as a cache layer on
         top of gather_dependencies.
         """
-        if self.dependencies is None:  # type: ignore
+        if self.dependencies is None:
             self.dependencies = self.gather_dependencies()
         return self.dependencies
 

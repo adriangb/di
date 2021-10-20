@@ -15,7 +15,7 @@ import pytest
 @pytest.mark.anyio
 @pytest.mark.parametrize("anyio_backend", ["asyncio"])
 async def test_textual():
-    from docs.src.textual.demo import GridTest  # type: ignore # noqa
+    from docs.src.textual.demo import GridTest  # type: ignore[import]
 
     with tempfile.NamedTemporaryFile(mode="w+") as stdin:
         with patch.object(sys, "stdin", stdin):
