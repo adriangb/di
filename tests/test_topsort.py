@@ -4,7 +4,7 @@ import typing
 
 import pytest
 
-from di._topsort import topsort
+from di._dag import topsort
 from di.exceptions import CircularDependencyError
 
 
@@ -19,11 +19,9 @@ from di.exceptions import CircularDependencyError
 def test_topsort(dag: typing.Dict[int, typing.Set[int]], root: int):
     ordered = topsort(dag)
     resolved: typing.Set[int] = set()
-    for group in reversed(ordered):
-        for dep in group:
-            assert dag[dep].issubset(resolved)
-        for dep in group:
-            resolved.add(dep)
+    for dep in reversed(ordered):
+        assert dag[dep].issubset(resolved)
+        resolved.add(dep)
 
 
 @pytest.mark.parametrize("dag", [{0: {0}}, {0: {1}, 1: {0}}, {0: {2}, 1: {2}, 2: {0}}])
@@ -41,4 +39,4 @@ def test_cycles(dag: typing.Dict[int, typing.Set[int]]):
 def test_disconnected_deps(dag: typing.Dict[int, typing.Set[int]]):
     """To support sibling dependencies, we want to execute disconnected components as well."""
     ordered = topsort(dag)
-    assert [set(g) for g in ordered] == [{1, 3}, {0, 2}]
+    assert set(ordered) == dag.keys()

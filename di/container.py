@@ -17,11 +17,11 @@ from typing import (
     cast,
 )
 
+from di._dag import topsort
 from di._inspect import is_async_gen_callable, is_coroutine_callable
 from di._local_scope_context import LocalScopeContext
 from di._state import ContainerState
 from di._task import AsyncTask, SyncTask, Task
-from di._topsort import topsort
 from di.exceptions import (
     DependencyRegistryError,
     DuplicateScopeError,
@@ -198,12 +198,11 @@ class Container:
             DependantProtocol[Any],
             List[DependencyParameter[DependantProtocol[Any]]],
         ],
-        topsorted: List[List[DependantProtocol[Any]]],
+        topsorted: List[DependantProtocol[Any]],
     ) -> Dict[DependantProtocol[Any], Union[AsyncTask[Any], SyncTask[Any]]]:
         tasks: Dict[DependantProtocol[Any], Union[AsyncTask[Any], SyncTask[Any]]] = {}
-        for group in reversed(topsorted):
-            for dep in group:
-                tasks[dep] = self._build_task(dep, tasks, dag)
+        for dep in reversed(topsorted):
+            tasks[dep] = self._build_task(dep, tasks, dag)
         return tasks
 
     def _build_task(
