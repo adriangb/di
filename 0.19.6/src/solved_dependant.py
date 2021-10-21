@@ -1,45 +1,30 @@
-from typing import List, TypeVar
-
-import anyio
-
 from di import Container, Dependant
 from di.types.solved import SolvedDependency
 
-T = TypeVar("T")
 
-
+# Framework code
 class Request:
     ...
 
 
-class RequestLog(List[Request]):
+def web_framework():
+    container = Container()
+    solved = container.solve(Dependant(controller))
+    assert isinstance(solved, SolvedDependency)
+
+    container.execute_sync(solved, values={Request: Request()})
+
+    container.execute_sync(solved, validate_scopes=False, values={Request: Request()})
+
+    dependencies = solved.get_flat_subdependants()
+    assert all(isinstance(item, Dependant) for item in dependencies)
+    assert set(dependant.call for dependant in dependencies) == {Request, MyClass}
+
+
+# User code
+class MyClass:
     ...
 
 
-async def execute_request(
-    request: Request, container: Container, solved: SolvedDependency[T]
-) -> T:
-    async with container.enter_local_scope("request"):
-        return await container.execute_async(solved, values={Request: request})
-
-
-async def framework() -> None:
-    container = Container()
-    request_log = RequestLog()
-    container.bind(Dependant(lambda: request_log, scope="app"), RequestLog)
-    container.bind(Dependant(Request, scope="request", autowire=False), Request)
-    solved = container.solve(Dependant(controller, scope="request"))
-    async with container.enter_global_scope("app"):
-        # simulate concurrent requests
-        n_requests = 25
-        async with anyio.create_task_group() as tg:
-            for _ in range(n_requests):
-                tg.start_soon(execute_request, Request(), container, solved)  # type: ignore
-
-    # make sure we processed n_requests distinct requests
-    assert len(request_log) == len(set(request_log)) == n_requests
-
-
-async def controller(request: Request, request_log: RequestLog) -> None:
-    """This is the only piece of user code"""
-    request_log.append(request)
+def controller(request: Request, myobj: MyClass) -> None:
+    ...

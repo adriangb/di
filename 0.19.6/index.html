@@ -582,157 +582,125 @@ Until there is 1.X.Y release, expect breaking changes.</p>
 </code></pre></div>
 <h3 id="in-depth-example">In-depth example</h3>
 <p>In this example, we'll look at what it would take for a web framework to provide dependecy injection to it's users via <code>di</code>.</p>
-<p>First we declare a dependency.
-We'll call it <code>Request</code> like if it were an incoming HTTP request.
-This is something the web framework would provide and manage.</p>
+<p>Let's start by looking at the User's code.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">di</span> <span class="kn">import</span> <span class="n">Container</span><span class="p">,</span> <span class="n">Dependant</span>
 
 
-<span class="hll"><span class="k">class</span> <span class="nc">Request</span><span class="p">:</span>
-</span><span class="hll">    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span class="hll">        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">value</span>
-</span>
-
-<span class="k">async</span> <span class="k">def</span> <span class="nf">controller</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-    <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span> <span class="mi">1</span>
-
-
-<span class="k">async</span> <span class="k">def</span> <span class="nf">web_framework</span><span class="p">():</span>
-    <span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
-    <span class="k">async</span> <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">enter_local_scope</span><span class="p">(</span><span class="s2">&quot;request&quot;</span><span class="p">):</span>
-        <span class="n">request</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-        <span class="n">request_provider</span> <span class="o">=</span> <span class="n">Dependant</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">request</span><span class="p">)</span>
-        <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">request_provider</span><span class="p">,</span> <span class="n">Request</span><span class="p">):</span>
-            <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">container</span><span class="o">.</span><span class="n">execute_async</span><span class="p">(</span><span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">)))</span>
-        <span class="k">assert</span> <span class="n">res</span> <span class="o">==</span> <span class="mi">2</span>
-</code></pre></div>
-<p>Next, we'll declare a controller / endpoint that uses the request.
-This is the only code the user would have to write.</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">di</span> <span class="kn">import</span> <span class="n">Container</span><span class="p">,</span> <span class="n">Dependant</span>
-
-
+<span class="c1"># Framework code</span>
 <span class="k">class</span> <span class="nc">Request</span><span class="p">:</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">value</span>
 
 
-<span class="hll"><span class="k">async</span> <span class="k">def</span> <span class="nf">controller</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-</span><span class="hll">    <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span> <span class="mi">1</span>
-</span>
-
 <span class="k">async</span> <span class="k">def</span> <span class="nf">web_framework</span><span class="p">():</span>
     <span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
-    <span class="k">async</span> <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">enter_local_scope</span><span class="p">(</span><span class="s2">&quot;request&quot;</span><span class="p">):</span>
-        <span class="n">request</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-        <span class="n">request_provider</span> <span class="o">=</span> <span class="n">Dependant</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">request</span><span class="p">)</span>
-        <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">request_provider</span><span class="p">,</span> <span class="n">Request</span><span class="p">):</span>
-            <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">container</span><span class="o">.</span><span class="n">execute_async</span><span class="p">(</span><span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">)))</span>
-        <span class="k">assert</span> <span class="n">res</span> <span class="o">==</span> <span class="mi">2</span>
+    <span class="n">solved</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">))</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">container</span><span class="o">.</span><span class="n">execute_async</span><span class="p">(</span><span class="n">solved</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="p">{</span><span class="n">Request</span><span class="p">:</span> <span class="n">Request</span><span class="p">(</span><span class="mi">1</span><span class="p">)})</span>
+    <span class="k">assert</span> <span class="n">res</span> <span class="o">==</span> <span class="mi">2</span>
+<span class="hll">
+</span><span class="hll">
+</span><span class="hll"><span class="c1"># User code</span>
+</span><span class="hll"><span class="k">class</span> <span class="nc">MyClass</span><span class="p">:</span>
+</span><span class="hll">    <span class="k">def</span> <span class="nf">use_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span class="hll">        <span class="nb">print</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+</span><span class="hll">
+</span><span class="hll">
+</span><span class="k">async</span> <span class="k">def</span> <span class="nf">controller</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">myobj</span><span class="p">:</span> <span class="n">MyClass</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="n">myobj</span><span class="o">.</span><span class="n">use_value</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span> <span class="mi">1</span>
 </code></pre></div>
-<p>Now we'll define what the web framework needs to do to glue everything together.
-This part can get a bit complex, but it's okay because it's written once, in a library.
-Users don't need to interact with the container or entering/exiting scopes (although they can if they want to).</p>
-<p>We start by creating a container.
-This would happen when the app / framework in initialized.</p>
+<p>As a user, you have very little boilerplate.
+In fact, there is not a single LOC here that is not transmitting information.</p>
+<p>Now let's look at the web framework side of things.
+This part can get a bit complex, but it's okay because it's written once, in a library.</p>
+<p>First, we'll need to create a <code>Container</code> instance.
+This would be tied to the <code>App</code> or <code>Router</code> instance of the web framwork.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">di</span> <span class="kn">import</span> <span class="n">Container</span><span class="p">,</span> <span class="n">Dependant</span>
 
 
+<span class="c1"># Framework code</span>
+<span class="k">class</span> <span class="nc">Request</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">value</span>
+
+<span class="hll">
+</span><span class="k">async</span> <span class="k">def</span> <span class="nf">web_framework</span><span class="p">():</span>
+    <span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+    <span class="n">solved</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">))</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">container</span><span class="o">.</span><span class="n">execute_async</span><span class="p">(</span><span class="n">solved</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="p">{</span><span class="n">Request</span><span class="p">:</span> <span class="n">Request</span><span class="p">(</span><span class="mi">1</span><span class="p">)})</span>
+    <span class="k">assert</span> <span class="n">res</span> <span class="o">==</span> <span class="mi">2</span>
+
+
+<span class="c1"># User code</span>
+<span class="k">class</span> <span class="nc">MyClass</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">use_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+
+<span class="k">async</span> <span class="k">def</span> <span class="nf">controller</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">myobj</span><span class="p">:</span> <span class="n">MyClass</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="n">myobj</span><span class="o">.</span><span class="n">use_value</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span> <span class="mi">1</span>
+</code></pre></div>
+<p>Next, we "solve" the users endpoint:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">di</span> <span class="kn">import</span> <span class="n">Container</span><span class="p">,</span> <span class="n">Dependant</span>
+
+
+<span class="c1"># Framework code</span>
 <span class="k">class</span> <span class="nc">Request</span><span class="p">:</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">value</span>
 
 
-<span class="k">async</span> <span class="k">def</span> <span class="nf">controller</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="hll"><span class="k">async</span> <span class="k">def</span> <span class="nf">web_framework</span><span class="p">():</span>
+</span>    <span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+    <span class="n">solved</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">))</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">container</span><span class="o">.</span><span class="n">execute_async</span><span class="p">(</span><span class="n">solved</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="p">{</span><span class="n">Request</span><span class="p">:</span> <span class="n">Request</span><span class="p">(</span><span class="mi">1</span><span class="p">)})</span>
+    <span class="k">assert</span> <span class="n">res</span> <span class="o">==</span> <span class="mi">2</span>
+
+
+<span class="c1"># User code</span>
+<span class="k">class</span> <span class="nc">MyClass</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">use_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+
+<span class="k">async</span> <span class="k">def</span> <span class="nf">controller</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">myobj</span><span class="p">:</span> <span class="n">MyClass</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="n">myobj</span><span class="o">.</span><span class="n">use_value</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span> <span class="mi">1</span>
+</code></pre></div>
+<p>This should happen once, maybe at app startup.
+The framework can then store the <code>solved</code> object, which contains all of the information necessary to execute the dependency (dependency being in this case the user's endpoint/controller function).
+This is very important for performance: we want do the least amount of work possible for each incoming request.</p>
+<p>Finally, we execute the endpoint for each incoming request:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">di</span> <span class="kn">import</span> <span class="n">Container</span><span class="p">,</span> <span class="n">Dependant</span>
+
+
+<span class="c1"># Framework code</span>
+<span class="k">class</span> <span class="nc">Request</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">value</span>
 
 
 <span class="k">async</span> <span class="k">def</span> <span class="nf">web_framework</span><span class="p">():</span>
 <span class="hll">    <span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
-</span>    <span class="k">async</span> <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">enter_local_scope</span><span class="p">(</span><span class="s2">&quot;request&quot;</span><span class="p">):</span>
-        <span class="n">request</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-        <span class="n">request_provider</span> <span class="o">=</span> <span class="n">Dependant</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">request</span><span class="p">)</span>
-        <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">request_provider</span><span class="p">,</span> <span class="n">Request</span><span class="p">):</span>
-            <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">container</span><span class="o">.</span><span class="n">execute_async</span><span class="p">(</span><span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">)))</span>
-        <span class="k">assert</span> <span class="n">res</span> <span class="o">==</span> <span class="mi">2</span>
-</code></pre></div>
-<p>Next, we enter a <code>"request"</code> scope.
-This would happen for each incoming request.</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">di</span> <span class="kn">import</span> <span class="n">Container</span><span class="p">,</span> <span class="n">Dependant</span>
+</span>    <span class="n">solved</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">))</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">container</span><span class="o">.</span><span class="n">execute_async</span><span class="p">(</span><span class="n">solved</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="p">{</span><span class="n">Request</span><span class="p">:</span> <span class="n">Request</span><span class="p">(</span><span class="mi">1</span><span class="p">)})</span>
+    <span class="k">assert</span> <span class="n">res</span> <span class="o">==</span> <span class="mi">2</span>
 
 
-<span class="k">class</span> <span class="nc">Request</span><span class="p">:</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">value</span>
+<span class="c1"># User code</span>
+<span class="k">class</span> <span class="nc">MyClass</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">use_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
 
 
-<span class="k">async</span> <span class="k">def</span> <span class="nf">controller</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">controller</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">myobj</span><span class="p">:</span> <span class="n">MyClass</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="n">myobj</span><span class="o">.</span><span class="n">use_value</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span> <span class="mi">1</span>
-
-
-<span class="k">async</span> <span class="k">def</span> <span class="nf">web_framework</span><span class="p">():</span>
-    <span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
-<span class="hll">    <span class="k">async</span> <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">enter_local_scope</span><span class="p">(</span><span class="s2">&quot;request&quot;</span><span class="p">):</span>
-</span>        <span class="n">request</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-        <span class="n">request_provider</span> <span class="o">=</span> <span class="n">Dependant</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">request</span><span class="p">)</span>
-        <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">request_provider</span><span class="p">,</span> <span class="n">Request</span><span class="p">):</span>
-            <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">container</span><span class="o">.</span><span class="n">execute_async</span><span class="p">(</span><span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">)))</span>
-        <span class="k">assert</span> <span class="n">res</span> <span class="o">==</span> <span class="mi">2</span>
 </code></pre></div>
-<p>Note that <code>"request"</code> does not have any special meaning to <code>di</code>: any hashable value (strings, enums, integers, etc.) will do. Frameworks using <code>di</code> need to establish semantic meanings for their scopes and communicate them with their users, but no changes in <code>di</code> are necessary to add more socpes.</p>
-<p>Next can bind our request instance:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">di</span> <span class="kn">import</span> <span class="n">Container</span><span class="p">,</span> <span class="n">Dependant</span>
-
-
-<span class="k">class</span> <span class="nc">Request</span><span class="p">:</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">value</span>
-
-
-<span class="k">async</span> <span class="k">def</span> <span class="nf">controller</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-    <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span> <span class="mi">1</span>
-
-
-<span class="k">async</span> <span class="k">def</span> <span class="nf">web_framework</span><span class="p">():</span>
-    <span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
-    <span class="k">async</span> <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">enter_local_scope</span><span class="p">(</span><span class="s2">&quot;request&quot;</span><span class="p">):</span>
-        <span class="n">request</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-<span class="hll">        <span class="n">request_provider</span> <span class="o">=</span> <span class="n">Dependant</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">request</span><span class="p">)</span>
-</span><span class="hll">        <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">request_provider</span><span class="p">,</span> <span class="n">Request</span><span class="p">):</span>
-</span>            <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">container</span><span class="o">.</span><span class="n">execute_async</span><span class="p">(</span><span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">)))</span>
-        <span class="k">assert</span> <span class="n">res</span> <span class="o">==</span> <span class="mi">2</span>
-</code></pre></div>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
-<p>We didn't have to be in the <code>"request"</code> scope to do the bind, the opposite order (bind then enter scope) works just as well.</p>
-</div>
-<p>Binds are always a callable.
-They can even have their own dependencies (e.g. <code>container.bind(Dependant(callable_with_dependencies))</code>) and declare their own scope (see next paragraph).
-But in this case we want to use the same <code>Request</code> instance everywhere, so we define a lambda that always returns the same instance.</p>
-<p>Although not strictly necessary in this case (<code>Request</code> is not a context maanger), we pass <code>scope="request"</code> to <code>Dependant</code> to signify that we want teardown for that dependncy to happen when we exit the <code>"request"</code> scope.
-If <code>Request</code> was a context manager like dependency (a dependency with <code>yield</code>), then it's teardown (the section after <code>yield</code>) would we run when we exit the <code>"request"</code> scope.</p>
-<p>Finally, we execute the user's controller / endpoint:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">di</span> <span class="kn">import</span> <span class="n">Container</span><span class="p">,</span> <span class="n">Dependant</span>
-
-
-<span class="k">class</span> <span class="nc">Request</span><span class="p">:</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">value</span>
-
-
-<span class="k">async</span> <span class="k">def</span> <span class="nf">controller</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-    <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span> <span class="mi">1</span>
-
-
-<span class="k">async</span> <span class="k">def</span> <span class="nf">web_framework</span><span class="p">():</span>
-    <span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
-    <span class="k">async</span> <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">enter_local_scope</span><span class="p">(</span><span class="s2">&quot;request&quot;</span><span class="p">):</span>
-        <span class="n">request</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-        <span class="n">request_provider</span> <span class="o">=</span> <span class="n">Dependant</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">request</span><span class="p">)</span>
-        <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">request_provider</span><span class="p">,</span> <span class="n">Request</span><span class="p">):</span>
-<span class="hll">            <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">container</span><span class="o">.</span><span class="n">execute_async</span><span class="p">(</span><span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">)))</span>
-</span><span class="hll">        <span class="k">assert</span> <span class="n">res</span> <span class="o">==</span> <span class="mi">2</span>
-</span></code></pre></div>
-<p>When we called <code>execute()</code>, <code>di</code> checked <code>controller</code> and saw that it needed a <code>Request</code>. Then it looked at the binds, found the bound provider and injected that.</p>
+<p>When we do this, we provide the <code>Request</code> instance as a value.
+This means that <code>di</code> does not introspect at all into the <code>Request</code> to figure out how to build it, it just hands the value off to anything that requests it.
+You can also "bind" providers, which is covered in the <a href="binds/">binds</a> section of the docs.</p>
 <h2 id="project-aims">Project Aims</h2>
 <p>This project is primarily geared for enviroments that already use inversion of control (think web frameworks, CLI frameworks or anything else where you define functions and "it calls you").</p>
 <p>It particularly excels in async / concurrent environments, since the DI system has first class support for async dependencies and can gather dependencies concurrently.</p>

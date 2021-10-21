@@ -417,14 +417,7 @@ But the container doesn't actually know about either of these two things!
 In fact, the container only knows about the <code>DependantProtocol</code>, which you can find in <code>di.types.dependencies</code>.
 <code>Dependency</code> is just a concrete implementation of the <code>DependantProtocol</code>, and <code>Depends</code> is in turn a wrapper function around <code>Dependency</code> for the sole purpose of overriding the types that type checkers see.</p>
 <p>You can easily build your own version of <code>Dependency</code> and <code>Depends</code>, either by inheriting from <code>Dependency</code> or by writing a <code>DependantProtocol</code> implementation from scratch.</p>
-<p>There are many use cases for this, including:</p>
-<ol>
-<li>Carrying extra data in the marker by making a class that accepts extra arguments in <code>__init__</code>.</li>
-<li>Providing a callable implementation that depends on user defined parameters.</li>
-<li>Hiding options like <code>scope</code> or <code>share</code> from users where it does not make sense to change them.</li>
-</ol>
-<p>An example of creating Security dependencies for a web framework is available in the the <a href="../solving/">Solving docs</a>.</p>
-<p>Here is another example that extracts headers from requests:</p>
+<p>Here is an example that extracts headers from requests:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">inspect</span>
 <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">Optional</span>
 
@@ -485,6 +478,7 @@ In fact, the container only knows about the <code>DependantProtocol</code>, whic
     <span class="k">assert</span> <span class="n">x_header_one</span> <span class="o">==</span> <span class="s2">&quot;one&quot;</span>
     <span class="k">assert</span> <span class="n">header_two_val</span> <span class="o">==</span> <span class="mi">2</span>
 </code></pre></div>
+<p>Another good example of the customizability provided by <code>DependantProtocol</code> is the implementation of [<code>JointDependant</code>], which lets you schedule and execute dependencies together even if they are not directly connected by wiring:</p>
                 
               
               

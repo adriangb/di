@@ -494,122 +494,111 @@ Note that you can still have <em>values</em> in your DAG change, just not the sh
 <p>For example, here is a more advanced use case where the framework solves the endpoint and then provides the <code>Request</code> as a value each time the endpoint is called.</p>
 <p>This means that <code>di</code> does <em>not</em> do any reflection for each request, nor does it have to do dependency resolution.
 Instead, only some basic checks on scopes are done and the dependencies are executed with almost no overhead.</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">TypeVar</span>
-
-<span class="kn">import</span> <span class="nn">anyio</span>
-
-<span class="kn">from</span> <span class="nn">di</span> <span class="kn">import</span> <span class="n">Container</span><span class="p">,</span> <span class="n">Dependant</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">di</span> <span class="kn">import</span> <span class="n">Container</span><span class="p">,</span> <span class="n">Dependant</span>
 <span class="kn">from</span> <span class="nn">di.types.solved</span> <span class="kn">import</span> <span class="n">SolvedDependency</span>
 
-<span class="n">T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;T&quot;</span><span class="p">)</span>
 
-
+<span class="c1"># Framework code</span>
 <span class="k">class</span> <span class="nc">Request</span><span class="p">:</span>
     <span class="o">...</span>
 
+<span class="hll">
+</span><span class="hll"><span class="k">def</span> <span class="nf">web_framework</span><span class="p">():</span>
+</span><span class="hll">    <span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+</span>    <span class="n">solved</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">))</span>
+<span class="hll">    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">solved</span><span class="p">,</span> <span class="n">SolvedDependency</span><span class="p">)</span>
+</span>
+    <span class="n">container</span><span class="o">.</span><span class="n">execute_sync</span><span class="p">(</span><span class="n">solved</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="p">{</span><span class="n">Request</span><span class="p">:</span> <span class="n">Request</span><span class="p">()})</span>
 
-<span class="k">class</span> <span class="nc">RequestLog</span><span class="p">(</span><span class="n">List</span><span class="p">[</span><span class="n">Request</span><span class="p">]):</span>
+    <span class="n">container</span><span class="o">.</span><span class="n">execute_sync</span><span class="p">(</span><span class="n">solved</span><span class="p">,</span> <span class="n">validate_scopes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="p">{</span><span class="n">Request</span><span class="p">:</span> <span class="n">Request</span><span class="p">()})</span>
+
+    <span class="n">dependencies</span> <span class="o">=</span> <span class="n">solved</span><span class="o">.</span><span class="n">get_flat_subdependants</span><span class="p">()</span>
+    <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">Dependant</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">dependencies</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">set</span><span class="p">(</span><span class="n">dependant</span><span class="o">.</span><span class="n">call</span> <span class="k">for</span> <span class="n">dependant</span> <span class="ow">in</span> <span class="n">dependencies</span><span class="p">)</span> <span class="o">==</span> <span class="p">{</span><span class="n">Request</span><span class="p">,</span> <span class="n">MyClass</span><span class="p">}</span>
+
+
+<span class="c1"># User code</span>
+<span class="k">class</span> <span class="nc">MyClass</span><span class="p">:</span>
     <span class="o">...</span>
 
 
-<span class="k">async</span> <span class="k">def</span> <span class="nf">execute_request</span><span class="p">(</span>
-    <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">container</span><span class="p">:</span> <span class="n">Container</span><span class="p">,</span> <span class="n">solved</span><span class="p">:</span> <span class="n">SolvedDependency</span><span class="p">[</span><span class="n">T</span><span class="p">]</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">T</span><span class="p">:</span>
-    <span class="k">async</span> <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">enter_local_scope</span><span class="p">(</span><span class="s2">&quot;request&quot;</span><span class="p">):</span>
-<span class="hll">        <span class="k">return</span> <span class="k">await</span> <span class="n">container</span><span class="o">.</span><span class="n">execute_async</span><span class="p">(</span><span class="n">solved</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="p">{</span><span class="n">Request</span><span class="p">:</span> <span class="n">request</span><span class="p">})</span>
-</span>
-
-<span class="k">async</span> <span class="k">def</span> <span class="nf">framework</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
-    <span class="n">request_log</span> <span class="o">=</span> <span class="n">RequestLog</span><span class="p">()</span>
-    <span class="n">container</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">request_log</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">&quot;app&quot;</span><span class="p">),</span> <span class="n">RequestLog</span><span class="p">)</span>
-    <span class="n">container</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">Request</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">&quot;request&quot;</span><span class="p">,</span> <span class="n">autowire</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span> <span class="n">Request</span><span class="p">)</span>
-<span class="hll">    <span class="n">solved</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">&quot;request&quot;</span><span class="p">))</span>
-</span>    <span class="k">async</span> <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">enter_global_scope</span><span class="p">(</span><span class="s2">&quot;app&quot;</span><span class="p">):</span>
-        <span class="c1"># simulate concurrent requests</span>
-        <span class="n">n_requests</span> <span class="o">=</span> <span class="mi">25</span>
-        <span class="k">async</span> <span class="k">with</span> <span class="n">anyio</span><span class="o">.</span><span class="n">create_task_group</span><span class="p">()</span> <span class="k">as</span> <span class="n">tg</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_requests</span><span class="p">):</span>
-                <span class="n">tg</span><span class="o">.</span><span class="n">start_soon</span><span class="p">(</span><span class="n">execute_request</span><span class="p">,</span> <span class="n">Request</span><span class="p">(),</span> <span class="n">container</span><span class="p">,</span> <span class="n">solved</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
-
-    <span class="c1"># make sure we processed n_requests distinct requests</span>
-    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">request_log</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">request_log</span><span class="p">))</span> <span class="o">==</span> <span class="n">n_requests</span>
-
-
-<span class="k">async</span> <span class="k">def</span> <span class="nf">controller</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">request_log</span><span class="p">:</span> <span class="n">RequestLog</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;This is the only piece of user code&quot;&quot;&quot;</span>
-    <span class="n">request_log</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">controller</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">myobj</span><span class="p">:</span> <span class="n">MyClass</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="o">...</span>
 </code></pre></div>
 <p>To disable scope checks (perhaps something reasonable to do in a web framework after 1 request is processed), you can pass the <code>validate_scopes=False</code> parameter to <code>execute_sync</code> or <code>execute_async</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">di</span> <span class="kn">import</span> <span class="n">Container</span><span class="p">,</span> <span class="n">Dependant</span>
+<span class="kn">from</span> <span class="nn">di.types.solved</span> <span class="kn">import</span> <span class="n">SolvedDependency</span>
+
+
+<span class="c1"># Framework code</span>
+<span class="k">class</span> <span class="nc">Request</span><span class="p">:</span>
+    <span class="o">...</span>
+
+
+<span class="k">def</span> <span class="nf">web_framework</span><span class="p">():</span>
+    <span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+    <span class="n">solved</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">))</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">solved</span><span class="p">,</span> <span class="n">SolvedDependency</span><span class="p">)</span>
+
+<span class="hll">    <span class="n">container</span><span class="o">.</span><span class="n">execute_sync</span><span class="p">(</span><span class="n">solved</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="p">{</span><span class="n">Request</span><span class="p">:</span> <span class="n">Request</span><span class="p">()})</span>
+</span>
+    <span class="n">container</span><span class="o">.</span><span class="n">execute_sync</span><span class="p">(</span><span class="n">solved</span><span class="p">,</span> <span class="n">validate_scopes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="p">{</span><span class="n">Request</span><span class="p">:</span> <span class="n">Request</span><span class="p">()})</span>
+
+    <span class="n">dependencies</span> <span class="o">=</span> <span class="n">solved</span><span class="o">.</span><span class="n">get_flat_subdependants</span><span class="p">()</span>
+    <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">Dependant</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">dependencies</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">set</span><span class="p">(</span><span class="n">dependant</span><span class="o">.</span><span class="n">call</span> <span class="k">for</span> <span class="n">dependant</span> <span class="ow">in</span> <span class="n">dependencies</span><span class="p">)</span> <span class="o">==</span> <span class="p">{</span><span class="n">Request</span><span class="p">,</span> <span class="n">MyClass</span><span class="p">}</span>
+
+
+<span class="c1"># User code</span>
+<span class="k">class</span> <span class="nc">MyClass</span><span class="p">:</span>
+    <span class="o">...</span>
+
+
+<span class="k">def</span> <span class="nf">controller</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">myobj</span><span class="p">:</span> <span class="n">MyClass</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="o">...</span>
+</code></pre></div>
 <h2 id="getting-a-list-of-dependencies">Getting a list of dependencies</h2>
 <p><code>di</code> provides a convenience function to flatten the dependency DAG into a list off all sub dependencies in <code>Container.get_flat_subdependants</code>.</p>
-<p>This can be used in conjunction with custom classes implementing the <code>DependantProtocol</code> to determine what headers or scopes an HTTP endpoint needs, amongst other uses:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">FrozenSet</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">List</span>
-
-<span class="kn">from</span> <span class="nn">di</span> <span class="kn">import</span> <span class="n">Container</span><span class="p">,</span> <span class="n">Dependant</span>
-<span class="kn">from</span> <span class="nn">di.types.dependencies</span> <span class="kn">import</span> <span class="n">DependantProtocol</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">di</span> <span class="kn">import</span> <span class="n">Container</span><span class="p">,</span> <span class="n">Dependant</span>
+<span class="kn">from</span> <span class="nn">di.types.solved</span> <span class="kn">import</span> <span class="n">SolvedDependency</span>
 
 
+<span class="c1"># Framework code</span>
 <span class="k">class</span> <span class="nc">Request</span><span class="p">:</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scopes</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">scopes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">scopes</span><span class="p">)</span>
+    <span class="o">...</span>
 
 
-<span class="k">class</span> <span class="nc">SecurityDependant</span><span class="p">(</span><span class="n">Dependant</span><span class="p">[</span><span class="nb">bool</span><span class="p">]):</span>
-    <span class="n">scopes</span><span class="p">:</span> <span class="n">FrozenSet</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
-
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scopes</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">scopes</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">scopes</span><span class="p">)</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">call</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="fm">__call__</span><span class="p">,</span> <span class="n">share</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-
-    <span class="k">async</span> <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">scopes</span><span class="o">.</span><span class="n">issubset</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">scopes</span><span class="p">)</span>
-
-
-<span class="k">def</span> <span class="nf">Security</span><span class="p">(</span><span class="o">*</span><span class="n">scopes</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-    <span class="k">return</span> <span class="n">SecurityDependant</span><span class="p">(</span><span class="n">scopes</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
-
-
-<span class="hll"><span class="k">def</span> <span class="nf">gather_scopes</span><span class="p">(</span><span class="n">deps</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">DependantProtocol</span><span class="p">[</span><span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-</span><span class="hll">    <span class="n">scopes</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span class="hll">    <span class="k">for</span> <span class="n">dep</span> <span class="ow">in</span> <span class="n">deps</span><span class="p">:</span>
-</span><span class="hll">        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dep</span><span class="p">,</span> <span class="n">SecurityDependant</span><span class="p">):</span>
-</span><span class="hll">            <span class="n">scopes</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">dep</span><span class="p">,</span> <span class="s2">&quot;scopes&quot;</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">()))</span>
-</span><span class="hll">    <span class="k">return</span> <span class="n">scopes</span>
-</span>
-
-<span class="k">async</span> <span class="k">def</span> <span class="nf">web_framework</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="k">def</span> <span class="nf">web_framework</span><span class="p">():</span>
     <span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+    <span class="n">solved</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">))</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">solved</span><span class="p">,</span> <span class="n">SolvedDependency</span><span class="p">)</span>
 
-<span class="hll">    <span class="c1"># note: use autowire=False so that the container doesn&#39;t try to wire the Request itself</span>
-</span><span class="hll">    <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">Request</span><span class="p">,</span> <span class="n">autowire</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span> <span class="n">Request</span><span class="p">):</span>
-</span><span class="hll">        <span class="n">scopes</span> <span class="o">=</span> <span class="n">gather_scopes</span><span class="p">(</span>
-</span><span class="hll">            <span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">))</span><span class="o">.</span><span class="n">get_flat_subdependants</span><span class="p">()</span>
-</span><span class="hll">        <span class="p">)</span>
-</span>
-    <span class="k">assert</span> <span class="nb">set</span><span class="p">(</span><span class="n">scopes</span><span class="p">)</span> <span class="o">==</span> <span class="p">{</span><span class="s2">&quot;scope1&quot;</span><span class="p">,</span> <span class="s2">&quot;scope2&quot;</span><span class="p">}</span>
+    <span class="n">container</span><span class="o">.</span><span class="n">execute_sync</span><span class="p">(</span><span class="n">solved</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="p">{</span><span class="n">Request</span><span class="p">:</span> <span class="n">Request</span><span class="p">()})</span>
 
-    <span class="n">valid_request</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span><span class="n">scopes</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;scope1&quot;</span><span class="p">,</span> <span class="s2">&quot;scope2&quot;</span><span class="p">])</span>
-    <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">valid_request</span><span class="p">),</span> <span class="n">Request</span><span class="p">):</span>
-        <span class="k">await</span> <span class="n">container</span><span class="o">.</span><span class="n">execute_async</span><span class="p">(</span><span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">)))</span>  <span class="c1"># success</span>
-
-    <span class="n">invalid_request</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span><span class="n">scopes</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;scope1&quot;</span><span class="p">])</span>
-    <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">invalid_request</span><span class="p">),</span> <span class="n">Request</span><span class="p">):</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="k">await</span> <span class="n">container</span><span class="o">.</span><span class="n">execute_async</span><span class="p">(</span>
-                <span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">))</span>
-            <span class="p">)</span>  <span class="c1"># fails</span>
-        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
-            <span class="k">pass</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="s2">&quot;Using a request without the right scopes should fail&quot;</span><span class="p">)</span>
+<span class="hll">    <span class="n">container</span><span class="o">.</span><span class="n">execute_sync</span><span class="p">(</span><span class="n">solved</span><span class="p">,</span> <span class="n">validate_scopes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="p">{</span><span class="n">Request</span><span class="p">:</span> <span class="n">Request</span><span class="p">()})</span>
+</span><span class="hll">
+</span><span class="hll">    <span class="n">dependencies</span> <span class="o">=</span> <span class="n">solved</span><span class="o">.</span><span class="n">get_flat_subdependants</span><span class="p">()</span>
+</span>    <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">Dependant</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">dependencies</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">set</span><span class="p">(</span><span class="n">dependant</span><span class="o">.</span><span class="n">call</span> <span class="k">for</span> <span class="n">dependant</span> <span class="ow">in</span> <span class="n">dependencies</span><span class="p">)</span> <span class="o">==</span> <span class="p">{</span><span class="n">Request</span><span class="p">,</span> <span class="n">MyClass</span><span class="p">}</span>
 
 
-<span class="k">def</span> <span class="nf">controller</span><span class="p">(</span><span class="n">authenticated</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">Security</span><span class="p">(</span><span class="s2">&quot;scope1&quot;</span><span class="p">,</span> <span class="s2">&quot;scope2&quot;</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;This is the only piece of user code&quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">authenticated</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span>
+<span class="c1"># User code</span>
+<span class="k">class</span> <span class="nc">MyClass</span><span class="p">:</span>
+    <span class="o">...</span>
+
+
+<span class="k">def</span> <span class="nf">controller</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">myobj</span><span class="p">:</span> <span class="n">MyClass</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="o">...</span>
 </code></pre></div>
+<p>This lists all of the <em>Dependants</em> for the solved dependency, not directly the callable dependency.</p>
+<p>This means that you can create custom markers and easily enumerate them.
+For example, you might make a <code>Header</code> dependency and then want to know what headers are being requested by the controller, even if they are nested inside other dependencies:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">di</span> <span class="kn">import</span> <span class="n">Dependant</span>
+
+<span class="k">class</span> <span class="nc">Header</span><span class="p">(</span><span class="n">Dependant</span><span class="p">[</span><span class="nb">str</span><span class="p">]):</span>
+    <span class="o">...</span>
+</code></pre></div>
+<p>See the <a href="../dependants/">dependants</a> section for a more complete example of this.</p>
                 
               
               
