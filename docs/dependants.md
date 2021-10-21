@@ -7,18 +7,13 @@ In fact, the container only knows about the `DependantProtocol`, which you can f
 
 You can easily build your own version of `Dependency` and `Depends`, either by inheriting from `Dependency` or by writing a `DependantProtocol` implementation from scratch.
 
-There are many use cases for this, including:
+Here is an example that extracts headers from requests:
 
-1. Carrying extra data in the marker by making a class that accepts extra arguments in `__init__`.
-2. Providing a callable implementation that depends on user defined parameters.
-3. Hiding options like `scope` or `share` from users where it does not make sense to change them.
-
-An example of creating Security dependencies for a web framework is available in the the [Solving docs].
-
-Here is another example that extracts headers from requests:
-
-```Python
+```python
 --8<-- "docs/src/headers_example.py"
 ```
 
+Another good example of the customizability provided by `DependantProtocol` is the implementation of [`JointDependant`], which lets you schedule and execute dependencies together even if they are not directly connected by wiring:
+
 [Solving docs]: solving.md
+[`JointDependant`]: https://github.com/adriangb/di/blob/b7398fbdf30213c1acb94b423bb4f2e2badd0fdd/di/dependant.py#L194-L218

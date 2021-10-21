@@ -29,20 +29,37 @@ For example, here is a more advanced use case where the framework solves the end
 This means that `di` does *not* do any reflection for each request, nor does it have to do dependency resolution.
 Instead, only some basic checks on scopes are done and the dependencies are executed with almost no overhead.
 
-```Python hl_lines="23 31"
+```Python hl_lines="9-11 13"
 --8<-- "docs/src/solved_dependant.py"
 ```
 
 To disable scope checks (perhaps something reasonable to do in a web framework after 1 request is processed), you can pass the `validate_scopes=False` parameter to `execute_sync` or `execute_async`.
 
+```Python hl_lines="15"
+--8<-- "docs/src/solved_dependant.py"
+```
+
 ## Getting a list of dependencies
 
 `di` provides a convenience function to flatten the dependency DAG into a list off all sub dependencies in `Container.get_flat_subdependants`.
 
-This can be used in conjunction with custom classes implementing the `DependantProtocol` to determine what headers or scopes an HTTP endpoint needs, amongst other uses:
-
-```Python hl_lines="27-32 38-42"
---8<-- "docs/src/gather_deps_example.py"
+```Python hl_lines="17-19"
+--8<-- "docs/src/solved_dependant.py"
 ```
 
+This lists all of the *Dependants* for the solved dependency, not directly the callable dependency.
+
+This means that you can create custom markers and easily enumerate them.
+For example, you might make a `Header` dependency and then want to know what headers are being requested by the controller, even if they are nested inside other dependencies:
+
+```python
+from di import Dependant
+
+class Header(Dependant[str]):
+    ...
+```
+
+See the [dependants] section for a more complete example of this.
+
 [Performance section of the Wiring docs]: wiring.md#performance
+[dependants]: dependants.md

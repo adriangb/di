@@ -149,9 +149,7 @@ class Dependant(DependantProtocol[DependencyType]):
         res: List[DependencyParameter[DependantProtocol[Any]]] = []
         for param in self.gather_parameters().values():
             if param.kind in _VARIABLE_PARAMETER_KINDS:
-                raise WiringError(
-                    "Dependencies may not use variable positional or keyword arguments"
-                )
+                continue
             if isinstance(param.default, Dependant):
                 sub_dependant: DependantProtocol[Any] = param.default
             elif param.default is param.empty and self.autowire:

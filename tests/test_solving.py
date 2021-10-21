@@ -1,5 +1,5 @@
 import sys
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, List
 
 from di.dependant import JoinedDependant
 
@@ -28,29 +28,6 @@ def test_no_annotations():
         match="Cannot wire a parameter with no default and no type annotation",
     ):
         container.execute_sync(container.solve(Dependant(badfunc)))
-
-
-def test_variable_arguments():
-    """Dependencies cannot use *args or **kwargs, even with type annotations"""
-
-    def args_func(*args: str):
-        ...
-
-    def kwargs_func(**kwargs: Dict[str, str]):
-        ...
-
-    container = Container()
-
-    with pytest.raises(
-        WiringError,
-        match="^Dependencies may not use variable positional or keyword arguments$",
-    ):
-        container.execute_sync(container.solve(Dependant(args_func)))
-    with pytest.raises(
-        WiringError,
-        match="^Dependencies may not use variable positional or keyword arguments$",
-    ):
-        container.execute_sync(container.solve(Dependant(kwargs_func)))
 
 
 def test_default_argument():
