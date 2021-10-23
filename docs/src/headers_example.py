@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import inspect
 from typing import Any, Mapping, Optional
 
@@ -14,7 +16,7 @@ class HeaderDependant(Dependant[Any]):
         self.alias = alias
         super().__init__(call=None, scope=None, share=False)
 
-    def register_parameter(self, param: inspect.Parameter) -> None:
+    def register_parameter(self, param: inspect.Parameter) -> HeaderDependant:
         if self.alias is not None:
             name = self.alias
         else:
@@ -24,6 +26,7 @@ class HeaderDependant(Dependant[Any]):
             return param.annotation(request.headers[name])
 
         self.call = get_header
+        return self
 
 
 def Header(alias: Optional[str] = None) -> Any:

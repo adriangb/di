@@ -6,7 +6,7 @@ from typing import Any, Dict, Iterable, List, Optional, overload
 from di._docstrings import join_docstring_from
 from di._inspect import get_parameters, infer_call_from_annotation
 from di.exceptions import WiringError
-from di.types.dependencies import DependantProtocol, DependencyParameter
+from di.types.dependencies import DependantProtocol, DependencyParameter, T
 from di.types.providers import (
     AsyncGeneratorProvider,
     CallableProvider,
@@ -105,7 +105,7 @@ class Dependant(DependantProtocol[DependencyType]):
     def __eq__(self, o: object) -> bool:
         if type(self) is not type(o):
             return False
-        assert isinstance(o, type(self))
+        assert isinstance(o, Dependant)
         if self.share is False or o.share is False:
             return False
         return self.call is o.call
@@ -129,9 +129,12 @@ class Dependant(DependantProtocol[DependencyType]):
         assert self.call is not None, "Cannot gather parameters without a bound call"
         return get_parameters(self.call)
 
-    def register_parameter(self, param: inspect.Parameter) -> None:
+    def register_parameter(
+        self: Dependant[T], param: inspect.Parameter
+    ) -> Dependant[T]:
         if self.call is None:
             self.call = infer_call_from_annotation(param)
+        return self
 
     def gather_dependencies(
         self,
@@ -148,7 +151,7 @@ class Dependant(DependantProtocol[DependencyType]):
         ), "Container should have assigned call; this is a bug!"
         res: List[DependencyParameter[DependantProtocol[Any]]] = []
         for param in self.gather_parameters().values():
-            if param.kind in _VARIABLE_PARAMETER_KINDS:
+            if param.kind in _VARIABLE_PARAMETER_KINDS and self.autowire:
                 continue
             if isinstance(param.default, Dependant):
                 sub_dependant: DependantProtocol[Any] = param.default
@@ -156,7 +159,7 @@ class Dependant(DependantProtocol[DependencyType]):
                 sub_dependant = self.create_sub_dependant(param)
             else:
                 continue  # pragma: no cover
-            sub_dependant.register_parameter(param)
+            sub_dependant = sub_dependant.register_parameter(param)
             res.append(DependencyParameter(dependency=sub_dependant, parameter=param))
         return res
 

@@ -16,6 +16,9 @@ from di.types.scopes import Scope
 DependencyType = TypeVar("DependencyType")
 
 
+T = TypeVar("T")
+
+
 @runtime_checkable
 class DependantProtocol(Protocol[DependencyType]):
     """A dependant is an object that can provide the container with:
@@ -54,7 +57,9 @@ class DependantProtocol(Protocol[DependencyType]):
         """Collect all of the sub dependencies for this dependant"""
         raise NotImplementedError
 
-    def register_parameter(self, param: inspect.Parameter) -> None:
+    def register_parameter(
+        self: DependantProtocol[T], param: inspect.Parameter
+    ) -> DependantProtocol[T]:
         """Called by the parent so that us / this / the child can register
         the parameter it is attached to.
 
