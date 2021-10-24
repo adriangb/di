@@ -43,12 +43,7 @@ class ScopeMap(Generic[KT, VT]):
             raise UnknownScopeError(
                 f"The scope {scope} is not amongst the known scopes: {self.mappings.keys()}"
             )
-        for mapping_scope, mapping in self.mappings.items():
-            if scope == mapping_scope:
-                mapping[key] = value
-            else:
-                if key in mapping:
-                    mapping.pop(key)
+        self.mappings[scope][key] = value
 
     def contains(self, key: KT) -> bool:
         for mapping in self.mappings.values():

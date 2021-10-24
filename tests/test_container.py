@@ -20,26 +20,3 @@ def test_scopes_property() -> None:
         assert container.scopes == ["test"]
         with container.enter_local_scope("another"):
             assert container.scopes == ["test", "another"]
-
-
-def test_mapping_interface() -> None:
-    def dep() -> None:
-        ...
-
-    container = Container()
-
-    assert dep not in container
-    try:
-        container[dep]
-    except KeyError:
-        pass
-    else:
-        raise AssertionError("Should have raised a KeyError")
-
-    def replacement() -> None:
-        ...
-
-    container.bind(Dependant(replacement), dep)
-
-    assert dep in container
-    assert container[dep].call is replacement

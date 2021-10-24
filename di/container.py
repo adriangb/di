@@ -105,14 +105,6 @@ class Container:
         """
         return self._state.bind(provider=provider, dependency=dependency)
 
-    def __contains__(self, o: object) -> bool:
-        return o in self._state.binds
-
-    def __getitem__(
-        self, provider: DependencyProviderType[DependencyType]
-    ) -> DependantProtocol[DependencyType]:
-        return self._state.binds[provider]
-
     def solve(
         self,
         dependency: DependantProtocol[DependencyType],
