@@ -267,29 +267,42 @@ class Container:
 
         tasks = solved._tasks
 
+        cache: Dict[DependencyProvider, Any] = {}
+        for mapping in self._state.cached_values.mappings.values():
+            cache.update(mapping)
+        cache.update(values)
+
+        def use_cache(dep: DependantProtocol[Any]) -> bool:
+            if dep.call in cache:
+                assert dep.call is not None
+                if dep.call in values:
+                    results[dep] = values[dep.call]
+                    return True
+                elif dep.share:
+                    results[dep] = cache[dep.call]
+                    return True
+            return False
+
         # Build a DAG of Tasks that we actually need to execute
         # this allows us to prune subtrees that will come from cached values
         unvisited = deque([solved.dependency])
         # Make DAG values a set to account for dependencies that depend on the the same
         # sub dependency in more than one param (`def func(a: A, a_again: A)`)
         dag: Dict[DependantProtocol[Any], List[DependantProtocol[Any]]] = {}
-        dependant_dag: DefaultDict[
-            DependantProtocol[Any], List[Task[Any]]
-        ] = defaultdict(list)
+        dependant_dag: Dict[DependantProtocol[Any], List[Task[Any]]] = {
+            dep: [] for dep in solved._dependency_dag
+        }
         while unvisited:
             dep = unvisited.pop()
             if dep in dag:
                 continue
-            task = tasks[dep]
             # task the dependency is cached or was provided by value
             # we don't need to compute it or any of it's dependencies
-            if not task.from_cache_or_values(self._state, results, values):
+            if not use_cache(dep):
                 # otherwise, we add it to our DAG and visit it's children
                 dag[dep] = []
                 for subdep in solved._dependency_dag[dep]:
-                    if not tasks[subdep].from_cache_or_values(
-                        self._state, results, values
-                    ):
+                    if not use_cache(subdep):
                         dependant_dag[subdep].append(tasks[dep])
                         dag[dep].append(subdep)
                         if subdep not in dag:

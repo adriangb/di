@@ -58,26 +58,6 @@ class Task(Generic[DependencyType]):
     ]:
         raise NotImplementedError
 
-    def from_cache_or_values(
-        self,
-        state: ContainerState,
-        results: Dict[DependantProtocol[Any], Any],
-        values: typing.Mapping[DependencyProvider, Any],
-    ) -> bool:
-        assert self.dependant.call is not None
-        if self.dependant.call in values:
-            value = values[self.dependant.call]
-            results[self.dependant] = value
-            if self.dependant.share:
-                state.cached_values.set(
-                    self.dependant.call, value, scope=self.dependant.scope
-                )
-            return True
-        elif self.dependant.share and state.cached_values.contains(self.dependant.call):
-            results[self.dependant] = state.cached_values.get(self.dependant.call)
-            return True
-        return False
-
     def gather_params(
         self, results: Dict[DependantProtocol[Any], Any]
     ) -> Tuple[List[Any], Dict[str, Any]]:
