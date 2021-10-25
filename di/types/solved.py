@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Generic, List, Mapping, Set
+import typing
+from typing import Any, Generic, List, Mapping
 
-from di._task import Task
 from di.types.dependencies import DependantProtocol, DependencyParameter
 from di.types.providers import DependencyType
 
@@ -18,11 +18,9 @@ class SolvedDependency(Generic[DependencyType]):
     dag: Mapping[
         DependantProtocol[Any], List[DependencyParameter[DependantProtocol[Any]]]
     ]
-    # the following attributes are used to cache data for solved dependencies
-    # they are put on SolvedDependency so that they can be garbage collected along with it
-    # these are implementation details and are subject to change at any time
-    _tasks: Mapping[DependantProtocol[Any], Task[Any]]
-    _dependency_dag: Mapping[DependantProtocol[Any], Set[DependantProtocol[Any]]]
+    # container_cache can be used by the creating container to store data that is tied
+    # to the SolvedDependency
+    container_cache: typing.Any = None
 
     def get_flat_subdependants(self) -> List[DependantProtocol[Any]]:
         """Get an exhaustive list of all of the dependencies of this dependency,

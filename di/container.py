@@ -1,17 +1,21 @@
 from __future__ import annotations
 
 import functools
-from collections import defaultdict, deque
+from collections import deque
 from contextvars import ContextVar
+from dataclasses import dataclass
 from typing import (
     Any,
     ContextManager,
-    DefaultDict,
     Deque,
     Dict,
+    FrozenSet,
+    Iterable,
     List,
     Mapping,
+    NamedTuple,
     Optional,
+    Set,
     Tuple,
     Union,
     cast,
@@ -21,7 +25,7 @@ from di._dag import topsort
 from di._inspect import is_async_gen_callable, is_coroutine_callable
 from di._local_scope_context import LocalScopeContext
 from di._state import ContainerState
-from di._task import AsyncTask, SyncTask, Task
+from di._task import AsyncTask, ExecutionState, SyncTask, Task
 from di.exceptions import (
     DependencyRegistryError,
     DuplicateScopeError,
@@ -42,6 +46,20 @@ from di.types.scopes import Scope
 from di.types.solved import SolvedDependency
 
 Dependency = Any
+
+
+class _ExecutionPlanCache(NamedTuple):
+    cache_key: FrozenSet[DependantProtocol[Any]]
+    dependant_dag: Mapping[DependantProtocol[Any], List[Task[Any]]]
+    dependency_counts: Dict[DependantProtocol[Any], int]
+    leaf_tasks: Iterable[Task[Any]]
+
+
+@dataclass
+class _SolvedDependencyCache:
+    tasks: Mapping[DependantProtocol[Any], Task[Any]]
+    dependency_dag: Mapping[DependantProtocol[Any], Set[DependantProtocol[Any]]]
+    execution_plan: Optional[_ExecutionPlanCache] = None
 
 
 class Container:
@@ -172,16 +190,13 @@ class Container:
                         q.append(subdep)
         tasks = self._build_tasks(param_graph, topsort(dep_dag))
         dependency_dag = {dep: set(subdeps) for dep, subdeps in dep_dag.items()}
-        # we store several things:
-        # - the dependency itself
-        # - dag, which includes parameter information and is public
-        # - _dependency_dag: same as dag but without param info and w/o repeated params (so a set instead of a list)
-        # - _tasks: a mapping of dependency to tasks
+        container_cache = _SolvedDependencyCache(
+            dependency_dag=dependency_dag, tasks=tasks
+        )
         return SolvedDependency(
             dependency=dependency,
             dag=param_graph,
-            _dependency_dag=dependency_dag,
-            _tasks=tasks,
+            container_cache=container_cache,
         )
 
     def _build_tasks(
@@ -260,70 +275,110 @@ class Container:
         validate_scopes: bool = True,
         values: Optional[Mapping[DependencyProvider, Any]] = None,
     ) -> Tuple[Dict[DependantProtocol[Any], Any], List[ExecutorTask]]:
-        results: Dict[DependantProtocol[Any], Any] = {}
-        values = values or {}
+        user_values = values or {}
         if validate_scopes:
             self._validate_scopes(solved)
 
-        tasks = solved._tasks
+        if not isinstance(solved.container_cache, _SolvedDependencyCache):
+            raise TypeError("This SolvedDependency was not created by this Container")
+
+        solved_dependency_cache = solved.container_cache
 
         cache: Dict[DependencyProvider, Any] = {}
         for mapping in self._state.cached_values.mappings.values():
             cache.update(mapping)
-        cache.update(values)
+        cache.update(user_values)
 
-        def use_cache(dep: DependantProtocol[Any]) -> bool:
+        def use_cache(
+            dep: DependantProtocol[Any], results: Dict[DependantProtocol[Any], Any]
+        ) -> bool:
             if dep.call in cache:
                 assert dep.call is not None
-                if dep.call in values:
-                    results[dep] = values[dep.call]
+                if dep.call in user_values:
+                    results[dep] = user_values[dep.call]
                     return True
                 elif dep.share:
                     results[dep] = cache[dep.call]
                     return True
             return False
 
-        # Build a DAG of Tasks that we actually need to execute
-        # this allows us to prune subtrees that will come from cached values
-        unvisited = deque([solved.dependency])
-        # Make DAG values a set to account for dependencies that depend on the the same
-        # sub dependency in more than one param (`def func(a: A, a_again: A)`)
-        dag: Dict[DependantProtocol[Any], List[DependantProtocol[Any]]] = {}
-        dependant_dag: Dict[DependantProtocol[Any], List[Task[Any]]] = {
-            dep: [] for dep in solved._dependency_dag
-        }
-        while unvisited:
-            dep = unvisited.pop()
-            if dep in dag:
-                continue
-            # task the dependency is cached or was provided by value
-            # we don't need to compute it or any of it's dependencies
-            if not use_cache(dep):
-                # otherwise, we add it to our DAG and visit it's children
-                dag[dep] = []
-                for subdep in solved._dependency_dag[dep]:
-                    if not use_cache(subdep):
-                        dependant_dag[subdep].append(tasks[dep])
-                        dag[dep].append(subdep)
-                        if subdep not in dag:
-                            unvisited.append(subdep)
+        results: Dict[DependantProtocol[Any], Any] = {}
+        for dep in solved.dag:
+            use_cache(dep, results)
 
-        dependency_counts = {dep: len(subdeps) for dep, subdeps in dag.items()}
+        execution_plan_cache_key = frozenset(results.keys())
 
-        leafs: List[ExecutorTask] = []
-        for dep, depcount in dependency_counts.items():
-            if depcount == 0:
-                leaf = functools.partial(
-                    tasks[dep].compute,
-                    state=self._state,
-                    results=results,
-                    values=values,
-                    dependency_counts=dependency_counts,
-                    dependants=dependant_dag,
+        execution_plan = solved.container_cache.execution_plan
+
+        if (
+            execution_plan is None
+            or execution_plan.cache_key != execution_plan_cache_key
+        ):
+            # Build a DAG of Tasks that we actually need to execute
+            # this allows us to prune subtrees that will come
+            # from pre-computed values (values paramter or cache)
+            unvisited = deque([solved.dependency])
+            # Make DAG values a set to account for dependencies that depend on the the same
+            # sub dependency in more than one param (`def func(a: A, a_again: A)`)
+            dependency_counts: Dict[DependantProtocol[Any], int] = {}
+            dependant_dag: Dict[DependantProtocol[Any], Deque[Task[Any]]] = {
+                dep: deque() for dep in solved_dependency_cache.dependency_dag
+            }
+            while unvisited:
+                dep = unvisited.pop()
+                if dep in dependency_counts:
+                    continue
+                # task the dependency is cached or was provided by value
+                # we don't need to compute it or any of it's dependencies
+                if dep not in results:
+                    # otherwise, we add it to our DAG and visit it's children
+                    dependency_counts[dep] = 0
+                    for subdep in solved_dependency_cache.dependency_dag[dep]:
+                        if subdep not in results:
+                            dependant_dag[subdep].append(
+                                solved_dependency_cache.tasks[dep]
+                            )
+                            dependency_counts[dep] += 1
+                            if subdep not in dependency_counts:
+                                unvisited.append(subdep)
+
+            solved.container_cache.execution_plan = (
+                execution_plan
+            ) = _ExecutionPlanCache(
+                cache_key=execution_plan_cache_key,
+                dependant_dag={
+                    dep: list(dependants) for dep, dependants in dependant_dag.items()
+                },
+                dependency_counts=dependency_counts,
+                leaf_tasks=[
+                    solved_dependency_cache.tasks[dep]
+                    for dep, count in dependency_counts.items()
+                    if count == 0
+                ],
+            )
+
+        state = ExecutionState(
+            container_state=self._state,
+            results=results,
+            dependency_counts=execution_plan.dependency_counts.copy(),
+            dependants=execution_plan.dependant_dag,
+        )
+
+        return results, [
+            functools.partial(t.compute, state) for t in execution_plan.leaf_tasks
+        ]
+
+    def _update_cache(
+        self, solved: SolvedDependency[Any], results: Dict[DependantProtocol[Any], Any]
+    ) -> None:
+        for dep in solved.dag:
+            if dep.share and dep in results and dep.scope != self.scopes[-1]:
+                assert dep.call is not None
+                self._state.cached_values.set(
+                    dep.call,
+                    results[dep],
+                    scope=dep.scope,
                 )
-                leafs.append(leaf)  # type: ignore[arg-type] # beacuse of partial
-
-        return results, leafs
 
     def execute_sync(
         self,
@@ -348,7 +403,10 @@ class Container:
             executor = cast(SyncExecutor, self._executor)
             if queue:
                 executor.execute_sync(queue)
-            return results[solved.dependency]
+
+            res = results[solved.dependency]
+            self._update_cache(solved, results)
+            return res
 
     async def execute_async(
         self,
@@ -373,4 +431,6 @@ class Container:
             executor = cast(AsyncExecutor, self._executor)
             if queue:
                 await executor.execute_async(queue)
-            return results[solved.dependency]
+            res = results[solved.dependency]
+            self._update_cache(solved, results)
+            return res
