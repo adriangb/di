@@ -172,3 +172,20 @@ async def test_concurrent_local_scopes():
     async with anyio.create_task_group() as tg:
         tg.start_soon(endpoint)
         tg.start_soon(endpoint)
+
+
+@pytest.mark.anyio
+async def test_default_scope_already_entered():
+    """Container allows us to manually enter the default scope"""
+
+    container = Container(default_scope=None)
+
+    def dep() -> None:
+        ...
+
+    async with container.enter_local_scope(None):
+        await container.execute_async(container.solve(Dependant(dep)))
+        container.execute_sync(container.solve(Dependant(dep)))
+
+    with container.enter_local_scope(None):
+        container.execute_sync(container.solve(Dependant(dep)))

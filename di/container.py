@@ -24,6 +24,7 @@ from typing import (
 from di._dag import topsort
 from di._inspect import is_async_gen_callable, is_coroutine_callable
 from di._local_scope_context import LocalScopeContext
+from di._nullcontext import nullcontext
 from di._state import ContainerState
 from di._task import AsyncTask, ExecutionState, SyncTask, Task
 from di.exceptions import (
@@ -50,7 +51,7 @@ Dependency = Any
 
 class _ExecutionPlanCache(NamedTuple):
     cache_key: FrozenSet[DependantProtocol[Any]]
-    dependant_dag: Mapping[DependantProtocol[Any], List[Task[Any]]]
+    dependant_dag: Mapping[DependantProtocol[Any], Iterable[Task[Any]]]
     dependency_counts: Dict[DependantProtocol[Any], int]
     leaf_tasks: Iterable[Task[Any]]
 
@@ -274,13 +275,17 @@ class Container:
         *,
         validate_scopes: bool = True,
         values: Optional[Mapping[DependencyProvider, Any]] = None,
-    ) -> Tuple[Dict[DependantProtocol[Any], Any], List[ExecutorTask]]:
+    ) -> Tuple[
+        _ExecutionPlanCache, Dict[DependantProtocol[Any], Any], List[ExecutorTask]
+    ]:
         user_values = values or {}
         if validate_scopes:
             self._validate_scopes(solved)
 
-        if not isinstance(solved.container_cache, _SolvedDependencyCache):
-            raise TypeError("This SolvedDependency was not created by this Container")
+        if type(solved.container_cache) is not _SolvedDependencyCache:
+            raise TypeError(
+                "This SolvedDependency was not created by this Container"
+            )  # pragma: no cover
 
         solved_dependency_cache = solved.container_cache
 
@@ -289,22 +294,23 @@ class Container:
             cache.update(mapping)
         cache.update(user_values)
 
-        def use_cache(
-            dep: DependantProtocol[Any], results: Dict[DependantProtocol[Any], Any]
-        ) -> bool:
-            if dep.call in cache:
-                assert dep.call is not None
-                if dep.call in user_values:
-                    results[dep] = user_values[dep.call]
+        results: Dict[DependantProtocol[Any], Any] = {}
+
+        def use_cache(dep: DependantProtocol[Any]) -> bool:
+            call = dep.call
+            if call in cache:
+                if call in user_values:
+                    results[dep] = user_values[call]
                     return True
                 elif dep.share:
-                    results[dep] = cache[dep.call]
+                    results[dep] = cache[call]
                     return True
+                else:
+                    return False
             return False
 
-        results: Dict[DependantProtocol[Any], Any] = {}
         for dep in solved.dag:
-            use_cache(dep, results)
+            use_cache(dep)
 
         execution_plan_cache_key = frozenset(results.keys())
 
@@ -346,9 +352,7 @@ class Container:
                 execution_plan
             ) = _ExecutionPlanCache(
                 cache_key=execution_plan_cache_key,
-                dependant_dag={
-                    dep: list(dependants) for dep, dependants in dependant_dag.items()
-                },
+                dependant_dag=dependant_dag,
                 dependency_counts=dependency_counts,
                 leaf_tasks=[
                     solved_dependency_cache.tasks[dep]
@@ -364,18 +368,20 @@ class Container:
             dependants=execution_plan.dependant_dag,
         )
 
-        return results, [
-            functools.partial(t.compute, state) for t in execution_plan.leaf_tasks
-        ]
+        return (
+            execution_plan,
+            results,
+            [functools.partial(t.compute, state) for t in execution_plan.leaf_tasks],
+        )
 
     def _update_cache(
-        self, solved: SolvedDependency[Any], results: Dict[DependantProtocol[Any], Any]
+        self, results: Dict[DependantProtocol[Any], Any], plan: _ExecutionPlanCache
     ) -> None:
-        for dep in solved.dag:
-            if dep.share and dep in results and dep.scope != self.scopes[-1]:
-                assert dep.call is not None
+        execution_scope = self.scopes[-1]
+        for dep in plan.dependency_counts.keys():
+            if dep.share and dep.scope != execution_scope:
                 self._state.cached_values.set(
-                    dep.call,
+                    dep.call,  # type: ignore[arg-type]
                     results[dep],
                     scope=dep.scope,
                 )
@@ -392,8 +398,13 @@ class Container:
         If you are not dynamically changing scopes, you can run once with `validate_scopes=True`
         and then disable scope validation in subsequent runs with `validate_scope=False`.
         """
-        with self.enter_local_scope(self._default_scope):
-            results, queue = self._prepare_execution(
+        cm: FusedContextManager[None]
+        if self._default_scope in self.scopes:
+            cm = nullcontext(None)
+        else:
+            cm = self.enter_local_scope(self._default_scope)
+        with cm:
+            plan, results, queue = self._prepare_execution(
                 solved, validate_scopes=validate_scopes, values=values
             )
             if not hasattr(self._executor, "execute_sync"):
@@ -405,7 +416,7 @@ class Container:
                 executor.execute_sync(queue)
 
             res = results[solved.dependency]
-            self._update_cache(solved, results)
+            self._update_cache(results, plan)
             return res
 
     async def execute_async(
@@ -420,8 +431,13 @@ class Container:
         If you are not dynamically changing scopes, you can run once with `validate_scopes=True`
         and then disable scope validation in subsequent runs with `validate_scope=False`.
         """
-        async with self.enter_local_scope(self._default_scope):
-            results, queue = self._prepare_execution(
+        cm: FusedContextManager[None]
+        if self._default_scope in self.scopes:
+            cm = nullcontext(None)
+        else:
+            cm = self.enter_local_scope(self._default_scope)
+        async with cm:
+            plan, results, queue = self._prepare_execution(
                 solved, validate_scopes=validate_scopes, values=values
             )
             if not hasattr(self._executor, "execute_async"):
@@ -432,5 +448,5 @@ class Container:
             if queue:
                 await executor.execute_async(queue)
             res = results[solved.dependency]
-            self._update_cache(solved, results)
+            self._update_cache(results, plan)
             return res

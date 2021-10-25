@@ -13,7 +13,7 @@ T = TypeVar("T", covariant=True)
 class FusedContextManager(Protocol[T]):
     __slots__ = ()
 
-    def __enter__(self):
+    def __enter__(self) -> T:
         ...
 
     def __exit__(
@@ -24,7 +24,7 @@ class FusedContextManager(Protocol[T]):
     ) -> Union[None, bool]:
         ...
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> T:
         ...
 
     async def __aexit__(
