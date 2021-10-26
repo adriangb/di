@@ -20,3 +20,15 @@ def test_scopes_property() -> None:
         assert container.scopes == ["test"]
         with container.enter_local_scope("another"):
             assert container.scopes == ["test", "another"]
+
+
+def test_binds_property():
+    container = Container()
+    assert container.binds == {}
+
+    def func() -> None:
+        ...
+
+    dep = Dependant(lambda: None)
+    container.bind(dep, func)
+    assert container.binds == {func: dep}

@@ -117,12 +117,12 @@ class Container:
 
         Binds are only identified by the identity of the callable and do not take into account
         the scope or any other data from the dependency they are replacing.
-
-        The `scope` parameter determines the scope for the bind itself.
-        The bind will be automatically cleared when that scope is exited.
-        If no scope is provided, the current scope is used.
         """
         return self._state.bind(provider=provider, dependency=dependency)
+
+    @property
+    def binds(self) -> Mapping[DependencyProvider, DependantProtocol[Any]]:
+        return self._state.binds
 
     def solve(
         self,
