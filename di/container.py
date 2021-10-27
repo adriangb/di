@@ -22,7 +22,7 @@ from typing import (
     cast,
 )
 
-from di._dag import topsort
+from di._dag import topsort, DAG
 from di._inspect import is_async_gen_callable, is_coroutine_callable
 from di._local_scope_context import LocalScopeContext
 from di._nullcontext import nullcontext
@@ -61,6 +61,7 @@ class _ExecutionPlanCache(NamedTuple):
 class _SolvedDependencyCache:
     tasks: Mapping[DependantProtocol[Any], Task[Any]]
     dependency_dag: Mapping[DependantProtocol[Any], Set[DependantProtocol[Any]]]
+    dag: DAG[DependantProtocol[Any]]
     execution_plan: Optional[_ExecutionPlanCache] = None
 
 
@@ -190,10 +191,15 @@ class Container:
                     dep_dag[dep].append(subdep)
                     if subdep not in dep_registry:
                         q.append(subdep)
-        tasks = self._build_tasks(param_graph, topsort(dep_dag))
+
         dependency_dag = {dep: set(subdeps) for dep, subdeps in dep_dag.items()}
+        dag = DAG(dependency_dag, root=dependency)
+
+        tasks = self._build_tasks(param_graph, dag.topsort())
+
         container_cache = _SolvedDependencyCache(
-            dependency_dag=dependency_dag, tasks=tasks
+            dependency_dag=dependency_dag, tasks=tasks,
+            dag=DAG(dependency_dag, root=dependency)
         )
         return SolvedDependency(
             dependency=dependency,
@@ -210,7 +216,7 @@ class Container:
         topsorted: List[DependantProtocol[Any]],
     ) -> Dict[DependantProtocol[Any], Union[AsyncTask[Any], SyncTask[Any]]]:
         tasks: Dict[DependantProtocol[Any], Union[AsyncTask[Any], SyncTask[Any]]] = {}
-        for dep in reversed(topsorted):
+        for dep in topsorted:
             tasks[dep] = self._build_task(dep, tasks, dag)
         return tasks
 
@@ -289,11 +295,13 @@ class Container:
             raise TypeError(
                 "This SolvedDependency was not created by this Container"
             )  # pragma: no cover
-
-        solved_dependency_cache = solved.container_cache
+        solved_dependency_cache: _SolvedDependencyCache = solved.container_cache
 
         cache: Dict[DependencyProvider, Any] = {}
         for mapping in self._state.cached_values.mappings.values():
+            # for k, v in mapping.items():
+            #     if k in solved.dag:
+            #         cache[k] = v
             cache.update(mapping)
         cache.update(user_values)
 
@@ -318,66 +326,23 @@ class Container:
 
         for dep in solved.dag:
             use_cache(dep)
-
-        execution_plan_cache_key = frozenset(results.keys())
-
-        execution_plan = solved.container_cache.execution_plan
-
-        if (
-            execution_plan is None
-            or execution_plan.cache_key != execution_plan_cache_key
-        ):
-            # Build a DAG of Tasks that we actually need to execute
-            # this allows us to prune subtrees that will come
-            # from pre-computed values (values paramter or cache)
-            unvisited = deque([solved.dependency])
-            # Make DAG values a set to account for dependencies that depend on the the same
-            # sub dependency in more than one param (`def func(a: A, a_again: A)`)
-            dependency_counts: Dict[DependantProtocol[Any], int] = {}
-            dependant_dag: Dict[DependantProtocol[Any], Deque[Task[Any]]] = {
-                dep: deque() for dep in solved_dependency_cache.dependency_dag
-            }
-            while unvisited:
-                dep = unvisited.pop()
-                if dep in dependency_counts:
-                    continue
-                # task the dependency is cached or was provided by value
-                # we don't need to compute it or any of it's dependencies
-                if dep not in results:
-                    # otherwise, we add it to our DAG and visit it's children
-                    dependency_counts[dep] = 0
-                    for subdep in solved_dependency_cache.dependency_dag[dep]:
-                        if subdep not in results:
-                            dependant_dag[subdep].append(
-                                solved_dependency_cache.tasks[dep]
-                            )
-                            dependency_counts[dep] += 1
-                            if subdep not in dependency_counts:
-                                unvisited.append(subdep)
-
-            solved.container_cache.execution_plan = (
-                execution_plan
-            ) = _ExecutionPlanCache(
-                cache_key=execution_plan_cache_key,
-                dependant_dag=dependant_dag,
-                dependency_counts=dependency_counts,
-                leaf_tasks=[
-                    solved_dependency_cache.tasks[dep]
-                    for dep, count in dependency_counts.items()
-                    if count == 0
-                ],
-            )
+        
+        dag = solved_dependency_cache.dag
+        tasks = solved_dependency_cache.tasks
+        
+        dag = dag.copy()
+        dag.remove_vertices(results.keys())
 
         state = ExecutionState(
             container_state=self._state,
             results=results,
-            dependency_counts=execution_plan.dependency_counts.copy(),
-            dependants=execution_plan.dependant_dag,
+            dependency_counts=dag.get_dependency_counts(),
+            dependants={k: [tasks[d] for d in v] for k, v in dag.get_dependants().items()},
         )
 
         return (
             results,
-            [functools.partial(t.compute, state) for t in execution_plan.leaf_tasks],
+            [functools.partial(tasks[d].compute, state) for d in dag.get_leafs()],
             to_cache,
         )
 
