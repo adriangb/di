@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import functools
+import typing
 from collections import deque
 from contextvars import ContextVar
 from dataclasses import dataclass
@@ -276,7 +277,9 @@ class Container:
         validate_scopes: bool = True,
         values: Optional[Mapping[DependencyProvider, Any]] = None,
     ) -> Tuple[
-        _ExecutionPlanCache, Dict[DependantProtocol[Any], Any], List[ExecutorTask]
+        Dict[DependantProtocol[Any], Any],
+        List[ExecutorTask],
+        typing.List[DependantProtocol[Any]],
     ]:
         user_values = values or {}
         if validate_scopes:
@@ -294,20 +297,24 @@ class Container:
             cache.update(mapping)
         cache.update(user_values)
 
+        to_cache: typing.List[DependantProtocol[Any]] = []
+        execution_scope = self.scopes[-1]
+
         results: Dict[DependantProtocol[Any], Any] = {}
 
-        def use_cache(dep: DependantProtocol[Any]) -> bool:
+        def use_cache(dep: DependantProtocol[Any]) -> None:
             call = dep.call
             if call in cache:
                 if call in user_values:
                     results[dep] = user_values[call]
-                    return True
+                    return
                 elif dep.share:
                     results[dep] = cache[call]
-                    return True
-                else:
-                    return False
-            return False
+                    return
+            else:
+                if dep.share and dep.scope != execution_scope:
+                    to_cache.append(dep)
+            return
 
         for dep in solved.dag:
             use_cache(dep)
@@ -369,22 +376,22 @@ class Container:
         )
 
         return (
-            execution_plan,
             results,
             [functools.partial(t.compute, state) for t in execution_plan.leaf_tasks],
+            to_cache,
         )
 
     def _update_cache(
-        self, results: Dict[DependantProtocol[Any], Any], plan: _ExecutionPlanCache
+        self,
+        results: Dict[DependantProtocol[Any], Any],
+        to_cache: Iterable[DependantProtocol[Any]],
     ) -> None:
-        execution_scope = self.scopes[-1]
-        for dep in plan.dependency_counts.keys():
-            if dep.share and dep.scope != execution_scope:
-                self._state.cached_values.set(
-                    dep.call,  # type: ignore[arg-type]
-                    results[dep],
-                    scope=dep.scope,
-                )
+        for dep in to_cache:
+            self._state.cached_values.set(
+                dep.call,  # type: ignore[arg-type]
+                results[dep],
+                scope=dep.scope,
+            )
 
     def execute_sync(
         self,
@@ -404,7 +411,7 @@ class Container:
         else:
             cm = self.enter_local_scope(self._execution_scope)
         with cm:
-            plan, results, queue = self._prepare_execution(
+            results, queue, to_cache = self._prepare_execution(
                 solved, validate_scopes=validate_scopes, values=values
             )
             if not hasattr(self._executor, "execute_sync"):
@@ -416,7 +423,7 @@ class Container:
                 executor.execute_sync(queue)
 
             res = results[solved.dependency]
-            self._update_cache(results, plan)
+            self._update_cache(results, to_cache)
             return res
 
     async def execute_async(
@@ -437,7 +444,7 @@ class Container:
         else:
             cm = self.enter_local_scope(self._execution_scope)
         async with cm:
-            plan, results, queue = self._prepare_execution(
+            results, queue, to_cache = self._prepare_execution(
                 solved, validate_scopes=validate_scopes, values=values
             )
             if not hasattr(self._executor, "execute_async"):
@@ -448,5 +455,5 @@ class Container:
             if queue:
                 await executor.execute_async(queue)
             res = results[solved.dependency]
-            self._update_cache(results, plan)
+            self._update_cache(results, to_cache)
             return res
