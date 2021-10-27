@@ -22,7 +22,7 @@ from typing import (
     cast,
 )
 
-from di._dag import topsort, DAG
+from di._dag import DAG
 from di._inspect import is_async_gen_callable, is_coroutine_callable
 from di._local_scope_context import LocalScopeContext
 from di._nullcontext import nullcontext
@@ -326,10 +326,10 @@ class Container:
 
         for dep in solved.dag:
             use_cache(dep)
-        
+
         dag = solved_dependency_cache.dag
         tasks = solved_dependency_cache.tasks
-        
+
         dag = dag.copy()
         dag.remove_vertices(results.keys())
 
