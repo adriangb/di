@@ -70,7 +70,7 @@ class Container:
     def __init__(
         self,
         *,
-        default_scope: Scope = None,
+        execution_scope: Scope = None,
         executor: Optional[Union[AsyncExecutor, SyncExecutor]] = None,
     ) -> None:
         self._context = ContextVar("context")
@@ -79,7 +79,7 @@ class Container:
         state.cached_values.set(Container, self, scope="container")
         self._context.set(state)
         self._executor = executor or DefaultExecutor()
-        self._default_scope = default_scope
+        self._execution_scope = execution_scope
 
     @property
     def _state(self) -> ContainerState:
@@ -399,10 +399,10 @@ class Container:
         and then disable scope validation in subsequent runs with `validate_scope=False`.
         """
         cm: FusedContextManager[None]
-        if self._default_scope in self.scopes:
+        if self._execution_scope in self.scopes:
             cm = nullcontext(None)
         else:
-            cm = self.enter_local_scope(self._default_scope)
+            cm = self.enter_local_scope(self._execution_scope)
         with cm:
             plan, results, queue = self._prepare_execution(
                 solved, validate_scopes=validate_scopes, values=values
@@ -432,10 +432,10 @@ class Container:
         and then disable scope validation in subsequent runs with `validate_scope=False`.
         """
         cm: FusedContextManager[None]
-        if self._default_scope in self.scopes:
+        if self._execution_scope in self.scopes:
             cm = nullcontext(None)
         else:
-            cm = self.enter_local_scope(self._default_scope)
+            cm = self.enter_local_scope(self._execution_scope)
         async with cm:
             plan, results, queue = self._prepare_execution(
                 solved, validate_scopes=validate_scopes, values=values

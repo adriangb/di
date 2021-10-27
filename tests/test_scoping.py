@@ -175,10 +175,10 @@ async def test_concurrent_local_scopes():
 
 
 @pytest.mark.anyio
-async def test_default_scope_already_entered():
+async def test_execution_scope_already_entered():
     """Container allows us to manually enter the default scope"""
 
-    container = Container(default_scope=None)
+    container = Container(execution_scope=None)
 
     def dep() -> None:
         ...
