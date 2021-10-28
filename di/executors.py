@@ -19,8 +19,8 @@ def _check_not_coro(
     return task  # type: ignore[return-value]
 
 
-_AsyncTaskRetval = typing.Awaitable[typing.Iterable[Task]]
-_SyncTaskRetval = typing.Iterable[Task]
+_AsyncTaskRetval = typing.Awaitable[typing.Union[None, typing.Iterable[Task]]]
+_SyncTaskRetval = typing.Union[None, typing.Iterable[Task]]
 
 
 class SimpleSyncExecutor(SyncExecutor):
@@ -37,16 +37,16 @@ class SimpleSyncExecutor(SyncExecutor):
 
 class SimpleAsyncExecutor(AsyncExecutor):
     async def execute_async(self, tasks: typing.Iterable[Task]) -> None:
-        q: typing.Deque[typing.Optional[Task]] = deque(tasks)
+        q: typing.Deque[Task] = deque(tasks)
         while q:
             task = q.popleft()
-            if task is None:
-                return
             maybe_coro = task()
             if inspect.isawaitable(maybe_coro):
                 newtasks = await typing.cast(_AsyncTaskRetval, maybe_coro)
             else:
                 newtasks = typing.cast(_SyncTaskRetval, maybe_coro)
+            if newtasks is None:
+                return
             q.extend(newtasks)
 
 
@@ -76,21 +76,14 @@ class ConcurrentSyncExecutor(AsyncExecutor):
 
 async def _async_worker(
     task: Task,
-    stream: anyio.abc.ObjectSendStream[typing.Optional[Task]],
+    send: typing.Callable[[typing.Optional[Task]], typing.Awaitable[None]],
 ) -> None:
-    try:
-        newtasks = typing.cast(_SyncTaskRetval, await guarantee_awaitable(task)())
-    except Exception:
-        try:
-            await stream.send(None)
-        except anyio.ClosedResourceError:
-            pass
-        raise
-    for newtask in newtasks:
-        try:
-            await stream.send(newtask)
-        except anyio.ClosedResourceError:
-            pass
+    newtasks: _SyncTaskRetval = await guarantee_awaitable(task)()  # type: ignore[assignment]
+    if newtasks is None:
+        await send(None)
+        return
+    for task in newtasks:
+        await send(task)
 
 
 Streams = typing.Tuple[
@@ -105,12 +98,13 @@ class ConcurrentAsyncExecutor(AsyncExecutor):
         send, receive = streams
         for task in tasks:
             await send.send(task)
-        async with anyio.create_task_group() as taskgroup, send, receive:
-            while True:
-                newtask = await receive.receive()
-                if newtask is None:
-                    return None
-                taskgroup.start_soon(_async_worker, newtask, send)
+        async with send, receive:
+            async with anyio.create_task_group() as taskgroup:
+                while True:
+                    newtask = await receive.receive()
+                    if newtask is None:
+                        return None
+                    taskgroup.start_soon(_async_worker, newtask, send.send)
 
 
 class DefaultExecutor(ConcurrentSyncExecutor, ConcurrentAsyncExecutor):

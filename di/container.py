@@ -377,7 +377,10 @@ class Container:
 
         return (
             results,
-            [functools.partial(t.compute, state) for t in execution_plan.leaf_tasks],
+            [
+                functools.partial(t.compute, state)  # type: ignore[arg-type]
+                for t in execution_plan.leaf_tasks
+            ],
             to_cache,
         )
 

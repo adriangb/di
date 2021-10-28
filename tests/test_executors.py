@@ -1,5 +1,5 @@
 import typing
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Union
 
 import pytest
 
@@ -13,7 +13,7 @@ from di.types.executor import SyncExecutor, Task
 
 
 def make_task() -> Task:
-    async def task() -> Iterable[Optional[Task]]:
+    async def task() -> Union[None, Iterable[Task]]:
         return []
 
     return task

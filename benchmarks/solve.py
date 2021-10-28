@@ -18,7 +18,7 @@ from di.executors import ConcurrentAsyncExecutor, SimpleSyncExecutor
 async def async_concurrent():
     container = Container(executor=ConcurrentAsyncExecutor())
     solved = container.solve(
-        Dependant(generate_dag(Depends, 4, 3, 3, sync=False, sleep=(0, 0.01)))
+        Dependant(generate_dag(Depends, 4, 3, 3, sync=True, sleep=(0, 1e-3)))
     )
     profiler = cProfile.Profile()
     profiler.enable()
@@ -29,7 +29,7 @@ async def async_concurrent():
     stats.dump_stats(filename=filename)
     print(f"Dumped cProfile stats to {filename}")
     start = timeit.default_timer()
-    iters = 100
+    iters = 25
     for _ in range(iters):
         await container.execute_async(solved)
     elapsed = timeit.default_timer() - start
@@ -39,7 +39,7 @@ async def async_concurrent():
 def sync_sequential_large():
     container = Container(executor=SimpleSyncExecutor())
     solved = container.solve(
-        Dependant(generate_dag(Depends, 4, 3, 3, sync=True, sleep=(0, 1e-5)))
+        Dependant(generate_dag(Depends, 4, 3, 3, sync=True, sleep=(0, 1e-3)))
     )
     profiler = cProfile.Profile()
     profiler.enable()
@@ -60,7 +60,7 @@ def sync_sequential_large():
 def sync_sequential_small():
     container = Container(executor=SimpleSyncExecutor())
     solved = container.solve(
-        Dependant(generate_dag(Depends, 1, 1, 1, sync=True, sleep=(0, 1e-5)))
+        Dependant(generate_dag(Depends, 1, 1, 1, sync=True, sleep=(0, 1e-3)))
     )
     profiler = cProfile.Profile()
     profiler.enable()
