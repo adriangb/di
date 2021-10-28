@@ -279,7 +279,7 @@ class Container:
     ) -> Tuple[
         Dict[DependantProtocol[Any], Any],
         List[ExecutorTask],
-        typing.List[DependantProtocol[Any]],
+        typing.Iterable[DependantProtocol[Any]],
     ]:
         user_values = values or {}
         if validate_scopes:
@@ -297,7 +297,7 @@ class Container:
             cache.update(mapping)
         cache.update(user_values)
 
-        to_cache: typing.List[DependantProtocol[Any]] = []
+        to_cache: typing.Deque[DependantProtocol[Any]] = deque()
         execution_scope = self.scopes[-1]
 
         results: Dict[DependantProtocol[Any], Any] = {}
