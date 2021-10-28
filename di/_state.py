@@ -79,7 +79,7 @@ class ScopeContext(FusedContextManager[None]):
         self.state = state
         self.scope = scope
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         self.state.stacks[self.scope] = ExitStack()
         self.state.cached_values.add_scope(self.scope)
 
@@ -96,7 +96,7 @@ class ScopeContext(FusedContextManager[None]):
         self.state.cached_values.pop_scope(self.scope)
         return stack.__exit__(exc_type, exc_value, traceback)
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> None:
         self.state.stacks[self.scope] = AsyncExitStack()
         self.state.cached_values.add_scope(self.scope)
 

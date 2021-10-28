@@ -162,7 +162,7 @@ class Container:
                     )
             return params
 
-        def check_equivalent(dep: DependantProtocol[Any]):
+        def check_equivalent(dep: DependantProtocol[Any]) -> None:
             if dep in dep_registry and dep.scope != dep_registry[dep].scope:
                 raise DependencyRegistryError(
                     f"The dependencies {dep} and {dep_registry[dep]}"
@@ -427,7 +427,7 @@ class Container:
 
             res = results[solved.dependency]
             self._update_cache(results, to_cache)
-            return res
+            return res  # type: ignore[no-any-return]
 
     async def execute_async(
         self,
@@ -459,4 +459,4 @@ class Container:
                 await executor.execute_async(queue)
             res = results[solved.dependency]
             self._update_cache(results, to_cache)
-            return res
+            return res  # type: ignore[no-any-return]

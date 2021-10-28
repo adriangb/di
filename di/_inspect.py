@@ -10,7 +10,6 @@ from typing import (
     Generator,
     Mapping,
     Optional,
-    TypeVar,
     Union,
     get_type_hints,
 )
@@ -30,17 +29,14 @@ DependencyProvider = Union[
 ]
 
 
-T = TypeVar("T")
-
-
 def cached_accept_callable_class(
     maxsize: int,
-) -> Callable[[Callable[..., T]], Callable[..., T]]:
-    def wrapper(func: Callable[..., T]) -> Callable[..., T]:
+) -> Callable[[Callable[..., bool]], Callable[..., bool]]:
+    def wrapper(func: Callable[..., bool]) -> Callable[..., bool]:
         func = lru_cache(maxsize=maxsize)(func)
 
         @wraps(func)
-        def inner(call: Any):
+        def inner(call: Any) -> bool:
             if not callable(call):
                 return False
             if inspect.isclass(call):
@@ -54,7 +50,7 @@ def cached_accept_callable_class(
                 return False
             return func(_call)
 
-        return inner  # type: ignore[return-value]
+        return inner
 
     return wrapper
 
@@ -120,4 +116,4 @@ def infer_call_from_annotation(parameter: inspect.Parameter) -> DependencyProvid
             f"Annotation for {parameter.name} is not a callable class or function and so we cannot autowire it."
             " You must explicity provide a default value implementing the DependencyProtocol"
         )
-    return parameter.annotation
+    return parameter.annotation  # type: ignore[no-any-return]

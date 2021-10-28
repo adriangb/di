@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "di"
-version = "0.21.0"
+version = "0.21.1"
 description = "Autowiring dependency injection"
 authors = ["Adrian Garcia Badaracco <adrian@adriangb.com>"]
 readme = "README.md"
@@ -69,7 +69,8 @@ testpaths = ["tests"]
 
 [tool.mypy]
 files = "di/**/*.py,tests/**/*.py,docs/**/*.py"
-no_implicit_optional = true
-allow_redefinition = false
-implicit_reexport = false
-warn_unreachable = true
+strict = false
+
+[[tool.mypy.overrides]]
+module = "di.*"
+# strict = true

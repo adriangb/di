@@ -5,8 +5,8 @@ except ModuleNotFoundError:
     import importlib_metadata  # type: ignore
 
 try:
-    __version__ = importlib_metadata.version(__name__)  # type: ignore # for py 3.7
-except importlib_metadata.PackageNotFoundError:  # type: ignore # for py 3.7
+    __version__ = importlib_metadata.version(__name__)
+except importlib_metadata.PackageNotFoundError:  # pragram: no cover
     __version__ = "0.0.0"
 
 
