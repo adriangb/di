@@ -198,8 +198,9 @@ class Container:
         tasks = self._build_tasks(param_graph, dag.topsort())
 
         container_cache = _SolvedDependencyCache(
-            dependency_dag=dependency_dag, tasks=tasks,
-            dag=DAG(dependency_dag, root=dependency)
+            dependency_dag=dependency_dag,
+            tasks=tasks,
+            dag=DAG(dependency_dag, root=dependency),
         )
         return SolvedDependency(
             dependency=dependency,
@@ -327,22 +328,48 @@ class Container:
         for dep in solved.dag:
             use_cache(dep)
 
-        dag = solved_dependency_cache.dag
-        tasks = solved_dependency_cache.tasks
+        execution_plan_cache_key = frozenset(results.keys())
 
-        dag = dag.copy()
-        dag.remove_vertices(results.keys())
+        execution_plan = solved_dependency_cache.execution_plan
+
+        if (
+            execution_plan is None
+            or execution_plan.cache_key != execution_plan_cache_key
+        ):
+            dag = solved_dependency_cache.dag
+            tasks = solved_dependency_cache.tasks
+
+            dag = dag.copy()
+            dag.remove_vertices(results.keys())
+
+            dependency_counts = dag.get_dependency_counts()
+            dependant_dag: Mapping[DependantProtocol[Any], Iterable[Task[Any]]] = {
+                k: [tasks[d] for d in v] for k, v in dag.get_dependants().items()
+            }
+            leaf_tasks: Iterable[Task[Any]] = [tasks[d] for d in dag.get_leafs()]
+
+            solved_dependency_cache.execution_plan = _ExecutionPlanCache(
+                cache_key=execution_plan_cache_key,
+                dependant_dag=dependant_dag,
+                dependency_counts=dependency_counts.copy(),
+                leaf_tasks=leaf_tasks,
+            )
+
+        else:
+            dependency_counts = execution_plan.dependency_counts.copy()
+            dependant_dag = execution_plan.dependant_dag
+            leaf_tasks = execution_plan.leaf_tasks
 
         state = ExecutionState(
             container_state=self._state,
             results=results,
-            dependency_counts=dag.get_dependency_counts(),
-            dependants={k: [tasks[d] for d in v] for k, v in dag.get_dependants().items()},
+            dependency_counts=dependency_counts,
+            dependants=dependant_dag,
         )
 
         return (
             results,
-            [functools.partial(tasks[d].compute, state) for d in dag.get_leafs()],
+            [functools.partial(t.compute, state) for t in leaf_tasks],
             to_cache,
         )
 
