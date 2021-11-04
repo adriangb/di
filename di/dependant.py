@@ -267,8 +267,6 @@ class CallableClassDependant(Dependant[T]):
     ) -> None:
         if not (inspect.isclass(call) and hasattr(call, "__call__")):
             raise TypeError("call must be a callable class")
-        self._cls_provider = cls_provider or call
-        self._instance_scope = instance_scope
         super().__init__(
             call=call.__call__,
             scope=scope,
@@ -276,14 +274,16 @@ class CallableClassDependant(Dependant[T]):
             wire=wire,
             autowire=autowire,
         )
+        cls_provider = cls_provider or call
+        self.instance_dependant = UniqueDependant(
+            cls_provider,
+            scope=instance_scope,
+            share=True,
+            wire=self.wire,
+            autowire=self.autowire,
+        )
 
     def create_sub_dependant(self, param: inspect.Parameter) -> DependantProtocol[Any]:
         if param.name == "self":
-            return UniqueDependant(
-                self._cls_provider,
-                scope=self._instance_scope,
-                share=True,
-                wire=self.wire,
-                autowire=self.autowire,
-            )
+            return self.instance_dependant
         return super().create_sub_dependant(param)
