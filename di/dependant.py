@@ -1,7 +1,13 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, Dict, Iterable, List, Optional, Protocol, Type, overload
+import sys
+from typing import Any, Dict, Iterable, List, Optional, Type, overload
+
+if sys.version_info < (3, 8):
+    from typing_extensions import Protocol
+else:
+    from typing import Protocol
 
 from di._docstrings import join_docstring_from
 from di._inspect import get_parameters, infer_call_from_annotation
@@ -237,18 +243,22 @@ class CallableClass(Protocol[T]):
     __call__: DependencyProviderType[T]
 
 
-class CallableClassDependant(Dependant[DependencyType]):
+class CallableClassDependant(Dependant[T]):
     """A Dependant that makes it simple to have multiple instances of a callable class that are cached and shared seperateley
     You pass in the class, and you will get the return value of it's __call__.
     Each CallableClassDependant has it's own instance of the class, and you can have multiple instances.
     """
 
-    cls: Type[CallableClass[DependencyType]]
-
+    # Note: this would be a good application of higher kinded types
+    # We want to get (1) a function that produces a class C and (B) that class
+    # That is, it would be nice to replace CallableClass[T]
+    # with something like Cls = TypeVar("Cls", bound=CallableClass[T])
+    # And then use call: Type[Cls[T]] and cls_provider: Callable[..., Cls[T]]
     def __init__(
         self,
-        call: Type[CallableClass[DependencyType]],
+        call: Type[CallableClass[T]],
         *,
+        cls_provider: Optional[DependencyProviderType[CallableClass[Any]]] = None,
         instance_scope: Scope = None,
         scope: Scope = None,
         share: bool = True,
@@ -257,8 +267,8 @@ class CallableClassDependant(Dependant[DependencyType]):
     ) -> None:
         if not (inspect.isclass(call) and hasattr(call, "__call__")):
             raise TypeError("call must be a callable class")
-        self.cls = call
-        self.instance_scope = instance_scope
+        self._cls_provider = cls_provider or call
+        self._instance_scope = instance_scope
         super().__init__(
             call=call.__call__,
             scope=scope,
@@ -270,8 +280,8 @@ class CallableClassDependant(Dependant[DependencyType]):
     def create_sub_dependant(self, param: inspect.Parameter) -> DependantProtocol[Any]:
         if param.name == "self":
             return UniqueDependant(
-                self.cls,
-                scope=self.instance_scope,
+                self._cls_provider,
+                scope=self._instance_scope,
                 share=True,
                 wire=self.wire,
                 autowire=self.autowire,
