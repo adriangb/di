@@ -1,51 +1,42 @@
-"""We should support callable classes as dependencies.
-Modeled as call=cls.__call__, where the self argument is a dependency that depends on the class' constructor.
-"""
-from di import Container, Dependant, Depends
+import pytest
+
+from di import Container
+from di.dependant import CallableClassDependant
 
 
-def return_1() -> int:
-    return 1
+def test_callable_class_dependant():
+    """CallableClassDependant accepts a callable class and returns the value
+    of that class' __call__.
+    The instance can be cached in a different scope than the result of __call__.
+    In this test, the instance is persisted in the "app" scope while __call__ is re-computed
+    every time.
+    """
 
+    class CallableClass:
+        def __init__(self) -> None:
+            self.counter = 0
 
-def return_2() -> int:
-    return 2
+        def __call__(self) -> int:
+            self.counter += 1
+            return id(self) + self.counter
 
-
-class Dependency:
-    def __init__(self, value: int = Depends(return_1)) -> None:
-        self.value = value
-
-    def __call__(self: "Dependency", value: int = Depends(return_2)) -> "Dependency":
-        self.call_value = self.value + value
-        return self
-
-
-def test_callable_class():
     container = Container()
-    solved = container.solve(Dependant(Dependency.__call__))
-    res = container.execute_sync(solved)
-    assert res.call_value == 3
 
-
-class ScopedDependency:
-    def __init__(self, value: int = Depends(return_1, scope="app")) -> None:
-        self.value = value
-
-    def __call__(
-        self: "ScopedDependency" = Depends(scope="app"), value: int = Depends(return_2)
-    ) -> "ScopedDependency":
-        self.call_value = self.value + value
-        return self
-
-
-def test_callable_class_instance_scoped():
-    container = Container()
+    dep1 = CallableClassDependant(CallableClass, instance_scope="app", scope=None)
+    solved1 = container.solve(dep1)
     with container.enter_global_scope("app"):
-        solved = container.solve(Dependant(ScopedDependency.__call__))
-        d1 = container.execute_sync(solved)
-        assert d1.call_value == 3
-        d1.value = 10
-        d2 = container.execute_sync(solved)
-        assert d2 is d1
-        assert d2.call_value == 12
+        v1 = container.execute_sync(solved1)
+        v2 = container.execute_sync(solved1)
+
+    dep2 = CallableClassDependant(CallableClass, instance_scope="app", scope=None)
+    solved2 = container.solve(dep2)
+    with container.enter_global_scope("app"):
+        v3 = container.execute_sync(solved2)
+        v4 = container.execute_sync(solved2)
+
+    assert v1 == v2 - 1 and v1 != v3 and v3 == v4 - 1
+
+
+def test_not_a_class():
+    with pytest.raises(TypeError):
+        CallableClassDependant(lambda: None)

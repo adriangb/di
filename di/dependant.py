@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, Dict, Iterable, List, Optional, overload
+from typing import Any, Dict, Iterable, List, Optional, Protocol, Type, overload
 
 from di._docstrings import join_docstring_from
 from di._inspect import get_parameters, infer_call_from_annotation
@@ -193,6 +193,8 @@ class Dependant(DependantProtocol[DependencyType]):
 
 
 class JoinedDependant(Dependant[DependencyType]):
+    """A Dependant that aggregates other dependants without directly depending on them"""
+
     def __init__(
         self,
         dependant: DependantProtocol[DependencyType],
@@ -217,3 +219,61 @@ class JoinedDependant(Dependant[DependencyType]):
             *self.dependant.get_dependencies(),
             *(DependencyParameter(dep, None) for dep in self.siblings),
         ]
+
+
+class UniqueDependant(Dependant[DependencyType]):
+    """A Dependant that can be cached/shared but is never substituted with another Dependant in the DAG"""
+
+    # By overriding __eq__, __hash__ gets set to None
+    # see https://docs.python.org/3/reference/datamodel.html#object.__hash__ a couple paragraphs down
+    def __hash__(self) -> int:
+        return super().__hash__()
+
+    def __eq__(self, o: object) -> bool:
+        return False
+
+
+class CallableClass(Protocol[T]):
+    __call__: DependencyProviderType[T]
+
+
+class CallableClassDependant(Dependant[DependencyType]):
+    """A Dependant that makes it simple to have multiple instances of a callable class that are cached and shared seperateley
+    You pass in the class, and you will get the return value of it's __call__.
+    Each CallableClassDependant has it's own instance of the class, and you can have multiple instances.
+    """
+
+    cls: Type[CallableClass[DependencyType]]
+
+    def __init__(
+        self,
+        call: Type[CallableClass[DependencyType]],
+        *,
+        instance_scope: Scope = None,
+        scope: Scope = None,
+        share: bool = True,
+        wire: bool = True,
+        autowire: bool = True,
+    ) -> None:
+        if not (inspect.isclass(call) and hasattr(call, "__call__")):
+            raise TypeError("call must be a callable class")
+        self.cls = call
+        self.instance_scope = instance_scope
+        super().__init__(
+            call=call.__call__,
+            scope=scope,
+            share=share,
+            wire=wire,
+            autowire=autowire,
+        )
+
+    def create_sub_dependant(self, param: inspect.Parameter) -> DependantProtocol[Any]:
+        if param.name == "self":
+            return UniqueDependant(
+                self.cls,
+                scope=self.instance_scope,
+                share=True,
+                wire=self.wire,
+                autowire=self.autowire,
+            )
+        return super().create_sub_dependant(param)
