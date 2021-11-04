@@ -243,6 +243,8 @@ class CallableClass(Protocol[T]):
     __call__: DependencyProviderType[T]
 
 
+# Maybe this class would be better expressed as a parameter to Dependant that allows overriding any parameter?
+# Something like Dependant(..., overrides: Dict[str, DependantProtocol[Any]])
 class CallableClassDependant(Dependant[T]):
     """A Dependant that makes it simple to have multiple instances of a callable class that are cached and shared seperateley
     You pass in the class, and you will get the return value of it's __call__.
