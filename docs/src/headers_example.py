@@ -26,6 +26,15 @@ class HeaderDependant(Dependant[Any]):
             return param.annotation(request.headers[name])
 
         self.call = get_header
+        # We could return a copy here to allow the same Dependant
+        # to be used in multiple places like
+        # dep = HeaderDependant(...)
+        # def func1(abcd = dep): ...
+        # def func2(efgh = dep): ...
+        # In this scenario, `dep` would be modified in func2 to set
+        # the header name to "efgh", which leads to incorrect results in func1
+        # The solution is to return a copy here instead of self, so that
+        # the original instance is never modified in place
         return self
 
 
