@@ -1,11 +1,9 @@
 # Solving
 
-Solving a dependency consists of 2 steps:
+Solving a dependency means build a directed acyclic graph (DAG) of dependencies by inspecting sub dependencies and resolving binds.
+Once we solve a dependency, we can execute it without doing any introspection.
 
-1. Build a directed acyclic graph of dependencies by inspecting sub dependencies and resolving bind overrides.
-1. Topologically sort sub dependencies and group them such that subdependencies that do not depend on eachother can be executed in parallel.
-
-Accordingly, a `SolvedDependency` in `di` corresponds of a DAG of `DependencyProtocol`'s and a topological sort of this DAG.
+Accordingly, a `SolvedDependency` in `di` corresponds of a DAG of `DependencyProtocol`'s and some metadata used by the container.
 You can get a `SolvedDependency` via `Container.solve`.
 You can then store this value or provide it to `Container.execute_sync` or `Container.execute_async`.
 
@@ -16,6 +14,7 @@ During solving, several things are checked:
 
 However, other things are not checked and are deffered to execution time. Namely, *scopes are not validated during solving*.
 This means that you can solve a DAG including `"request"` scoped depdendencies before entering the `"request"` scope.
+But it also means that any errors (like a missing scope) won't be caught until runtime.
 
 ## SolvedDependant
 
@@ -47,7 +46,7 @@ To disable scope checks (perhaps something reasonable to do in a web framework a
 --8<-- "docs/src/solved_dependant.py"
 ```
 
-This lists all of the *Dependants* for the solved dependency, not directly the callable dependency.
+This lists all of the *Dependants* for the solved dependency.
 
 This means that you can create custom markers and easily enumerate them.
 For example, you might make a `Header` dependency and then want to know what headers are being requested by the controller, even if they are nested inside other dependencies:

@@ -6,7 +6,7 @@ In `di`, we call this concept *dependency sharing*.
 
 ## How sharing works
 
-Dependencies are identfied by their callable provider.
+Dependencies are usually identfied by their callable provider (see [dependants] for ways in which you can change this).
 This could be the constructor for a type or an arbitrary callable encapsulated using `Depends(...)`.
 By default, dependencies are shared, but this behavior can be changed on a per-dependency basis using the `share=False` parameter.
 
@@ -17,4 +17,6 @@ By default, dependencies are shared, but this behavior can be changed on a per-d
 ## Sharing and scopes
 
 Dependencies are share within their scope and any innner scopes.
-Once a dependency's scope exits, it's share value is discareded and the next time the scope is entered a fresh value will be computed.
+Once a dependency's scope exits, it's share value is discarded and the next time the scope is entered a fresh value will be computed.
+
+[dependants]: dependants.md
