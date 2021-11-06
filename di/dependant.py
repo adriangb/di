@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import inspect
 import sys
-from typing import Any, Dict, Iterable, List, Optional, Type, overload
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Type, overload
 
 if sys.version_info < (3, 8):
     from typing_extensions import Protocol
@@ -42,6 +42,7 @@ class Dependant(DependantProtocol[DependencyType]):
         share: bool = True,
         wire: bool = True,
         autowire: bool = True,
+        overrides: Optional[Mapping[str, DependantProtocol[Any]]] = None,
     ) -> None:
         ...
 
@@ -54,6 +55,7 @@ class Dependant(DependantProtocol[DependencyType]):
         share: bool = True,
         wire: bool = True,
         autowire: bool = True,
+        overrides: Optional[Mapping[str, DependantProtocol[Any]]] = None,
     ) -> None:
         ...
 
@@ -66,6 +68,7 @@ class Dependant(DependantProtocol[DependencyType]):
         share: bool = True,
         wire: bool = True,
         autowire: bool = True,
+        overrides: Optional[Mapping[str, DependantProtocol[Any]]] = None,
     ) -> None:
         ...
 
@@ -78,6 +81,7 @@ class Dependant(DependantProtocol[DependencyType]):
         share: bool = True,
         wire: bool = True,
         autowire: bool = True,
+        overrides: Optional[Mapping[str, DependantProtocol[Any]]] = None,
     ) -> None:
         ...
 
@@ -89,6 +93,7 @@ class Dependant(DependantProtocol[DependencyType]):
         share: bool = True,
         wire: bool = True,
         autowire: bool = True,
+        overrides: Optional[Mapping[str, DependantProtocol[Any]]] = None,
     ) -> None:
         self.call = call
         self.scope = scope
@@ -98,6 +103,7 @@ class Dependant(DependantProtocol[DependencyType]):
         self.share = share
         self.autowire = autowire
         self.wire = wire
+        self.overrides = overrides or {}
 
     def __repr__(self) -> str:
         share = "" if self.share is False else ", share=True"
@@ -157,10 +163,13 @@ class Dependant(DependantProtocol[DependencyType]):
         ), "Container should have assigned call; this is a bug!"
         res: List[DependencyParameter[DependantProtocol[Any]]] = []
         for param in self.gather_parameters().values():
-            if param.kind in _VARIABLE_PARAMETER_KINDS and self.autowire:
+            sub_dependant: DependantProtocol[Any]
+            if param.name in self.overrides:
+                sub_dependant = self.overrides[param.name]
+            elif param.kind in _VARIABLE_PARAMETER_KINDS and self.autowire:
                 continue
-            if isinstance(param.default, Dependant):
-                sub_dependant: DependantProtocol[Any] = param.default
+            elif isinstance(param.default, Dependant):
+                sub_dependant = param.default
             elif param.default is param.empty and self.autowire:
                 sub_dependant = self.create_sub_dependant(param)
             else:
@@ -243,49 +252,31 @@ class CallableClass(Protocol[T]):
     __call__: DependencyProviderType[T]
 
 
-# Maybe this class would be better expressed as a parameter to Dependant that allows overriding any parameter?
-# Something like Dependant(..., overrides: Dict[str, DependantProtocol[Any]])
-class CallableClassDependant(Dependant[T]):
-    """A Dependant that makes it simple to have multiple instances of a callable class that are cached and shared seperateley
-    You pass in the class, and you will get the return value of it's __call__.
-    Each CallableClassDependant has it's own instance of the class, and you can have multiple instances.
-    """
-
-    # Note: this would be a good application of higher kinded types
-    # We want to get (1) a function that produces a class C and (B) that class
-    # That is, it would be nice to replace CallableClass[T]
-    # with something like Cls = TypeVar("Cls", bound=CallableClass[T])
-    # And then use call: Type[Cls[T]] and cls_provider: Callable[..., Cls[T]]
-    def __init__(
-        self,
-        call: Type[CallableClass[T]],
-        *,
-        cls_provider: Optional[DependencyProviderType[CallableClass[Any]]] = None,
-        instance_scope: Scope = None,
-        scope: Scope = None,
-        share: bool = True,
-        wire: bool = True,
-        autowire: bool = True,
-    ) -> None:
-        if not (inspect.isclass(call) and hasattr(call, "__call__")):
-            raise TypeError("call must be a callable class")
-        super().__init__(
-            call=call.__call__,
-            scope=scope,
-            share=share,
-            wire=wire,
-            autowire=autowire,
-        )
-        cls_provider = cls_provider or call
-        self.instance_dependant = UniqueDependant(
-            cls_provider,
-            scope=instance_scope,
-            share=True,
-            wire=self.wire,
-            autowire=self.autowire,
-        )
-
-    def create_sub_dependant(self, param: inspect.Parameter) -> DependantProtocol[Any]:
-        if param.name == "self":
-            return self.instance_dependant
-        return super().create_sub_dependant(param)
+def CallableClassDependant(
+    call: Type[CallableClass[T]],
+    *,
+    cls_provider: Optional[DependencyProviderType[CallableClass[Any]]] = None,
+    instance_scope: Scope = None,
+    scope: Scope = None,
+    share: bool = True,
+    wire: bool = True,
+    autowire: bool = True,
+) -> Dependant[T]:
+    if not (inspect.isclass(call) and hasattr(call, "__call__")):
+        raise TypeError("call must be a callable class")
+    cls_provider = cls_provider or call
+    self = UniqueDependant(
+        cls_provider,
+        scope=instance_scope,
+        share=True,
+        wire=wire,
+        autowire=autowire,
+    )
+    return Dependant(
+        call=call.__call__,
+        scope=scope,
+        share=share,
+        wire=wire,
+        autowire=autowire,
+        overrides={"self": self},
+    )
