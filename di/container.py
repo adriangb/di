@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import functools
-import typing
 from collections import deque
 from contextvars import ContextVar
 from dataclasses import dataclass
@@ -279,7 +278,7 @@ class Container:
     ) -> Tuple[
         Dict[DependantProtocol[Any], Any],
         List[ExecutorTask],
-        typing.Iterable[DependantProtocol[Any]],
+        Iterable[DependantProtocol[Any]],
     ]:
         user_values = values or {}
         if validate_scopes:
@@ -297,7 +296,7 @@ class Container:
             cache.update(mapping)
         cache.update(user_values)
 
-        to_cache: typing.Deque[DependantProtocol[Any]] = deque()
+        to_cache: Deque[DependantProtocol[Any]] = deque()
         execution_scope = self.scopes[-1]
 
         results: Dict[DependantProtocol[Any], Any] = {}
