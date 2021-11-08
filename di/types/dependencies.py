@@ -29,7 +29,6 @@ class DependantProtocol(Protocol[DependencyType]):
     """
 
     call: Optional[DependencyProviderType[DependencyType]]
-    dependencies: Optional[List[DependencyParameter[DependantProtocol[Any]]]]
     scope: Scope
     share: bool
 
