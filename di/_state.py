@@ -17,7 +17,7 @@ from typing import (
 
 from di._scope_map import ScopeMap
 from di.types import FusedContextManager
-from di.types.dependencies import DependantProtocol
+from di.types.dependencies import DependantBase
 from di.types.providers import (
     DependencyProvider,
     DependencyProviderType,
@@ -28,7 +28,7 @@ from di.types.scopes import Scope
 
 class ContainerState(object):
     __slots__ = ("binds", "cached_values", "stacks")
-    binds: Dict[DependencyProvider, DependantProtocol[Any]]
+    binds: Dict[DependencyProvider, DependantBase[Any]]
     cached_values: ScopeMap[DependencyProvider, Any]
     stacks: Dict[Scope, Union[AsyncExitStack, ExitStack]]
 
@@ -53,7 +53,7 @@ class ContainerState(object):
 
     def bind(
         self,
-        provider: DependantProtocol[DependencyType],
+        provider: DependantBase[DependencyType],
         dependency: DependencyProviderType[DependencyType],
     ) -> ContextManager[None]:
         previous_provider = self.binds.get(dependency, None)

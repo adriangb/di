@@ -1,14 +1,14 @@
 from typing import Any, Dict, List
 
 from di.exceptions import ScopeViolationError, UnknownScopeError
-from di.types.dependencies import DependantProtocol
+from di.types.dependencies import DependantBase
 from di.types.scopes import Scope
 from di.types.solved import SolvedDependency
 
 
 def check_is_inner(
-    dep: DependantProtocol[Any],
-    subdep: DependantProtocol[Any],
+    dep: DependantBase[Any],
+    subdep: DependantBase[Any],
     scope_idxs: Dict[Scope, int],
 ) -> None:
     if scope_idxs[dep.scope] > scope_idxs[subdep.scope]:
@@ -18,7 +18,7 @@ def check_is_inner(
         )
 
 
-def check_scope(dep: DependantProtocol[Any], scope_idxs: Dict[Scope, int]) -> None:
+def check_scope(dep: DependantBase[Any], scope_idxs: Dict[Scope, int]) -> None:
     if dep.scope not in scope_idxs:
         raise UnknownScopeError(
             f"Dependency{dep} has an unknown scope {dep.scope}."

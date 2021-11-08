@@ -24,7 +24,7 @@ from typing import (
 from di._inspect import is_async_gen_callable, is_gen_callable
 from di._state import ContainerState
 from di.exceptions import IncompatibleDependencyError
-from di.types.dependencies import DependantProtocol, DependencyParameter
+from di.types.dependencies import DependantBase, DependencyParameter
 from di.types.executor import Task as ExecutorTask
 from di.types.providers import (
     AsyncGeneratorProvider,
@@ -37,9 +37,9 @@ from di.types.providers import (
 
 class ExecutionState(typing.NamedTuple):
     container_state: ContainerState
-    results: Dict[DependantProtocol[Any], Any]
-    dependency_counts: MutableMapping[DependantProtocol[Any], int]
-    dependants: Mapping[DependantProtocol[Any], Iterable[Task[Any]]]
+    results: Dict[DependantBase[Any], Any]
+    dependency_counts: MutableMapping[DependantBase[Any], int]
+    dependants: Mapping[DependantBase[Any], Iterable[Task[Any]]]
 
 
 class Task(Generic[DependencyType]):
@@ -47,7 +47,7 @@ class Task(Generic[DependencyType]):
 
     def __init__(
         self,
-        dependant: DependantProtocol[DependencyType],
+        dependant: DependantBase[DependencyType],
         dependencies: List[DependencyParameter[Task[Any]]],
     ) -> None:
         self.dependant = dependant
@@ -62,7 +62,7 @@ class Task(Generic[DependencyType]):
         raise NotImplementedError
 
     def gather_params(
-        self, results: Dict[DependantProtocol[Any], Any]
+        self, results: Dict[DependantBase[Any], Any]
     ) -> Tuple[List[Any], Dict[str, Any]]:
         positional: List[Any] = []
         keyword: Dict[str, Any] = {}

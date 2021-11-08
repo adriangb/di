@@ -17,7 +17,7 @@ from typing import (
 from di import _scope_validation as scope_validation
 from di._state import ContainerState
 from di._task import ExecutionState, Task
-from di.types.dependencies import DependantProtocol
+from di.types.dependencies import DependantBase
 from di.types.executor import Task as ExecutorTask
 from di.types.providers import DependencyProvider
 from di.types.solved import SolvedDependency
@@ -26,15 +26,15 @@ Dependency = Any
 
 
 class ExecutionPlanCache(NamedTuple):
-    cache_key: FrozenSet[DependantProtocol[Any]]
-    dependant_dag: Mapping[DependantProtocol[Any], Iterable[Task[Any]]]
-    dependency_counts: Dict[DependantProtocol[Any], int]
+    cache_key: FrozenSet[DependantBase[Any]]
+    dependant_dag: Mapping[DependantBase[Any], Iterable[Task[Any]]]
+    dependency_counts: Dict[DependantBase[Any], int]
     leaf_tasks: Iterable[Task[Any]]
 
 
 class SolvedDependencyCache(NamedTuple):
-    tasks: Mapping[DependantProtocol[Any], Task[Any]]
-    dependency_dag: Mapping[DependantProtocol[Any], Set[DependantProtocol[Any]]]
+    tasks: Mapping[DependantBase[Any], Task[Any]]
+    dependency_dag: Mapping[DependantBase[Any], Set[DependantBase[Any]]]
     execution_plan: Optional[ExecutionPlanCache] = None
 
 
@@ -45,9 +45,9 @@ def plan_execution(
     validate_scopes: bool = True,
     values: Optional[Mapping[DependencyProvider, Any]] = None,
 ) -> Tuple[
-    Dict[DependantProtocol[Any], Any],
+    Dict[DependantBase[Any], Any],
     List[ExecutorTask],
-    Iterable[DependantProtocol[Any]],
+    Iterable[DependantBase[Any]],
 ]:
     user_values = values or {}
     if validate_scopes:
@@ -65,12 +65,12 @@ def plan_execution(
         cache.update(mapping)
     cache.update(user_values)
 
-    to_cache: Deque[DependantProtocol[Any]] = deque()
+    to_cache: Deque[DependantBase[Any]] = deque()
     execution_scope = state.scopes[-1]
 
-    results: Dict[DependantProtocol[Any], Any] = {}
+    results: Dict[DependantBase[Any], Any] = {}
 
-    def use_cache(dep: DependantProtocol[Any]) -> None:
+    def use_cache(dep: DependantBase[Any]) -> None:
         call = dep.call
         if call in cache:
             if call in user_values:
@@ -98,8 +98,8 @@ def plan_execution(
         unvisited = deque([solved.dependency])
         # Make DAG values a set to account for dependencies that depend on the the same
         # sub dependency in more than one param (`def func(a: A, a_again: A)`)
-        dependency_counts: Dict[DependantProtocol[Any], int] = {}
-        dependant_dag: Dict[DependantProtocol[Any], Deque[Task[Any]]] = {
+        dependency_counts: Dict[DependantBase[Any], int] = {}
+        dependant_dag: Dict[DependantBase[Any], Deque[Task[Any]]] = {
             dep: deque() for dep in solved_dependency_cache.dependency_dag
         }
         while unvisited:

@@ -25,7 +25,7 @@ from di._task import AsyncTask, SyncTask, Task
 from di.exceptions import DependencyRegistryError, DuplicateScopeError
 from di.executors import DefaultExecutor
 from di.types import FusedContextManager
-from di.types.dependencies import DependantProtocol, DependencyParameter
+from di.types.dependencies import DependantBase, DependencyParameter
 from di.types.executor import AsyncExecutor, SyncExecutor
 from di.types.providers import (
     DependencyProvider,
@@ -82,7 +82,7 @@ class Container:
 
     def bind(
         self,
-        provider: DependantProtocol[DependencyType],
+        provider: DependantBase[DependencyType],
         dependency: DependencyProviderType[DependencyType],
     ) -> ContextManager[None]:
         """Bind a new dependency provider for a given dependency.
@@ -96,12 +96,12 @@ class Container:
         return self._state.bind(provider=provider, dependency=dependency)
 
     @property
-    def binds(self) -> Mapping[DependencyProvider, DependantProtocol[Any]]:
+    def binds(self) -> Mapping[DependencyProvider, DependantBase[Any]]:
         return self._state.binds
 
     def solve(
         self,
-        dependency: DependantProtocol[DependencyType],
+        dependency: DependantBase[DependencyType],
     ) -> SolvedDependency[DependencyType]:
         """Solve a dependency.
 
@@ -115,17 +115,17 @@ class Container:
             dependency = self._state.binds[dependency.call]
 
         param_graph: Dict[
-            DependantProtocol[Any],
-            List[DependencyParameter[DependantProtocol[Any]]],
+            DependantBase[Any],
+            List[DependencyParameter[DependantBase[Any]]],
         ] = {}
 
-        dep_registry: Dict[DependantProtocol[Any], DependantProtocol[Any]] = {}
+        dep_registry: Dict[DependantBase[Any], DependantBase[Any]] = {}
 
-        dep_dag: Dict[DependantProtocol[Any], List[DependantProtocol[Any]]] = {}
+        dep_dag: Dict[DependantBase[Any], List[DependantBase[Any]]] = {}
 
         def get_params(
-            dep: DependantProtocol[Any],
-        ) -> List[DependencyParameter[DependantProtocol[Any]]]:
+            dep: DependantBase[Any],
+        ) -> List[DependencyParameter[DependantBase[Any]]]:
             params = dep.get_dependencies().copy()
             for idx, param in enumerate(params):
                 assert param.dependency.call is not None
@@ -136,7 +136,7 @@ class Container:
                     )
             return params
 
-        def check_equivalent(dep: DependantProtocol[Any]) -> None:
+        def check_equivalent(dep: DependantBase[Any]) -> None:
             if dep in dep_registry and dep.scope != dep_registry[dep].scope:
                 raise DependencyRegistryError(
                     f"The dependencies {dep} and {dep_registry[dep]}"
@@ -145,11 +145,11 @@ class Container:
                     " This is likely a mistake, but you can override this behavior by either:"
                     "\n  1. Wrapping the function in another function or subclassing the class such"
                     " that they now are considered different dependencies"
-                    "\n  2. Use a custom implemetnation of DependantProtocol that changes the meaning"
+                    "\n  2. Use a custom implemetnation of DependantBase that changes the meaning"
                     " or computation of __hash__ and/or __eq__"
                 )
 
-        q: Deque[DependantProtocol[Any]] = deque([dependency])
+        q: Deque[DependantBase[Any]] = deque([dependency])
         while q:
             dep = q.popleft()
             if dep in dep_registry:
@@ -178,23 +178,23 @@ class Container:
     def _build_tasks(
         self,
         dag: Dict[
-            DependantProtocol[Any],
-            List[DependencyParameter[DependantProtocol[Any]]],
+            DependantBase[Any],
+            List[DependencyParameter[DependantBase[Any]]],
         ],
-        topsorted: List[DependantProtocol[Any]],
-    ) -> Dict[DependantProtocol[Any], Union[AsyncTask[Any], SyncTask[Any]]]:
-        tasks: Dict[DependantProtocol[Any], Union[AsyncTask[Any], SyncTask[Any]]] = {}
+        topsorted: List[DependantBase[Any]],
+    ) -> Dict[DependantBase[Any], Union[AsyncTask[Any], SyncTask[Any]]]:
+        tasks: Dict[DependantBase[Any], Union[AsyncTask[Any], SyncTask[Any]]] = {}
         for dep in reversed(topsorted):
             tasks[dep] = self._build_task(dep, tasks, dag)
         return tasks
 
     def _build_task(
         self,
-        dependency: DependantProtocol[Any],
-        tasks: Dict[DependantProtocol[Any], Union[AsyncTask[Any], SyncTask[Any]]],
+        dependency: DependantBase[Any],
+        tasks: Dict[DependantBase[Any], Union[AsyncTask[Any], SyncTask[Any]]],
         dag: Dict[
-            DependantProtocol[Any],
-            List[DependencyParameter[DependantProtocol[Any]]],
+            DependantBase[Any],
+            List[DependencyParameter[DependantBase[Any]]],
         ],
     ) -> Union[AsyncTask[Any], SyncTask[Any]]:
 
@@ -214,8 +214,8 @@ class Container:
 
     def _update_cache(
         self,
-        results: Dict[DependantProtocol[Any], Any],
-        to_cache: Iterable[DependantProtocol[Any]],
+        results: Dict[DependantBase[Any], Any],
+        to_cache: Iterable[DependantBase[Any]],
     ) -> None:
         for dep in to_cache:
             self._state.cached_values.set(

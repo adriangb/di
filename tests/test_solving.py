@@ -12,7 +12,7 @@ import pytest
 
 from di import Container, Dependant, Depends
 from di.exceptions import DependencyRegistryError, ScopeViolationError, WiringError
-from di.types.dependencies import DependantProtocol, DependencyParameter
+from di.types.dependencies import DependantBase, DependencyParameter
 
 
 def test_no_annotations():
@@ -153,7 +153,7 @@ def test_non_parameter_dependency():
 
         def gather_dependencies(
             self,
-        ) -> List[DependencyParameter[DependantProtocol[Any]]]:
+        ) -> List[DependencyParameter[DependantBase[Any]]]:
             return [
                 DependencyParameter(Dependant(call=lambda: calls.append(True)), None)
             ]

@@ -3,7 +3,7 @@ from typing import Any, List
 import pytest
 
 from di import Container, Dependant, Depends
-from di.types.dependencies import DependantProtocol
+from di.types.dependencies import DependantBase
 from di.types.providers import DependencyProvider
 
 
@@ -36,7 +36,7 @@ def call7(c6: None = Depends(call6)):
 
 
 def assert_compare_call(
-    left: List[DependantProtocol[Any]], right: List[DependencyProvider]
+    left: List[DependantBase[Any]], right: List[DependencyProvider]
 ) -> None:
     assert sorted([id(d.call) for d in left]) == sorted([id(call) for call in right])
 

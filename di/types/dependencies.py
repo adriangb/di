@@ -1,14 +1,9 @@
 from __future__ import annotations
 
+import abc
 import inspect
-import sys
 from dataclasses import dataclass
 from typing import Any, Generic, List, Optional, TypeVar
-
-if sys.version_info < (3, 8):
-    from typing_extensions import Protocol, runtime_checkable
-else:
-    from typing import Protocol, runtime_checkable
 
 from di.types.providers import DependencyProviderType
 from di.types.scopes import Scope
@@ -19,8 +14,7 @@ DependencyType = TypeVar("DependencyType")
 T = TypeVar("T")
 
 
-@runtime_checkable
-class DependantProtocol(Protocol[DependencyType]):
+class DependantBase(Generic[DependencyType], abc.ABC):
     """A dependant is an object that can provide the container with:
     - A hash, to compare itself against other dependants
     - A scope
@@ -32,13 +26,15 @@ class DependantProtocol(Protocol[DependencyType]):
     scope: Scope
     share: bool
 
+    @abc.abstractmethod
     def __hash__(self) -> int:
         """Dependencies need to be hashable for quick O(1) lookups.
 
         Generally, hash(self.call) will suffice so that dependencies are identified by their callable.
         """
-        raise NotImplementedError
+        pass
 
+    @abc.abstractmethod
     def __eq__(self, o: object) -> bool:
         """Used in conjunction with __hash__ for mapping lookups of dependencies.
 
@@ -48,17 +44,19 @@ class DependantProtocol(Protocol[DependencyType]):
         Note that using the same dependenyc in two different scopes is prohibited,
         so if this returns `True` and `self.scope != o.scope` `di` will raise a DependencyRegistryError.
         """
-        raise NotImplementedError
+        pass
 
+    @abc.abstractmethod
     def get_dependencies(
         self,
-    ) -> List[DependencyParameter[DependantProtocol[Any]]]:
+    ) -> List[DependencyParameter[DependantBase[Any]]]:
         """Collect all of the sub dependencies for this dependant"""
-        raise NotImplementedError
+        pass
 
+    @abc.abstractmethod
     def register_parameter(
-        self: DependantProtocol[T], param: inspect.Parameter
-    ) -> DependantProtocol[T]:
+        self: DependantBase[T], param: inspect.Parameter
+    ) -> DependantBase[T]:
         """Called by the parent so that us / this / the child can register
         the parameter it is attached to.
 
@@ -67,13 +65,17 @@ class DependantProtocol(Protocol[DependencyType]):
 
         This can also be used for recording type annotations or parameter names.
         """
-        raise NotImplementedError
+        pass
+
+    def __repr__(self) -> str:
+        share = "" if self.share is False else ", share=True"
+        return f"{self.__class__.__name__}(call={self.call}, scope={self.scope}{share})"
 
 
 # this could be a NamedTuple
 # but https://github.com/python/mypy/issues/685
 # we need the generic type
-# so we can use it for DependantProtocol and Task
+# so we can use it for DependantBase and Task
 @dataclass
 class DependencyParameter(Generic[DependencyType]):
     dependency: DependencyType

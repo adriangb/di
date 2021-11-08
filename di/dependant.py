@@ -3,7 +3,7 @@ from __future__ import annotations
 import inspect
 import sys
 from itertools import chain
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Type, overload
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Type, cast, overload
 
 if sys.version_info < (3, 8):
     from typing_extensions import Protocol
@@ -13,7 +13,7 @@ else:
 from di._docstrings import join_docstring_from
 from di._inspect import get_parameters, infer_call_from_annotation
 from di.exceptions import WiringError
-from di.types.dependencies import DependantProtocol, DependencyParameter, T
+from di.types.dependencies import DependantBase, DependencyParameter, T
 from di.types.providers import (
     AsyncGeneratorProvider,
     CallableProvider,
@@ -30,10 +30,6 @@ _VARIABLE_PARAMETER_KINDS = (
 )
 
 
-class DependantBase(DependantProtocol[DependencyType]):
-    """Concrete base class for Dependants"""
-
-
 class Dependant(DependantBase[DependencyType]):
     wire: bool
     autowire: bool
@@ -47,7 +43,7 @@ class Dependant(DependantBase[DependencyType]):
         share: bool = True,
         wire: bool = True,
         autowire: bool = True,
-        overrides: Optional[Mapping[str, DependantProtocol[Any]]] = None,
+        overrides: Optional[Mapping[str, DependantBase[Any]]] = None,
     ) -> None:
         ...
 
@@ -60,7 +56,7 @@ class Dependant(DependantBase[DependencyType]):
         share: bool = True,
         wire: bool = True,
         autowire: bool = True,
-        overrides: Optional[Mapping[str, DependantProtocol[Any]]] = None,
+        overrides: Optional[Mapping[str, DependantBase[Any]]] = None,
     ) -> None:
         ...
 
@@ -73,7 +69,7 @@ class Dependant(DependantBase[DependencyType]):
         share: bool = True,
         wire: bool = True,
         autowire: bool = True,
-        overrides: Optional[Mapping[str, DependantProtocol[Any]]] = None,
+        overrides: Optional[Mapping[str, DependantBase[Any]]] = None,
     ) -> None:
         ...
 
@@ -86,7 +82,7 @@ class Dependant(DependantBase[DependencyType]):
         share: bool = True,
         wire: bool = True,
         autowire: bool = True,
-        overrides: Optional[Mapping[str, DependantProtocol[Any]]] = None,
+        overrides: Optional[Mapping[str, DependantBase[Any]]] = None,
     ) -> None:
         ...
 
@@ -98,39 +94,35 @@ class Dependant(DependantBase[DependencyType]):
         share: bool = True,
         wire: bool = True,
         autowire: bool = True,
-        overrides: Optional[Mapping[str, DependantProtocol[Any]]] = None,
+        overrides: Optional[Mapping[str, DependantBase[Any]]] = None,
     ) -> None:
         self.call = call
         self.scope = scope
         self.dependencies: Optional[
-            List[DependencyParameter[DependantProtocol[Any]]]
+            List[DependencyParameter[DependantBase[Any]]]
         ] = None
         self.share = share
         self.autowire = autowire
         self.wire = wire
         self.overrides = overrides or {}
 
-    def __repr__(self) -> str:
-        share = "" if self.share is False else ", share=True"
-        return f"{self.__class__.__name__}(call={self.call}, scope={self.scope}{share})"
-
-    @join_docstring_from(DependantProtocol[Any].__hash__)
+    @join_docstring_from(DependantBase[Any].__hash__)
     def __hash__(self) -> int:
         return id(self.call)
 
-    @join_docstring_from(DependantProtocol[Any].__eq__)
+    @join_docstring_from(DependantBase[Any].__eq__)
     def __eq__(self, o: object) -> bool:
-        if type(self) is not type(o):
+        if type(self) != type(o):
             return False
-        assert isinstance(o, Dependant)
+        o = cast(Dependant[Any], o)
         if self.share is False or o.share is False:
             return False
         return self.call is o.call
 
-    @join_docstring_from(DependantProtocol[Any].get_dependencies)
+    @join_docstring_from(DependantBase[Any].get_dependencies)
     def get_dependencies(
         self,
-    ) -> List[DependencyParameter[DependantProtocol[Any]]]:
+    ) -> List[DependencyParameter[DependantBase[Any]]]:
         """For the Dependant implementation, this serves as a cache layer on
         top of gather_dependencies.
         """
@@ -155,7 +147,7 @@ class Dependant(DependantBase[DependencyType]):
 
     def gather_dependencies(
         self,
-    ) -> List[DependencyParameter[DependantProtocol[Any]]]:
+    ) -> List[DependencyParameter[DependantBase[Any]]]:
         """Collect this dependencies sub dependencies.
 
         The returned dict corresponds to keyword arguments that will be passed
@@ -166,9 +158,9 @@ class Dependant(DependantBase[DependencyType]):
         assert (
             self.call is not None
         ), "Container should have assigned call; this is a bug!"
-        res: List[DependencyParameter[DependantProtocol[Any]]] = []
+        res: List[DependencyParameter[DependantBase[Any]]] = []
         for param in self.gather_parameters().values():
-            sub_dependant: DependantProtocol[Any]
+            sub_dependant: DependantBase[Any]
             if param.name in self.overrides:
                 sub_dependant = self.overrides[param.name]
             elif param.kind in _VARIABLE_PARAMETER_KINDS and self.autowire:
@@ -183,7 +175,7 @@ class Dependant(DependantBase[DependencyType]):
             res.append(DependencyParameter(dependency=sub_dependant, parameter=param))
         return res
 
-    def create_sub_dependant(self, param: inspect.Parameter) -> DependantProtocol[Any]:
+    def create_sub_dependant(self, param: inspect.Parameter) -> DependantBase[Any]:
         """Create a Dependant instance from a sub-dependency of this Dependency.
 
         This is used in the scenario where a transient dependency is inferred from a type hint.
@@ -219,9 +211,9 @@ class JoinedDependant(DependantBase[DependencyType]):
 
     def __init__(
         self,
-        dependant: DependantProtocol[DependencyType],
+        dependant: DependantBase[DependencyType],
         *,
-        siblings: Iterable[DependantProtocol[Any]],
+        siblings: Iterable[DependantBase[Any]],
     ) -> None:
         self.call = dependant.call
         self.dependant = dependant
@@ -230,7 +222,7 @@ class JoinedDependant(DependantBase[DependencyType]):
         self._dependencies = None
         self.share = dependant.share
 
-    def get_dependencies(self) -> List[DependencyParameter[DependantProtocol[Any]]]:
+    def get_dependencies(self) -> List[DependencyParameter[DependantBase[Any]]]:
         if self._dependencies is None:
             self._dependencies = list(
                 chain(
@@ -250,7 +242,7 @@ class JoinedDependant(DependantBase[DependencyType]):
 
     def register_parameter(
         self, param: inspect.Parameter
-    ) -> DependantProtocol[DependencyType]:
+    ) -> DependantBase[DependencyType]:
         return self.dependant.register_parameter(param)
 
 

@@ -20,7 +20,7 @@ class Custom(Dependant[T]):
 
 
 @pytest.mark.parametrize(
-    "d1,d2,hash_eq,eq_qe",
+    "left,right,hash_eq,eq_qe",
     [
         (Dependant(func), Dependant(func), True, True),
         (Dependant(func, share=False), Dependant(func), True, False),
@@ -30,6 +30,8 @@ class Custom(Dependant[T]):
         (Dependant(func), Dependant(other_func), False, False),
     ],
 )
-def test_equality(d1: Dependant[Any], d2: Dependant[Any], hash_eq: bool, eq_qe: bool):
-    assert (hash(d1) == hash(d2)) == hash_eq
-    assert (d1 == d2) == eq_qe
+def test_equality(
+    left: Dependant[Any], right: Dependant[Any], hash_eq: bool, eq_qe: bool
+):
+    assert (hash(left) == hash(right)) == hash_eq
+    assert (left == right) == eq_qe
