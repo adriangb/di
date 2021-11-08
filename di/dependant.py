@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import inspect
 import sys
+from itertools import chain
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Type, overload
 
 if sys.version_info < (3, 8):
@@ -29,7 +30,11 @@ _VARIABLE_PARAMETER_KINDS = (
 )
 
 
-class Dependant(DependantProtocol[DependencyType]):
+class DependantBase(DependantProtocol[DependencyType]):
+    """Concrete base class for Dependants"""
+
+
+class Dependant(DependantBase[DependencyType]):
     wire: bool
     autowire: bool
 
@@ -207,33 +212,46 @@ class Dependant(DependantProtocol[DependencyType]):
         )
 
 
-class JoinedDependant(Dependant[DependencyType]):
+class JoinedDependant(DependantBase[DependencyType]):
     """A Dependant that aggregates other dependants without directly depending on them"""
+
+    _dependencies: Optional[List[DependencyParameter[Any]]]
 
     def __init__(
         self,
         dependant: DependantProtocol[DependencyType],
         *,
         siblings: Iterable[DependantProtocol[Any]],
-        scope: Scope = None,
-        share: bool = True,
-        autowire: bool = True,
     ) -> None:
         self.call = dependant.call
         self.dependant = dependant
         self.siblings = siblings
-        self.scope = scope
-        self.dependencies: Optional[
-            List[DependencyParameter[DependantProtocol[Any]]]
-        ] = None
-        self.share = share
-        self.autowire = autowire
+        self.scope = dependant.scope
+        self._dependencies = None
+        self.share = dependant.share
 
-    def gather_dependencies(self) -> List[DependencyParameter[DependantProtocol[Any]]]:
-        return [
-            *self.dependant.get_dependencies(),
-            *(DependencyParameter(dep, None) for dep in self.siblings),
-        ]
+    def get_dependencies(self) -> List[DependencyParameter[DependantProtocol[Any]]]:
+        if self._dependencies is None:
+            self._dependencies = list(
+                chain(
+                    self.dependant.get_dependencies(),
+                    (DependencyParameter(dep, None) for dep in self.siblings),
+                )
+            )
+        return self._dependencies
+
+    def __hash__(self) -> int:
+        return hash((self.dependant, *self.siblings))
+
+    def __eq__(self, o: object) -> bool:
+        if not isinstance(o, JoinedDependant):
+            return False
+        return (self.dependant, *self.siblings) == (o.dependant, *o.siblings)
+
+    def register_parameter(
+        self, param: inspect.Parameter
+    ) -> DependantProtocol[DependencyType]:
+        return self.dependant.register_parameter(param)
 
 
 class UniqueDependant(Dependant[DependencyType]):
