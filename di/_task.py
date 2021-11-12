@@ -25,7 +25,7 @@ from di._inspect import is_async_gen_callable, is_gen_callable
 from di._state import ContainerState
 from di.exceptions import IncompatibleDependencyError
 from di.types.dependencies import DependantBase, DependencyParameter
-from di.types.executor import Task as ExecutorTask
+from di.types.executor import TaskInfo
 from di.types.providers import (
     AsyncGeneratorProvider,
     CallableProvider,
@@ -56,9 +56,7 @@ class Task(Generic[DependencyType]):
     def compute(
         self,
         state: ExecutionState,
-    ) -> Union[
-        Awaitable[Iterable[Optional[ExecutorTask]]], Iterable[Optional[ExecutorTask]]
-    ]:
+    ) -> Union[Awaitable[Iterable[Optional[TaskInfo]]], Iterable[Optional[TaskInfo]]]:
         raise NotImplementedError
 
     def gather_params(
@@ -74,11 +72,9 @@ class Task(Generic[DependencyType]):
                     keyword[dep.parameter.name] = results[dep.dependency.dependant]
         return positional, keyword
 
-    def gather_new_tasks(
-        self, state: ExecutionState
-    ) -> Iterable[Optional[ExecutorTask]]:
+    def gather_new_tasks(self, state: ExecutionState) -> Iterable[Optional[TaskInfo]]:
         """Look amongst our dependants to see if any of them are now dependency free"""
-        new_tasks: Deque[Optional[ExecutorTask]] = deque()
+        new_tasks: Deque[Optional[TaskInfo]] = deque()
         for dependant in state.dependants[self.dependant]:
             count = state.dependency_counts[dependant.dependant]
             if count == 1:
@@ -87,7 +83,12 @@ class Task(Generic[DependencyType]):
                     dependant.compute,
                     state,
                 )
-                new_tasks.append(newtask)  # type: ignore[arg-type] # because of partial
+                new_tasks.append(
+                    TaskInfo(
+                        dependant=dependant.dependant,
+                        task=newtask,
+                    )
+                )
                 # pop it from dependency counts so that we can
                 # tell when we've satisfied all dependencies below
                 state.dependency_counts.pop(dependant.dependant)
@@ -111,7 +112,7 @@ class AsyncTask(Task[DependencyType]):
     async def compute(
         self,
         state: ExecutionState,
-    ) -> Iterable[Optional[ExecutorTask]]:
+    ) -> Iterable[Optional[TaskInfo]]:
         args, kwargs = self.gather_params(state.results)
 
         assert self.dependant.call is not None
@@ -142,7 +143,7 @@ class SyncTask(Task[DependencyType]):
     def compute(
         self,
         state: ExecutionState,
-    ) -> Iterable[Optional[ExecutorTask]]:
+    ) -> Iterable[Optional[TaskInfo]]:
 
         args, kwargs = self.gather_params(state.results)
 

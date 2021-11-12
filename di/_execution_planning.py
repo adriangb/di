@@ -145,7 +145,7 @@ def plan_execution(
     return (
         results,
         [
-            functools.partial(t.compute, execution_state)  # type: ignore[arg-type]
+            functools.partial(t.compute, execution_state)
             for t in execution_plan.leaf_tasks
         ],
         to_cache,

@@ -8,31 +8,35 @@ import anyio.abc
 
 from di._concurrency import curry_context, guarantee_awaitable
 from di._inspect import is_coroutine_callable
-from di.types.executor import AsyncExecutor, SyncExecutor, Task
+from di.types.executor import (
+    AsyncExecutor,
+    AsyncTaskReturnValue,
+    SyncExecutor,
+    SyncTaskReturnValue,
+    Task,
+    TaskInfo,
+)
 
 
 def _check_not_coro(
     task: typing.Optional[Task],
-) -> typing.Callable[[], typing.Iterable[typing.Optional[Task]]]:
+) -> typing.Callable[[], SyncTaskReturnValue]:
     if task is not None and is_coroutine_callable(task):
         raise TypeError("Cannot execute async dependencies in execute_sync")
     return task  # type: ignore[return-value]
 
 
-_AsyncTaskRetval = typing.Awaitable[typing.Union[None, typing.Iterable[Task]]]
-_SyncTaskRetval = typing.Union[None, typing.Iterable[Task]]
-
-
 class SimpleSyncExecutor(SyncExecutor):
     def execute_sync(self, tasks: typing.Iterable[Task]) -> None:
-        q: typing.Deque[typing.Optional[Task]] = deque(tasks)
+        q: typing.Deque[Task] = deque(tasks)
         while q:
             task = q.popleft()
-            if task is None:
-                return
             newtasks = _check_not_coro(task)()
-            assert not isinstance(newtasks, typing.Awaitable)
-            q.extend(newtasks)
+            for newtask in newtasks:
+                if newtask is None:
+                    return
+                else:
+                    q.append(newtask.task)
 
 
 class SimpleAsyncExecutor(AsyncExecutor):
@@ -42,18 +46,20 @@ class SimpleAsyncExecutor(AsyncExecutor):
             task = q.popleft()
             maybe_coro = task()
             if inspect.isawaitable(maybe_coro):
-                newtasks = await typing.cast(_AsyncTaskRetval, maybe_coro)
+                newtasks = await typing.cast(AsyncTaskReturnValue, maybe_coro)
             else:
-                newtasks = typing.cast(_SyncTaskRetval, maybe_coro)
-            if newtasks is None:
-                return
-            q.extend(newtasks)
+                newtasks = typing.cast(SyncTaskReturnValue, maybe_coro)
+            for newtask in newtasks:
+                if newtask is None:
+                    return
+                else:
+                    q.append(newtask.task)
 
 
 class ConcurrentSyncExecutor(AsyncExecutor):
     def execute_sync(self, tasks: typing.Iterable[Task]) -> None:
         futures: typing.Set[
-            concurrent.futures.Future[typing.Iterable[typing.Optional[Task]]]
+            concurrent.futures.Future[typing.Iterable[typing.Optional[TaskInfo]]]
         ] = set()
         with concurrent.futures.ThreadPoolExecutor() as exec:
             for task in tasks:
@@ -68,9 +74,11 @@ class ConcurrentSyncExecutor(AsyncExecutor):
                         )
                     for newtask in newtasks:
                         if newtask is None:
-                            break
+                            for future in concurrent.futures.as_completed(futures):
+                                future.result()
+                            return
                         futures.add(
-                            exec.submit(curry_context(_check_not_coro(newtask)))
+                            exec.submit(curry_context(_check_not_coro(newtask.task)))
                         )
 
 
@@ -78,12 +86,12 @@ async def _async_worker(
     task: Task,
     send: typing.Callable[[typing.Optional[Task]], typing.Awaitable[None]],
 ) -> None:
-    newtasks: _SyncTaskRetval = await guarantee_awaitable(task)()  # type: ignore[assignment]
-    if newtasks is None:
-        await send(None)
-        return
-    for task in newtasks:
-        await send(task)
+    newtasks: SyncTaskReturnValue = await guarantee_awaitable(task)()  # type: ignore[assignment]
+    for taskinfo in newtasks:
+        if taskinfo is None:
+            await send(None)
+            return
+        await send(taskinfo.task)
 
 
 Streams = typing.Tuple[
