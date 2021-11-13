@@ -76,11 +76,11 @@ def Depends(
     autowire: bool = True,
     sync_to_thread: bool = False,
 ) -> DependencyType:
-    return Dependant(
+    return Dependant(  # type: ignore[return-value]
         call=call,
         scope=scope,
         share=share,
         wire=wire,
         autowire=autowire,
         sync_to_thread=sync_to_thread,
-    )  # type: ignore[return-value]
+    )

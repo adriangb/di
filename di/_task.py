@@ -44,7 +44,7 @@ class ExecutionState(typing.NamedTuple):
 
 
 class Task(Generic[DependencyType], ABC):
-    __slots__ = ("dependant", "dependencies")
+    __slots__ = ("dependant", "dependencies", "is_gen", "call")
 
     def __init__(
         self,
@@ -106,6 +106,16 @@ class Task(Generic[DependencyType], ABC):
 class AsyncTask(Task[DependencyType]):
     __slots__ = ()
 
+    def __init__(
+        self,
+        dependant: DependantBase[DependencyType],
+        dependencies: List[DependencyParameter[Task[Any]]],
+    ) -> None:
+        super().__init__(dependant, dependencies)
+        assert self.dependant.call is not None
+        self.call = self.dependant.call
+        self.is_gen = is_async_gen_callable(self.call)
+
     def as_executor_task(self, state: ExecutionState) -> AsyncTaskInfo:
         return AsyncTaskInfo(
             dependant=self.dependant,
@@ -118,9 +128,8 @@ class AsyncTask(Task[DependencyType]):
     ) -> Iterable[Optional[TaskInfo]]:
         args, kwargs = self.gather_params(state.results)
 
-        assert self.dependant.call is not None
-        call = self.dependant.call
-        if is_async_gen_callable(call):
+        call = self.call
+        if self.is_gen:
             stack = state.container_state.stacks[self.dependant.scope]
             if not isinstance(stack, AsyncExitStack):
                 raise IncompatibleDependencyError(
@@ -143,6 +152,16 @@ class AsyncTask(Task[DependencyType]):
 class SyncTask(Task[DependencyType]):
     __slots__ = ()
 
+    def __init__(
+        self,
+        dependant: DependantBase[DependencyType],
+        dependencies: List[DependencyParameter[Task[Any]]],
+    ) -> None:
+        super().__init__(dependant, dependencies)
+        assert self.dependant.call is not None
+        self.call = self.dependant.call
+        self.is_gen = is_gen_callable(self.call)
+
     def as_executor_task(self, state: ExecutionState) -> SyncTaskInfo:
         return SyncTaskInfo(
             dependant=self.dependant,
@@ -156,9 +175,8 @@ class SyncTask(Task[DependencyType]):
 
         args, kwargs = self.gather_params(state.results)
 
-        assert self.dependant.call is not None
-        call = self.dependant.call
-        if is_gen_callable(self.dependant.call):
+        call = self.call
+        if self.is_gen:
             if TYPE_CHECKING:
                 call = cast(GeneratorProvider[DependencyType], call)
             stack = state.container_state.stacks[self.dependant.scope]

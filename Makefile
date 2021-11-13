@@ -15,7 +15,7 @@ install-poetry: .install-poetry
 .init: .install-poetry
 	@echo "---- 📦 Building package ----"
 	rm -rf .venv
-	poetry install --default
+	poetry install --default --with lint
 	touch .init
 
 .docs: .init
