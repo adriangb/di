@@ -6,7 +6,13 @@ import anyio
 import anyio.abc
 
 from di._concurrency import callable_in_thread_pool, curry_context
-from di.types.executor import AsyncExecutor, AsyncTaskInfo, SyncExecutor, TaskInfo
+from di.types.executor import (
+    AsyncExecutor,
+    AsyncTaskInfo,
+    SyncExecutor,
+    SyncTaskInfo,
+    TaskInfo,
+)
 
 
 class SimpleSyncExecutor(SyncExecutor):
@@ -14,8 +20,9 @@ class SimpleSyncExecutor(SyncExecutor):
         q: typing.Deque[TaskInfo] = deque(tasks)
         while q:
             task = q.popleft()
-            if isinstance(task, AsyncTaskInfo):
+            if type(task) is AsyncTaskInfo:
                 raise TypeError("Cannot execute async dependencies in execute_sync")
+            task = typing.cast(SyncTaskInfo, task)
             newtasks = task.task()
             for newtask in newtasks:
                 if newtask is None:
@@ -59,11 +66,12 @@ class ConcurrentSyncExecutor(AsyncExecutor):
                         for future in concurrent.futures.as_completed(futures):
                             future.result()
                         return
-                    if isinstance(task, AsyncTaskInfo):
+                    if type(task) is AsyncTaskInfo:
                         raise TypeError(
                             "Cannot execute async dependencies in execute_sync"
                         )
-                    elif (
+                    task = typing.cast(SyncTaskInfo, task)
+                    if (
                         getattr(task.dependant, "sync_to_thread", False) is True
                     ):  # instance of Dependant
                         call = task.task
@@ -76,14 +84,16 @@ async def _async_worker(
     task: TaskInfo,
     send: typing.Callable[[typing.Optional[TaskInfo]], typing.Awaitable[None]],
 ) -> None:
-    if isinstance(task, AsyncTaskInfo):
+    if type(task) is AsyncTaskInfo:
         newtasks = await task.task()
-    elif (
-        getattr(task.dependant, "sync_to_thread", False) is True
-    ):  # instance of Dependant
-        newtasks = await callable_in_thread_pool(task.task)()
     else:
-        newtasks = task.task()
+        task = typing.cast(SyncTaskInfo, task)
+        if (
+            getattr(task.dependant, "sync_to_thread", False) is True
+        ):  # instance of Dependant
+            newtasks = await callable_in_thread_pool(task.task)()
+        else:
+            newtasks = task.task()
     for taskinfo in newtasks:
         if taskinfo is None:
             await send(None)
