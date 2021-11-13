@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import functools
 import typing
-from abc import ABC, abstractmethod
 from collections import deque
 from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
 from typing import (
@@ -43,8 +42,8 @@ class ExecutionState(typing.NamedTuple):
     dependants: Mapping[DependantBase[Any], Iterable[Task[Any]]]
 
 
-class Task(Generic[DependencyType], ABC):
-    __slots__ = ("dependant", "dependencies", "is_gen", "call")
+class Task(Generic[DependencyType]):
+    __slots__ = ("dependant", "dependencies")
 
     def __init__(
         self,
@@ -54,16 +53,14 @@ class Task(Generic[DependencyType], ABC):
         self.dependant = dependant
         self.dependencies = dependencies
 
-    @abstractmethod
     def compute(
         self,
         state: ExecutionState,
     ) -> Union[Awaitable[Iterable[Optional[TaskInfo]]], Iterable[Optional[TaskInfo]]]:
-        pass
+        raise NotImplementedError
 
-    @abstractmethod
     def as_executor_task(self, state: ExecutionState) -> TaskInfo:
-        pass
+        raise NotImplementedError
 
     def gather_params(
         self, results: Dict[DependantBase[Any], Any]
@@ -104,7 +101,7 @@ class Task(Generic[DependencyType], ABC):
 
 
 class AsyncTask(Task[DependencyType]):
-    __slots__ = ()
+    __slots__ = ("is_gen", "call")
 
     def __init__(
         self,
@@ -150,7 +147,7 @@ class AsyncTask(Task[DependencyType]):
 
 
 class SyncTask(Task[DependencyType]):
-    __slots__ = ()
+    __slots__ = ("is_gen", "call")
 
     def __init__(
         self,

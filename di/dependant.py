@@ -262,7 +262,7 @@ class UniqueDependant(Dependant[DependencyType]):
         return super().__hash__()
 
     def __eq__(self, o: object) -> bool:
-        return False
+        return o is self
 
 
 class CallableClass(Protocol[T]):
