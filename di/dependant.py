@@ -6,9 +6,14 @@ from itertools import chain
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Type, cast, overload
 
 if sys.version_info < (3, 8):
-    from typing_extensions import Protocol
+    from typing_extensions import Protocol, get_origin
 else:
-    from typing import Protocol
+    from typing import Protocol, get_origin
+
+if sys.version_info < (3, 9):
+    from typing_extensions import Annotated, get_args
+else:
+    from typing import Annotated, get_args
 
 from di._docstrings import join_docstring_from
 from di._inspect import get_parameters, infer_call_from_annotation
@@ -152,6 +157,18 @@ class Dependant(DependantBase[DependencyType]):
             self.call = infer_call_from_annotation(param)
         return self
 
+    @staticmethod
+    def get_dependant_from_paramter(
+        param: inspect.Parameter,
+    ) -> Optional[DependantBase[Any]]:
+        if isinstance(param.default, DependantBase):
+            return param.default
+        if get_origin(param.annotation) is Annotated:
+            for arg in get_args(param.annotation):
+                if isinstance(arg, DependantBase):
+                    return arg
+        return None
+
     def gather_dependencies(
         self,
     ) -> List[DependencyParameter[DependantBase[Any]]]:
@@ -172,12 +189,16 @@ class Dependant(DependantBase[DependencyType]):
                 sub_dependant = self.overrides[param.name]
             elif param.kind in _VARIABLE_PARAMETER_KINDS and self.autowire:
                 continue
-            elif isinstance(param.default, Dependant):
-                sub_dependant = param.default
-            elif param.default is param.empty and self.autowire:
-                sub_dependant = self.create_sub_dependant(param)
             else:
-                continue  # pragma: no cover
+                maybe_sub_dependant = self.get_dependant_from_paramter(param)
+                if maybe_sub_dependant is None:
+                    if param.default is param.empty and self.autowire:
+                        sub_dependant = self.create_sub_dependant(param)
+                    else:
+                        # use the default value or fail at runtime
+                        continue  # pragma: no cover
+                else:
+                    sub_dependant = maybe_sub_dependant
             sub_dependant = sub_dependant.register_parameter(param)
             res.append(DependencyParameter(dependency=sub_dependant, parameter=param))
         return res
