@@ -275,7 +275,8 @@ async def test_concurrency(dep1: Any, dep2: Any):
     container.bind(Dependant(lambda: counter), Counter)
 
     async def collector(
-        a: None = Depends(dep1, share=False), b: None = Depends(dep2, share=False)
+        a: None = Depends(dep1, share=False, sync_to_thread=True),
+        b: None = Depends(dep2, share=False, sync_to_thread=True),
     ):
         ...
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import functools
 import typing
+from abc import ABC, abstractmethod
 from collections import deque
 from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
 from typing import (
@@ -25,7 +26,7 @@ from di._inspect import is_async_gen_callable, is_gen_callable
 from di._state import ContainerState
 from di.exceptions import IncompatibleDependencyError
 from di.types.dependencies import DependantBase, DependencyParameter
-from di.types.executor import TaskInfo
+from di.types.executor import AsyncTaskInfo, SyncTaskInfo, TaskInfo
 from di.types.providers import (
     AsyncGeneratorProvider,
     CallableProvider,
@@ -42,7 +43,7 @@ class ExecutionState(typing.NamedTuple):
     dependants: Mapping[DependantBase[Any], Iterable[Task[Any]]]
 
 
-class Task(Generic[DependencyType]):
+class Task(Generic[DependencyType], ABC):
     __slots__ = ("dependant", "dependencies")
 
     def __init__(
@@ -53,11 +54,16 @@ class Task(Generic[DependencyType]):
         self.dependant = dependant
         self.dependencies = dependencies
 
+    @abstractmethod
     def compute(
         self,
         state: ExecutionState,
     ) -> Union[Awaitable[Iterable[Optional[TaskInfo]]], Iterable[Optional[TaskInfo]]]:
-        raise NotImplementedError
+        pass
+
+    @abstractmethod
+    def as_executor_task(self, state: ExecutionState) -> TaskInfo:
+        pass
 
     def gather_params(
         self, results: Dict[DependantBase[Any], Any]
@@ -79,16 +85,7 @@ class Task(Generic[DependencyType]):
             count = state.dependency_counts[dependant.dependant]
             if count == 1:
                 # this dependant has no further dependencies, so we can compute it now
-                newtask = functools.partial(
-                    dependant.compute,
-                    state,
-                )
-                new_tasks.append(
-                    TaskInfo(
-                        dependant=dependant.dependant,
-                        task=newtask,
-                    )
-                )
+                new_tasks.append(dependant.as_executor_task(state))
                 # pop it from dependency counts so that we can
                 # tell when we've satisfied all dependencies below
                 state.dependency_counts.pop(dependant.dependant)
@@ -108,6 +105,12 @@ class Task(Generic[DependencyType]):
 
 class AsyncTask(Task[DependencyType]):
     __slots__ = ()
+
+    def as_executor_task(self, state: ExecutionState) -> AsyncTaskInfo:
+        return AsyncTaskInfo(
+            dependant=self.dependant,
+            task=functools.partial(self.compute, state),
+        )
 
     async def compute(
         self,
@@ -139,6 +142,12 @@ class AsyncTask(Task[DependencyType]):
 
 class SyncTask(Task[DependencyType]):
     __slots__ = ()
+
+    def as_executor_task(self, state: ExecutionState) -> SyncTaskInfo:
+        return SyncTaskInfo(
+            dependant=self.dependant,
+            task=functools.partial(self.compute, state),
+        )
 
     def compute(
         self,

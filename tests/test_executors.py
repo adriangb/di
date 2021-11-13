@@ -1,5 +1,5 @@
 import typing
-from typing import Iterable, cast
+from typing import Iterable
 
 import pytest
 
@@ -10,8 +10,7 @@ from di.executors import (
     SimpleAsyncExecutor,
     SimpleSyncExecutor,
 )
-from di.types.dependencies import DependantBase
-from di.types.executor import SyncExecutor, SyncTaskReturnValue, Task, TaskInfo
+from di.types.executor import AsyncTaskInfo, SyncExecutor, SyncTaskInfo, TaskInfo
 
 
 @pytest.mark.parametrize(
@@ -26,14 +25,14 @@ def test_executing_async_dependencies_in_sync_executor(
     exc = exc_cls()
     match = "Cannot execute async dependencies in execute_sync"
     with pytest.raises(TypeError, match=match):
-        exc.execute_sync([task])
+        exc.execute_sync([AsyncTaskInfo(Dependant(), task)])
 
 
 def test_simple_sync_executor():
-    def task_1() -> Iterable[TaskInfo]:
+    def task_1() -> Iterable[SyncTaskInfo]:
         return [
-            TaskInfo(Dependant(), task_2),
-            TaskInfo(Dependant(), task_3),
+            SyncTaskInfo(Dependant(), task_2),
+            SyncTaskInfo(Dependant(), task_3),
         ]
 
     def task_2() -> Iterable[TaskInfo]:
@@ -44,15 +43,15 @@ def test_simple_sync_executor():
 
     exc = SimpleSyncExecutor()
 
-    exc.execute_sync([task_1])
+    exc.execute_sync([SyncTaskInfo(Dependant(), task_1)])
 
 
 @pytest.mark.anyio
 async def test_simple_async_executor():
-    async def task_1() -> Iterable[TaskInfo]:
+    async def task_1() -> Iterable[SyncTaskInfo]:
         return [
-            TaskInfo(Dependant(), task_2),
-            TaskInfo(Dependant(), task_3),
+            SyncTaskInfo(Dependant(), task_2),
+            SyncTaskInfo(Dependant(), task_3),
         ]
 
     def task_2() -> Iterable[TaskInfo]:
@@ -63,32 +62,4 @@ async def test_simple_async_executor():
 
     exc = SimpleAsyncExecutor()
 
-    await exc.execute_async([task_1])
-
-
-def test_accessing_dependant_from_executor():
-    class IntrospectingSyncExecutor:
-        def execute_sync(self, tasks: typing.Iterable[Task]) -> None:
-            q: typing.List[Task] = list(tasks)
-            while q:
-                task = q.pop(0)
-                if task is None:
-                    return
-                newtasks = cast(SyncTaskReturnValue, task())
-                for newtask in newtasks:
-                    if newtask is None:
-                        return
-                    else:
-                        q.append(newtask.task)
-                        # This is the main assertion in the test!
-                        assert isinstance(newtask.dependant, DependantBase)
-
-    def task_1() -> Iterable[TaskInfo]:
-        return [TaskInfo(Dependant(), task_2)]
-
-    def task_2() -> Iterable[None]:
-        return [None]
-
-    exc = IntrospectingSyncExecutor()
-
-    exc.execute_sync([task_1])
+    await exc.execute_async([AsyncTaskInfo(Dependant(), task_1)])

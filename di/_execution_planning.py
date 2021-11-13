@@ -1,4 +1,3 @@
-import functools
 from collections import deque
 from typing import (
     Any,
@@ -18,7 +17,7 @@ from di import _scope_validation as scope_validation
 from di._state import ContainerState
 from di._task import ExecutionState, Task
 from di.types.dependencies import DependantBase
-from di.types.executor import Task as ExecutorTask
+from di.types.executor import TaskInfo
 from di.types.providers import DependencyProvider
 from di.types.solved import SolvedDependency
 
@@ -46,7 +45,7 @@ def plan_execution(
     values: Optional[Mapping[DependencyProvider, Any]] = None,
 ) -> Tuple[
     Dict[DependantBase[Any], Any],
-    List[ExecutorTask],
+    List[TaskInfo],
     Iterable[DependantBase[Any]],
 ]:
     user_values = values or {}
@@ -144,9 +143,6 @@ def plan_execution(
 
     return (
         results,
-        [
-            functools.partial(t.compute, execution_state)
-            for t in execution_plan.leaf_tasks
-        ],
+        [t.as_executor_task(execution_state) for t in execution_plan.leaf_tasks],
         to_cache,
     )

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 import typing
-from typing import Any, Awaitable, Iterable, Union
+from typing import Any, Iterable, Union
 
 if sys.version_info < (3, 8):
     from typing_extensions import Protocol
@@ -12,25 +12,34 @@ else:
 from di.types.dependencies import DependantBase
 
 
-class TaskInfo(typing.NamedTuple):
+class AsyncTaskInfo(typing.NamedTuple):
     dependant: DependantBase[Any]
-    task: Task
+    task: AsyncTask
 
 
-AsyncTaskReturnValue = Awaitable[Iterable[Union[None, TaskInfo]]]
-SyncTaskReturnValue = Iterable[Union[None, TaskInfo]]
+class SyncTaskInfo(typing.NamedTuple):
+    dependant: DependantBase[Any]
+    task: SyncTask
 
 
-class Task(Protocol):
-    def __call__(self) -> Union[AsyncTaskReturnValue, SyncTaskReturnValue]:
+TaskInfo = Union[AsyncTaskInfo, SyncTaskInfo]
+
+
+class AsyncTask(Protocol):
+    async def __call__(self) -> Iterable[Union[None, TaskInfo]]:
+        ...
+
+
+class SyncTask(Protocol):
+    def __call__(self) -> Iterable[Union[None, TaskInfo]]:
         ...
 
 
 class SyncExecutor(Protocol):
-    def execute_sync(self, tasks: Iterable[Task]) -> None:
+    def execute_sync(self, tasks: Iterable[TaskInfo]) -> None:
         raise NotImplementedError
 
 
 class AsyncExecutor(Protocol):
-    async def execute_async(self, tasks: Iterable[Task]) -> None:
+    async def execute_async(self, tasks: Iterable[TaskInfo]) -> None:
         raise NotImplementedError

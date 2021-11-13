@@ -33,6 +33,7 @@ _VARIABLE_PARAMETER_KINDS = (
 class Dependant(DependantBase[DependencyType]):
     wire: bool
     autowire: bool
+    sync_to_thread: bool
 
     @overload
     def __init__(
@@ -44,6 +45,7 @@ class Dependant(DependantBase[DependencyType]):
         wire: bool = True,
         autowire: bool = True,
         overrides: Optional[Mapping[str, DependantBase[Any]]] = None,
+        sync_to_thread: bool = False,
     ) -> None:
         ...
 
@@ -57,6 +59,7 @@ class Dependant(DependantBase[DependencyType]):
         wire: bool = True,
         autowire: bool = True,
         overrides: Optional[Mapping[str, DependantBase[Any]]] = None,
+        sync_to_thread: bool = False,
     ) -> None:
         ...
 
@@ -70,6 +73,7 @@ class Dependant(DependantBase[DependencyType]):
         wire: bool = True,
         autowire: bool = True,
         overrides: Optional[Mapping[str, DependantBase[Any]]] = None,
+        sync_to_thread: bool = False,
     ) -> None:
         ...
 
@@ -83,6 +87,7 @@ class Dependant(DependantBase[DependencyType]):
         wire: bool = True,
         autowire: bool = True,
         overrides: Optional[Mapping[str, DependantBase[Any]]] = None,
+        sync_to_thread: bool = False,
     ) -> None:
         ...
 
@@ -95,6 +100,7 @@ class Dependant(DependantBase[DependencyType]):
         wire: bool = True,
         autowire: bool = True,
         overrides: Optional[Mapping[str, DependantBase[Any]]] = None,
+        sync_to_thread: bool = False,
     ) -> None:
         self.call = call
         self.scope = scope
@@ -105,6 +111,7 @@ class Dependant(DependantBase[DependencyType]):
         self.autowire = autowire
         self.wire = wire
         self.overrides = overrides or {}
+        self.sync_to_thread = sync_to_thread
 
     @join_docstring_from(DependantBase[Any].__hash__)
     def __hash__(self) -> int:
