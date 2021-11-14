@@ -154,6 +154,11 @@ class Dependant(DependantBase[DependencyType]):
         self: Dependant[T], param: inspect.Parameter
     ) -> Dependant[T]:
         if self.call is None:
+            if get_origin(param.annotation) is Annotated:
+                annotation = next(iter(get_args(param.annotation)))
+            else:
+                annotation = param.annotation
+            param = param.replace(annotation=annotation)
             self.call = infer_call_from_annotation(param)
         return self
 
@@ -199,11 +204,7 @@ class Dependant(DependantBase[DependencyType]):
                         continue  # pragma: no cover
                 else:
                     sub_dependant = maybe_sub_dependant
-            if get_origin(param.annotation) is Annotated:
-                annotation = next(iter(get_args(param.annotation)))
-            else:
-                annotation = param.annotation
-            param = param.replace(annotation=annotation)
+            param = param.replace(annotation=param.annotation)
             sub_dependant = sub_dependant.register_parameter(param)
             res.append(DependencyParameter(dependency=sub_dependant, parameter=param))
         return res
