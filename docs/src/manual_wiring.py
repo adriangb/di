@@ -10,14 +10,14 @@ else:
 from di import Container, Dependant, Depends
 
 
-@dataclass
-class Config:
-    host: str = field(default_factory=lambda: os.getenv("HOST", "localhost"))
-
-
 class AbstractDBConn:
     def execute(self, query: str) -> str:
         ...
+
+
+@dataclass
+class Config:
+    host: str = field(default_factory=lambda: os.getenv("HOST", "localhost"))
 
 
 class ConcreteDBConn:

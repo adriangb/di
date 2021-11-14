@@ -1,5 +1,6 @@
 import functools
 import inspect
+import sys
 from functools import lru_cache, wraps
 from typing import (
     Any,
@@ -9,10 +10,13 @@ from typing import (
     Dict,
     Generator,
     Mapping,
-    Optional,
     Union,
-    get_type_hints,
 )
+
+if sys.version_info < (3, 9):
+    from typing_extensions import get_type_hints
+else:
+    from typing import get_type_hints
 
 from di.exceptions import WiringError
 
@@ -83,7 +87,7 @@ def get_annotations(call: DependencyProvider) -> Dict[str, Any]:
     else:
         # method
         types_from = call
-    return get_type_hints(types_from)
+    return get_type_hints(types_from, include_extras=True)
 
 
 @lru_cache(maxsize=2048)
@@ -97,15 +101,13 @@ def get_parameters(call: DependencyProvider) -> Dict[str, inspect.Parameter]:
         params.pop(next(iter(params.keys())))  # first parameter to __init__ is self
     else:
         params = inspect.signature(call).parameters
-    annotations: Optional[Dict[str, Any]] = None
+    # We used to deferr calling get_annotations until we encountered a possible forward ref
+    # But we switched to always calling it, primarily because of https://github.com/samuelcolvin/pydantic/pull/3413
+    # We could switch this back in the future to avoid extra computation
+    annotations = get_annotations(call)
     processed_params: Dict[str, inspect.Parameter] = {}
     for param_name, param in params.items():
-        if isinstance(param.annotation, str):
-            if annotations is None:
-                annotations = get_annotations(call)
-            param = param.replace(
-                annotation=annotations.get(param_name, param.annotation)
-            )
+        param = param.replace(annotation=annotations.get(param_name, param.annotation))
         processed_params[param_name] = param
     return processed_params
 

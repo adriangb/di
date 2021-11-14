@@ -6,14 +6,14 @@ from itertools import chain
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Type, cast, overload
 
 if sys.version_info < (3, 8):
-    from typing_extensions import Protocol, get_origin
+    from typing_extensions import Protocol
 else:
-    from typing import Protocol, get_origin
+    from typing import Protocol
 
 if sys.version_info < (3, 9):
-    from typing_extensions import Annotated, get_args
+    from typing_extensions import Annotated, get_args, get_origin
 else:
-    from typing import Annotated, get_args
+    from typing import Annotated, get_args, get_origin
 
 from di._docstrings import join_docstring_from
 from di._inspect import get_parameters, infer_call_from_annotation
@@ -199,6 +199,11 @@ class Dependant(DependantBase[DependencyType]):
                         continue  # pragma: no cover
                 else:
                     sub_dependant = maybe_sub_dependant
+            if get_origin(param.annotation) is Annotated:
+                annotation = next(iter(get_args(param.annotation)))
+            else:
+                annotation = param.annotation
+            param = param.replace(annotation=annotation)
             sub_dependant = sub_dependant.register_parameter(param)
             res.append(DependencyParameter(dependency=sub_dependant, parameter=param))
         return res
@@ -224,8 +229,12 @@ class Dependant(DependantBase[DependencyType]):
             raise WiringError(
                 "Cannot wire a parameter with no default and no type annotation"
             )
+        if get_origin(param.annotation) is Annotated:
+            annotation = next(iter(get_args(param.annotation)))
+        else:
+            annotation = param.annotation
         return Dependant[Any](
-            call=param.annotation,
+            call=annotation,
             scope=self.scope,
             share=self.share,
             autowire=self.autowire,
