@@ -32,12 +32,6 @@ class ScopeMap(Generic[KT, VT]):
     def __init__(self) -> None:
         self.mappings = {}
 
-    def get(self, key: KT) -> VT:
-        for mapping in self.mappings.values():
-            if key in mapping:
-                return mapping[key]
-        raise KeyError(key)
-
     def set(self, key: KT, value: VT, *, scope: Scope) -> None:
         if scope not in self.mappings:
             raise UnknownScopeError(
@@ -45,22 +39,12 @@ class ScopeMap(Generic[KT, VT]):
             )
         self.mappings[scope][key] = value
 
-    def contains(self, key: KT) -> bool:
-        for mapping in self.mappings.values():
-            if key in mapping:
-                return True
-        return False
-
     def add_scope(self, scope: Scope) -> None:
         if scope in self.mappings:
             raise DuplicateScopeError(f"The scope {scope} already exists!")
         self.mappings[scope] = {}
 
     def pop_scope(self, scope: Scope) -> None:
-        if scope not in self.mappings:
-            raise UnknownScopeError(
-                f"The scope {scope} is not amongst the known scopes: {self.mappings.keys()}"
-            )
         self.mappings.pop(scope)
 
     def copy(self) -> ScopeMap[KT, VT]:

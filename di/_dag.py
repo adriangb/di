@@ -25,10 +25,7 @@ def topsort(dag: Mapping[T, Iterable[T]]) -> List[T]:
         q.clear()
         for dependant in level:
             for dependency in dag[dependant]:
-                try:
-                    dependant_count[dependency] -= 1
-                except KeyError:
-                    raise CircularDependencyError
+                dependant_count[dependency] -= 1
                 if dependant_count[dependency] == 0:
                     dependant_count.pop(dependency)
                     q.append(dependency)

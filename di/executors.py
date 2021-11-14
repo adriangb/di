@@ -12,7 +12,7 @@ from di.types.executor import AsyncExecutor, AsyncTaskInfo, SyncExecutor, TaskIn
 class SimpleSyncExecutor(SyncExecutor):
     def execute_sync(self, tasks: typing.Iterable[TaskInfo]) -> None:
         q: typing.Deque[TaskInfo] = deque(tasks)
-        while q:
+        while True:
             task = q.popleft()
             if isinstance(task, AsyncTaskInfo):
                 raise TypeError("Cannot execute async dependencies in execute_sync")
@@ -27,7 +27,7 @@ class SimpleSyncExecutor(SyncExecutor):
 class SimpleAsyncExecutor(AsyncExecutor):
     async def execute_async(self, tasks: typing.Iterable[TaskInfo]) -> None:
         q: typing.Deque[TaskInfo] = deque(tasks)
-        while q:
+        while True:
             task = q.popleft()
             if isinstance(task, AsyncTaskInfo):
                 newtasks = await task.task()
@@ -42,16 +42,14 @@ class SimpleAsyncExecutor(AsyncExecutor):
 
 class ConcurrentSyncExecutor(AsyncExecutor):
     def execute_sync(self, tasks: typing.Iterable[TaskInfo]) -> None:
-        futures: typing.Set[
-            concurrent.futures.Future[typing.Iterable[typing.Optional[TaskInfo]]]
-        ] = set()
+        futures: typing.Set[concurrent.futures.Future[None]] = set()
         q: typing.Deque[typing.Optional[TaskInfo]] = deque(tasks)
         with concurrent.futures.ThreadPoolExecutor() as exec:
             while True:
-                for future in futures.copy():
-                    if future.done():
-                        future.result()  # maybe error
-                        futures.remove(future)
+                # remove all completed futures
+                _, futures = concurrent.futures.wait(
+                    futures, return_when=concurrent.futures.FIRST_COMPLETED
+                )
                 newtasks = list(q)
                 q.clear()
                 for task in newtasks:
@@ -66,8 +64,18 @@ class ConcurrentSyncExecutor(AsyncExecutor):
                     if (
                         getattr(task.dependant, "sync_to_thread", False) is True
                     ):  # instance of Dependant
-                        call = task.task
-                        exec.submit(curry_context(lambda: q.extend(call())))
+                        # Use a double closure to bind the value of task in the loop
+                        def make_call(
+                            task_call: typing.Callable[
+                                [], typing.Iterable[typing.Optional[TaskInfo]]
+                            ]
+                        ) -> typing.Callable[[], None]:
+                            def call() -> None:
+                                q.extend(task_call())
+
+                            return call
+
+                        futures.add(exec.submit(curry_context(make_call(task.task))))
                     else:
                         q.extend(task.task())
 
