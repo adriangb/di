@@ -1,7 +1,7 @@
 import os
 from dataclasses import dataclass, field
 
-from di import Container, Dependant, Depends
+from di import Container, Dependant
 
 
 @dataclass
@@ -13,15 +13,9 @@ class DBConn:
     def __init__(self, config: Config) -> None:
         self.host = config.host
 
-    async def __call__(self: "DBConn") -> "DBConn":
-        print("do database stuff!")
-        return self
 
-
-async def controller(
-    conn: DBConn, conn_executed: DBConn = Depends(DBConn.__call__)
-) -> None:
-    assert conn is conn_executed
+async def controller(conn: DBConn) -> None:
+    assert isinstance(conn, DBConn)
 
 
 async def framework():
