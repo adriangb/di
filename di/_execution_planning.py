@@ -95,8 +95,6 @@ def plan_execution(
         # this allows us to prune subtrees that will come
         # from pre-computed values (values paramter or cache)
         unvisited = deque([solved.dependency])
-        # Make DAG values a set to account for dependencies that depend on the the same
-        # sub dependency in more than one param (`def func(a: A, a_again: A)`)
         dependency_counts: Dict[DependantBase[Any], int] = {}
         dependant_dag: Dict[DependantBase[Any], Deque[Task[Any]]] = {
             dep: deque() for dep in solved_dependency_cache.dependency_dag
@@ -105,7 +103,7 @@ def plan_execution(
             dep = unvisited.pop()
             if dep in dependency_counts:
                 continue
-            # task the dependency is cached or was provided by value
+            # if the dependency is cached or was provided by value
             # we don't need to compute it or any of it's dependencies
             if dep not in results:
                 # otherwise, we add it to our DAG and visit it's children
