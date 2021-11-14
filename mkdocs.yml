@@ -23,11 +23,11 @@ edit_uri: "blob/main/docs/"
 
 nav:
   - Intro: 'README.md'
+  - Wiring: 'wiring.md'
   - Scopes: 'scopes.md'
   - Binds: 'binds.md'
-  - Wiring: 'wiring.md'
-  - Sharing: 'sharing.md'
   - Dependants: 'dependants.md'
+  - Sharing: 'sharing.md'
   - Solving: 'solving.md'
   - Integrations: 'integrations.md'
   - Contributing: 'contributing.md'
