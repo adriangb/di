@@ -14,9 +14,9 @@ from typing import (
 )
 
 if sys.version_info < (3, 9):
-    from typing_extensions import get_type_hints
+    from typing_extensions import Annotated, get_args, get_origin, get_type_hints
 else:
-    from typing import get_type_hints
+    from typing import Annotated, get_type_hints, get_origin, get_args
 
 from di.exceptions import WiringError
 
@@ -87,7 +87,14 @@ def get_annotations(call: DependencyProvider) -> Dict[str, Any]:
     else:
         # method
         types_from = call
-    return get_type_hints(types_from, include_extras=True)
+    hints = get_type_hints(types_from, include_extras=True)
+    # for no apparent reason, Annotated[Optional[T]] comes back as Optional[Annotated[Optional[T]]]
+    # so remove the outer Optional if this is the case
+    for param_name, hint in hints.items():
+        args = get_args(hint)
+        if get_origin(hint) is Union and get_origin(next(iter(args))) is Annotated:
+            hints[param_name] = next(iter(args))
+    return hints
 
 
 @lru_cache(maxsize=2048)

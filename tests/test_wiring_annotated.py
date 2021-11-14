@@ -1,4 +1,5 @@
 import sys
+from typing import Optional
 
 if sys.version_info < (3, 9):
     from typing_extensions import Annotated
@@ -12,9 +13,11 @@ def test_wiring_based_from_annotation() -> None:
     def g() -> int:
         return 1
 
-    def f(a: Annotated[int, Depends(g)]) -> None:
+    def f(
+        a: Annotated[int, Depends(g)], b: Annotated[Optional[int], Depends(g)] = None
+    ) -> None:
         pass
 
     dep = Dependant(f)
     subdeps = dep.get_dependencies()
-    assert [d.dependency.call for d in subdeps] == [g]
+    assert [d.dependency.call for d in subdeps] == [g, g]
