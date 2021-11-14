@@ -19,6 +19,12 @@ class SimpleSyncExecutor(SyncExecutor):
             newtasks = task.task()
             for newtask in newtasks:
                 if newtask is None:
+                    for task in q:
+                        if isinstance(task, AsyncTaskInfo):
+                            raise TypeError(
+                                "Cannot execute async dependencies in execute_sync"
+                            )
+                        task.task()
                     return
                 else:
                     q.append(newtask)
@@ -35,6 +41,11 @@ class SimpleAsyncExecutor(AsyncExecutor):
                 newtasks = task.task()
             for newtask in newtasks:
                 if newtask is None:
+                    for task in q:
+                        if isinstance(task, AsyncTaskInfo):
+                            newtasks = await task.task()
+                        else:
+                            newtasks = task.task()
                     return
                 else:
                     q.append(newtask)
