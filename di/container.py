@@ -245,7 +245,7 @@ class Container:
             results, queue, to_cache = plan_execution(
                 self._state, solved, validate_scopes=validate_scopes, values=values
             )
-            if not hasattr(self._executor, "execute_sync"):
+            if not hasattr(self._executor, "execute_sync"):  # pragma: no cover
                 raise TypeError(
                     "execute_sync requires an executor implementing the SyncExecutor protocol"
                 )
@@ -278,7 +278,7 @@ class Container:
             results, queue, to_cache = plan_execution(
                 self._state, solved, validate_scopes=validate_scopes, values=values
             )
-            if not hasattr(self._executor, "execute_async"):
+            if not hasattr(self._executor, "execute_async"):  # pragma: no cover
                 raise TypeError(
                     "execute_async requires an executor implementing the AsyncExecutor protocol"
                 )
