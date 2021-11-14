@@ -30,10 +30,9 @@ def topsort(dag: Mapping[T, Iterable[T]]) -> List[T]:
                     dependant_count.pop(dependency)
                     q.append(dependency)
         for dependant in level:
-            if dependant_count.pop(dependant, 0) == 0:
+            if dependant_count.get(dependant, None) == 0:
                 dependant_count.pop(dependant, None)
         sorted.extend(level)
-    for indegree in dependant_count.values():
-        if indegree != 0:
-            raise CircularDependencyError
+    if dependant_count:
+        raise CircularDependencyError
     return sorted

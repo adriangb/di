@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, Generic, Hashable, List, TypeVar
 
-from di.exceptions import DuplicateScopeError, UnknownScopeError
+from di.exceptions import DuplicateScopeError
 from di.types.scopes import Scope
 
 KT = TypeVar("KT", bound=Hashable)
@@ -33,10 +33,6 @@ class ScopeMap(Generic[KT, VT]):
         self.mappings = {}
 
     def set(self, key: KT, value: VT, *, scope: Scope) -> None:
-        if scope not in self.mappings:
-            raise UnknownScopeError(
-                f"The scope {scope} is not amongst the known scopes: {self.mappings.keys()}"
-            )
         self.mappings[scope][key] = value
 
     def add_scope(self, scope: Scope) -> None:

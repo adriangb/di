@@ -32,7 +32,7 @@ class DependantBase(Generic[DependencyType], abc.ABC):
 
         Generally, hash(self.call) will suffice so that dependencies are identified by their callable.
         """
-        pass
+        pass  # pragma: no cover
 
     @abc.abstractmethod
     def __eq__(self, o: object) -> bool:
@@ -44,14 +44,14 @@ class DependantBase(Generic[DependencyType], abc.ABC):
         Note that using the same dependenyc in two different scopes is prohibited,
         so if this returns `True` and `self.scope != o.scope` `di` will raise a DependencyRegistryError.
         """
-        pass
+        pass  # pragma: no cover
 
     @abc.abstractmethod
     def get_dependencies(
         self,
     ) -> List[DependencyParameter[DependantBase[Any]]]:
         """Collect all of the sub dependencies for this dependant"""
-        pass
+        pass  # pragma: no cover
 
     @abc.abstractmethod
     def register_parameter(
@@ -65,7 +65,7 @@ class DependantBase(Generic[DependencyType], abc.ABC):
 
         This can also be used for recording type annotations or parameter names.
         """
-        pass
+        pass  # pragma: no cover
 
     def __repr__(self) -> str:
         share = "" if self.share is False else ", share=True"
