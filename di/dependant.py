@@ -280,7 +280,8 @@ class JoinedDependant(DependantBase[DependencyType]):
     def register_parameter(
         self, param: inspect.Parameter
     ) -> DependantBase[DependencyType]:
-        return self.dependant.register_parameter(param)
+        self.dependant = self.dependant.register_parameter(param)
+        return self
 
 
 class UniqueDependant(Dependant[DependencyType]):
