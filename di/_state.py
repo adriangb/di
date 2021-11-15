@@ -26,7 +26,7 @@ from di.types.providers import (
 from di.types.scopes import Scope
 
 
-class ContainerState(object):
+class ContainerState:
     __slots__ = ("binds", "cached_values", "stacks")
     binds: Dict[DependencyProvider, DependantBase[Any]]
     cached_values: ScopeMap[DependencyProvider, Any]
@@ -37,7 +37,7 @@ class ContainerState(object):
         self.cached_values = ScopeMap()
         self.stacks = {}
 
-    def copy(self) -> "ContainerState":
+    def copy(self) -> ContainerState:
         new = ContainerState()
         new.binds = self.binds.copy()
         new.stacks = self.stacks.copy()
