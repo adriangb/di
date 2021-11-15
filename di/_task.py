@@ -57,14 +57,17 @@ class Task(Generic[DependencyType]):
         self,
         state: ExecutionState,
     ) -> Union[Awaitable[Iterable[Optional[TaskInfo]]], Iterable[Optional[TaskInfo]]]:
+        """Compute this dependency within the context of the current state"""
         raise NotImplementedError
 
     def as_executor_task(self, state: ExecutionState) -> TaskInfo:
+        """Bind the state and return either an AsyncTaskInfo or SyncTaskInfo"""
         raise NotImplementedError
 
     def gather_params(
         self, results: Dict[DependantBase[Any], Any]
     ) -> Tuple[List[Any], Dict[str, Any]]:
+        """Gather all parameters (aka *args and **kwargs) needed for computation"""
         positional: List[Any] = []
         keyword: Dict[str, Any] = {}
         for dep in self.dependencies:
@@ -101,7 +104,7 @@ class Task(Generic[DependencyType]):
 
 
 class AsyncTask(Task[DependencyType]):
-    __slots__ = ("is_gen", "call")
+    __slots__ = ("is_generator", "call")
 
     def __init__(
         self,
@@ -111,7 +114,7 @@ class AsyncTask(Task[DependencyType]):
         super().__init__(dependant, dependencies)
         assert self.dependant.call is not None
         self.call = self.dependant.call
-        self.is_gen = is_async_gen_callable(self.call)
+        self.is_generator = is_async_gen_callable(self.call)
 
     def as_executor_task(self, state: ExecutionState) -> AsyncTaskInfo:
         return AsyncTaskInfo(
@@ -126,7 +129,7 @@ class AsyncTask(Task[DependencyType]):
         args, kwargs = self.gather_params(state.results)
 
         call = self.call
-        if self.is_gen:
+        if self.is_generator:
             stack = state.container_state.stacks[self.dependant.scope]
             if not isinstance(stack, AsyncExitStack):
                 raise IncompatibleDependencyError(
@@ -147,7 +150,7 @@ class AsyncTask(Task[DependencyType]):
 
 
 class SyncTask(Task[DependencyType]):
-    __slots__ = ("is_gen", "call")
+    __slots__ = ("is_generator", "call")
 
     def __init__(
         self,
@@ -157,7 +160,7 @@ class SyncTask(Task[DependencyType]):
         super().__init__(dependant, dependencies)
         assert self.dependant.call is not None
         self.call = self.dependant.call
-        self.is_gen = is_gen_callable(self.call)
+        self.is_generator = is_gen_callable(self.call)
 
     def as_executor_task(self, state: ExecutionState) -> SyncTaskInfo:
         return SyncTaskInfo(
@@ -173,7 +176,7 @@ class SyncTask(Task[DependencyType]):
         args, kwargs = self.gather_params(state.results)
 
         call = self.call
-        if self.is_gen:
+        if self.is_generator:
             if TYPE_CHECKING:
                 call = cast(GeneratorProvider[DependencyType], call)
             stack = state.container_state.stacks[self.dependant.scope]

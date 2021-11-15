@@ -10,7 +10,7 @@ VT = TypeVar("VT")
 
 
 class ScopeMap(Generic[KT, VT]):
-    """Mapping-like structure to hold binds and cached values.
+    """Mapping-like structure to hold cached values.
 
     The important aspect of this is that we may have thousands of dependencies, but generally only a couple (<10) scopes.
     So this is designed to operate in ~ O(S) time, where S is the number of scopes.

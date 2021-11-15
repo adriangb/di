@@ -1,16 +1,10 @@
-import sys
 from types import TracebackType
-from typing import Optional, Type, TypeVar, Union
+from typing import Generic, Optional, Type, TypeVar, Union
 
-if sys.version_info >= (3, 8):
-    from typing import Protocol
-else:
-    from typing_extensions import Protocol
-
-T = TypeVar("T", covariant=True)
+T = TypeVar("T")
 
 
-class FusedContextManager(Protocol[T]):
+class FusedContextManager(Generic[T]):
     __slots__ = ()
 
     def __enter__(self) -> T:

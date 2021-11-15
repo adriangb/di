@@ -16,7 +16,7 @@ from typing import (
 )
 
 from di._dag import topsort
-from di._execution_planning import SolvedDependencyCache, plan_execution
+from di._execution_planning import SolvedDependantCache, plan_execution
 from di._inspect import is_async_gen_callable, is_coroutine_callable
 from di._local_scope_context import LocalScopeContext
 from di._nullcontext import nullcontext
@@ -33,7 +33,7 @@ from di.types.providers import (
     DependencyType,
 )
 from di.types.scopes import Scope
-from di.types.solved import SolvedDependency
+from di.types.solved import SolvedDependant
 
 Dependency = Any
 
@@ -102,30 +102,36 @@ class Container:
     def solve(
         self,
         dependency: DependantBase[DependencyType],
-    ) -> SolvedDependency[DependencyType]:
+    ) -> SolvedDependant[DependencyType]:
         """Solve a dependency.
 
-        Returns a SolvedDependency that can be executed to get the dependency's value.
+        Returns a SolvedDependant that can be executed to get the dependency's value.
 
         The `siblings` paramter can be used to pass additional dependencies that should be executed
         that aren't strictly needed to solve `dependency`.
         """
 
+        # If the SolvedDependant itself is a bind, replace it's dependant
         if dependency.call in self._state.binds:
             dependency = self._state.binds[dependency.call]
 
+        # Mapping of already seen dependants to itself for hash based lookups
+        dep_registry: Dict[DependantBase[Any], DependantBase[Any]] = {}
+
+        # DAG mapping dependants to their dependendencies
+        dep_dag: Dict[DependantBase[Any], List[DependantBase[Any]]] = {}
+
+        # The same DAG as above but including parameters (inspect.Parameter instances)
         param_graph: Dict[
             DependantBase[Any],
             List[DependencyParameter[DependantBase[Any]]],
         ] = {}
 
-        dep_registry: Dict[DependantBase[Any], DependantBase[Any]] = {}
-
-        dep_dag: Dict[DependantBase[Any], List[DependantBase[Any]]] = {}
-
         def get_params(
             dep: DependantBase[Any],
         ) -> List[DependencyParameter[DependantBase[Any]]]:
+            # get parameters and swap them out w/ binds when they
+            # exist as a bound value
             params = dep.get_dependencies().copy()
             for idx, param in enumerate(params):
                 assert param.dependency.call is not None
@@ -149,6 +155,7 @@ class Container:
                     " or computation of __hash__ and/or __eq__"
                 )
 
+        # Do a DFS of the DAG checking constraints along the way
         q: Deque[DependantBase[Any]] = deque([dependency])
         while q:
             dep = q.popleft()
@@ -164,12 +171,16 @@ class Container:
                     dep_dag[dep].append(subdep)
                     if subdep not in dep_registry:
                         q.append(subdep)
+        # The whole concept of Tasks is something that can perhaps be cleaned up / optimized
+        # The main reason to have it is to save some computation at runtime
+        # but currently that is just checking if the dependendency is sync or async
+        # So perhaps that can be done in a simpler manner
         tasks = self._build_tasks(param_graph, topsort(dep_dag))
         dependency_dag = {dep: set(subdeps) for dep, subdeps in dep_dag.items()}
-        container_cache = SolvedDependencyCache(
+        container_cache = SolvedDependantCache(
             dependency_dag=dependency_dag, tasks=tasks
         )
-        return SolvedDependency(
+        return SolvedDependant(
             dependency=dependency,
             dag=param_graph,
             container_cache=container_cache,
@@ -226,7 +237,7 @@ class Container:
 
     def execute_sync(
         self,
-        solved: SolvedDependency[DependencyType],
+        solved: SolvedDependant[DependencyType],
         *,
         validate_scopes: bool = True,
         values: Optional[Mapping[DependencyProvider, Any]] = None,
@@ -252,14 +263,12 @@ class Container:
             executor = cast(SyncExecutor, self._executor)
             if queue:
                 executor.execute_sync(queue)
-
-            res = results[solved.dependency]
             self._update_cache(results, to_cache)
-            return res  # type: ignore[no-any-return]
+            return results[solved.dependency]  # type: ignore[no-any-return]
 
     async def execute_async(
         self,
-        solved: SolvedDependency[DependencyType],
+        solved: SolvedDependant[DependencyType],
         *,
         validate_scopes: bool = True,
         values: Optional[Mapping[DependencyProvider, Any]] = None,
@@ -285,6 +294,5 @@ class Container:
             executor = cast(AsyncExecutor, self._executor)
             if queue:
                 await executor.execute_async(queue)
-            res = results[solved.dependency]
             self._update_cache(results, to_cache)
-            return res  # type: ignore[no-any-return]
+            return results[solved.dependency]  # type: ignore[no-any-return]

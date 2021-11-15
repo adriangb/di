@@ -11,13 +11,13 @@ Dependency = Any
 
 
 @dataclasses.dataclass
-class SolvedDependency(Generic[DependencyType]):
+class SolvedDependant(Generic[DependencyType]):
     """Representation of a fully solved dependency as DAG"""
 
     dependency: DependantBase[DependencyType]
     dag: Mapping[DependantBase[Any], List[DependencyParameter[DependantBase[Any]]]]
     # container_cache can be used by the creating container to store data that is tied
-    # to the SolvedDependency
+    # to the SolvedDependant
     container_cache: typing.Any = None
 
     def get_flat_subdependants(self) -> List[DependantBase[Any]]:

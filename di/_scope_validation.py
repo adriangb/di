@@ -3,7 +3,7 @@ from typing import Any, Dict, List
 from di.exceptions import ScopeViolationError, UnknownScopeError
 from di.types.dependencies import DependantBase
 from di.types.scopes import Scope
-from di.types.solved import SolvedDependency
+from di.types.solved import SolvedDependant
 
 
 def check_is_inner(
@@ -26,7 +26,7 @@ def check_scope(dep: DependantBase[Any], scope_idxs: Dict[Scope, int]) -> None:
         )
 
 
-def validate_scopes(scopes: List[Scope], solved: SolvedDependency[Any]) -> None:
+def validate_scopes(scopes: List[Scope], solved: SolvedDependant[Any]) -> None:
     """Validate that dependencies all have a valid scope and
     that dependencies only depend on outer scopes or their own scope.
     """

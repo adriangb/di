@@ -1,5 +1,5 @@
 from di import Container, Dependant
-from di.types.solved import SolvedDependency
+from di.types.solved import SolvedDependant
 
 
 # Framework code
@@ -10,7 +10,7 @@ class Request:
 def web_framework():
     container = Container()
     solved = container.solve(Dependant(controller))
-    assert isinstance(solved, SolvedDependency)
+    assert isinstance(solved, SolvedDependant)
 
     container.execute_sync(solved, values={Request: Request()})
 

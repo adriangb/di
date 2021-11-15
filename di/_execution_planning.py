@@ -19,27 +19,38 @@ from di._task import ExecutionState, Task
 from di.types.dependencies import DependantBase
 from di.types.executor import TaskInfo
 from di.types.providers import DependencyProvider
-from di.types.solved import SolvedDependency
+from di.types.solved import SolvedDependant
 
 Dependency = Any
 
 
-class ExecutionPlanCache(NamedTuple):
+class ExecutionPlan(NamedTuple):
+    """Cache of the execution plan, stored within SolvedDependantCache"""
+
+    # the cache_key is used to compare execution plans and know if we need to re-create it
+    # for a given SolvedDependant if the cache_key is equal, the plans will be equal
     cache_key: FrozenSet[DependantBase[Any]]
+    # mapping of which dependencies require computation for each dependant
+    # it is possible that some of them were passed by value or cached
+    # and hence do not require computation
     dependant_dag: Mapping[DependantBase[Any], Iterable[Task[Any]]]
+    # count of how many uncompomputed dependencies each dependant has
+    # this is used to keep track of what dependencies are now available for computation
     dependency_counts: Dict[DependantBase[Any], int]
-    leaf_tasks: Iterable[Task[Any]]
+    leaf_tasks: Iterable[Task[Any]]  # these are the tasks w/ no dependencies
 
 
-class SolvedDependencyCache(NamedTuple):
+class SolvedDependantCache(NamedTuple):
+    """Private data that the Container attaches to SolvedDependant"""
+
     tasks: Mapping[DependantBase[Any], Task[Any]]
     dependency_dag: Mapping[DependantBase[Any], Set[DependantBase[Any]]]
-    execution_plan: Optional[ExecutionPlanCache] = None
+    execution_plan: Optional[ExecutionPlan] = None
 
 
 def plan_execution(
     state: ContainerState,
-    solved: SolvedDependency[Any],
+    solved: SolvedDependant[Any],
     *,
     validate_scopes: bool = True,
     values: Optional[Mapping[DependencyProvider, Any]] = None,
@@ -48,17 +59,23 @@ def plan_execution(
     List[TaskInfo],
     Iterable[DependantBase[Any]],
 ]:
+    """Re-use or create an ExecutionPlan"""
     user_values = values or {}
     if validate_scopes:
         scope_validation.validate_scopes(state.scopes, solved)
 
-    if type(solved.container_cache) is not SolvedDependencyCache:
+    if type(solved.container_cache) is not SolvedDependantCache:
         raise TypeError(
-            "This SolvedDependency was not created by this Container"
+            "This SolvedDependant was not created by this Container"
         )  # pragma: no cover
 
-    solved_dependency_cache: SolvedDependencyCache = solved.container_cache
+    solved_dependency_cache: SolvedDependantCache = solved.container_cache
 
+    # dump all cached values into one mapping for faster lookups
+    # this relies on the fact that:
+    # (1) dict.update is fast
+    # (2) we will be doing a lot of lookups (one for each key in the DAG)
+    # (3) this converts an iteration over scopes into a dict lookup
     cache: Dict[DependencyProvider, Any] = {}
     for mapping in state.cached_values.mappings.values():
         cache.update(mapping)
@@ -69,6 +86,8 @@ def plan_execution(
 
     results: Dict[DependantBase[Any], Any] = {}
 
+    # For each dependency, check if we can use a cached value or a user supplied value
+    # If so, put that value into our results dict
     def use_cache(dep: DependantBase[Any]) -> None:
         call = dep.call
         if call in cache:
@@ -79,7 +98,11 @@ def plan_execution(
                 results[dep] = cache[call]
                 return
         else:
+            # skip caching the innermost scope since it would be dropped
+            # right after saving the value
             if dep.share and dep.scope != execution_scope:
+                # mark this dependency to have it's value stored in the cache
+                # after we are done w/ this execution
                 to_cache.append(dep)
         return
 
@@ -90,6 +113,7 @@ def plan_execution(
 
     execution_plan = solved_dependency_cache.execution_plan
 
+    # Check if we can re-use the existing plan (if any) or create a new one
     if execution_plan is None or execution_plan.cache_key != execution_plan_cache_key:
         # Build a DAG of Tasks that we actually need to execute
         # this allows us to prune subtrees that will come
@@ -115,7 +139,7 @@ def plan_execution(
                         if subdep not in dependency_counts:
                             unvisited.append(subdep)
 
-        execution_plan = ExecutionPlanCache(
+        execution_plan = ExecutionPlan(
             cache_key=execution_plan_cache_key,
             dependant_dag=dependant_dag,
             dependency_counts=dependency_counts,
@@ -126,7 +150,7 @@ def plan_execution(
             ],
         )
 
-        solved.container_cache = SolvedDependencyCache(
+        solved.container_cache = SolvedDependantCache(
             tasks=solved_dependency_cache.tasks,
             dependency_dag=solved_dependency_cache.dependency_dag,
             execution_plan=execution_plan,

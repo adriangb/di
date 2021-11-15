@@ -3,8 +3,8 @@
 Solving a dependency means build a directed acyclic graph (DAG) of dependencies by inspecting sub dependencies and resolving binds.
 Once we solve a dependency, we can execute it without doing any introspection.
 
-Accordingly, a `SolvedDependency` in `di` corresponds of a DAG of `DependencyProtocol`'s and some metadata used by the container.
-You can get a `SolvedDependency` via `Container.solve`.
+Accordingly, a `SolvedDependant` in `di` corresponds of a DAG of `DependencyProtocol`'s and some metadata used by the container.
+You can get a `SolvedDependant` via `Container.solve`.
 You can then store this value or provide it to `Container.execute_sync` or `Container.execute_async`.
 
 During solving, several things are checked:
