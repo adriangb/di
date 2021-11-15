@@ -11,7 +11,7 @@ else:
 import pytest
 
 from di import Container, Dependant, Depends
-from di.exceptions import DependencyRegistryError, ScopeViolationError, WiringError
+from di.exceptions import ScopeViolationError, SolvingError, WiringError
 from di.types.dependencies import DependantBase, DependencyParameter
 
 
@@ -109,7 +109,7 @@ def test_dependency_with_multiple_scopes():
     with container.enter_local_scope("app"):
         with container.enter_local_scope("request"):
             match = r"have the same lookup \(__hash__ and __eq__\) but have different scopes"
-            with pytest.raises(DependencyRegistryError, match=match):
+            with pytest.raises(SolvingError, match=match):
                 container.execute_sync(container.solve(Dependant(D)))
 
 

@@ -42,7 +42,7 @@ class DependantBase(Generic[DependencyType], abc.ABC):
         `di` will pick one to subsitute for the other.
 
         Note that using the same dependenyc in two different scopes is prohibited,
-        so if this returns `True` and `self.scope != o.scope` `di` will raise a DependencyRegistryError.
+        so if this returns `True` and `self.scope != o.scope` `di` will raise a SolvingError.
         """
         pass  # pragma: no cover
 

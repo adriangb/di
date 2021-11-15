@@ -22,7 +22,7 @@ from di._local_scope_context import LocalScopeContext
 from di._nullcontext import nullcontext
 from di._state import ContainerState
 from di._task import AsyncTask, SyncTask, Task
-from di.exceptions import DependencyRegistryError, DuplicateScopeError
+from di.exceptions import DuplicateScopeError, SolvingError
 from di.executors import DefaultExecutor
 from di.types import FusedContextManager
 from di.types.dependencies import DependantBase, DependencyParameter
@@ -144,7 +144,7 @@ class Container:
 
         def check_equivalent(dep: DependantBase[Any]) -> None:
             if dep in dep_registry and dep.scope != dep_registry[dep].scope:
-                raise DependencyRegistryError(
+                raise SolvingError(
                     f"The dependencies {dep} and {dep_registry[dep]}"
                     " have the same lookup (__hash__ and __eq__) but have different scopes"
                     f" ({dep.scope} and {dep_registry[dep].scope} respectively)"
