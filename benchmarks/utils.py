@@ -28,8 +28,10 @@ def generate_dag(
 
     funcs: Dict[str, Callable[..., Any]] = {}
     for level in range(levels):
+        level_funcs: Dict[str, Callable[..., Any]] = funcs.copy()
         for node in range(nodes_per_level):
             name = f"{level}_{node}"
+            # use funcs and not level_funcs here to make sure we get some parallelization
             deps = random.sample(
                 list(funcs.keys()), k=min(len(funcs), dependencies_per_node)
             )
@@ -38,7 +40,8 @@ def generate_dag(
             )
             sleep_time = random.uniform(sleep[0], sleep[1])
             func_def = template.format(name, params, sleep_time)
-            exec(func_def, globals, funcs)
+            exec(func_def, globals, level_funcs)
+        funcs.update(level_funcs)
     name = "final"
     deps = list(funcs.keys())
     params = ", ".join(

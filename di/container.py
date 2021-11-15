@@ -238,7 +238,7 @@ class Container:
         """
         cm: FusedContextManager[None]
         if self._execution_scope in self.scopes:
-            cm = nullcontext(None)
+            cm = nullcontext()
         else:
             cm = self.enter_local_scope(self._execution_scope)
         with cm:
@@ -271,7 +271,7 @@ class Container:
         """
         cm: FusedContextManager[None]
         if self._execution_scope in self.scopes:
-            cm = nullcontext(None)
+            cm = nullcontext()
         else:
             cm = self.enter_local_scope(self._execution_scope)
         async with cm:
