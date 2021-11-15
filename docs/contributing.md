@@ -87,15 +87,15 @@ These code fragments are tested as part of unit tests to ensure that the documen
 
 ## Releases
 
-This project uses continious integration and continious delivery (CI/CD) and a trunk based workflow.
-We do not want any long lived feature branches (although we won't stop you from making them in your fork), and every merge into `main` should be fully functional code in a releasable state.
+This project uses continious integration and continious delivery on a trunk based workflow.
+Every merge into `main` should be fully functional code in a releasable state.
 As part of your pull request, you should propose what type of change is being made and determine the right version bump appropriately.
 While [conventional commits] are appreciated as a means of communication, especially for the merge commit, they are not *required* or enforced.
-Instead, you are required to bump the package version in [pyproject.toml].
+You are however required to bump the package version in [pyproject.toml].
 Every commit into `main` needs a version bump so that a release can be made, even if it is a refactor or "chore" type change.
 
 Once your change is merged, the new docs and PyPi package will be released automatically.
-Every time a release is made on PyPi, a corresponding GitHub release will be created to allow correlating PyPi versions to VCS versions.
+Every time a release is made on PyPi, a corresponding GitHub release will be created to correlate PyPi versions to git commits.
 
 [make]: https://www.gnu.org/software/make/
 [makefile]: https://github.com/adriangb/di/blob/main/Makefile
