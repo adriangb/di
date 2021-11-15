@@ -18,9 +18,8 @@ from typing import (
 from di._dag import topsort
 from di._execution_planning import SolvedDependantCache, plan_execution
 from di._inspect import is_async_gen_callable, is_coroutine_callable
-from di._local_scope_context import LocalScopeContext
 from di._nullcontext import nullcontext
-from di._state import ContainerState
+from di._state import ContainerState, LocalScopeContext
 from di._task import AsyncTask, SyncTask, Task
 from di.exceptions import DuplicateScopeError, SolvingError
 from di.executors import DefaultExecutor

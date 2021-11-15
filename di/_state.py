@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import contextvars
 from contextlib import AsyncExitStack, ExitStack, contextmanager
 from types import TracebackType
 from typing import (
-    TYPE_CHECKING,
     Any,
     ContextManager,
     Dict,
@@ -24,6 +24,51 @@ from di.types.providers import (
     DependencyType,
 )
 from di.types.scopes import Scope
+
+
+class LocalScopeContext(FusedContextManager[None]):
+    __slots__ = ("context", "scope", "token", "_sync_cm", "_async_cm")
+    context: contextvars.ContextVar[ContainerState]
+    scope: Scope
+    token: contextvars.Token[ContainerState]
+
+    def __init__(
+        self, context: contextvars.ContextVar[ContainerState], scope: Scope
+    ) -> None:
+        self.context = context
+        self.scope = scope
+
+    def __enter__(self) -> None:
+        current = self.context.get()
+        new = current.copy()
+        self.token = self.context.set(new)
+        self._sync_cm = new.enter_scope(self.scope)
+        self._sync_cm.__enter__()
+
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> Union[None, bool]:
+        self.context.reset(self.token)
+        return self._sync_cm.__exit__(exc_type, exc_value, traceback)
+
+    async def __aenter__(self) -> None:
+        current = self.context.get()
+        new = current.copy()
+        self.token = self.context.set(new)
+        self._async_cm = new.enter_scope(self.scope)
+        await self._async_cm.__aenter__()
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> Union[None, bool]:
+        self.context.reset(self.token)
+        return await self._async_cm.__aexit__(exc_type, exc_value, traceback)
 
 
 class ContainerState:
@@ -90,8 +135,7 @@ class ScopeContext(FusedContextManager[None]):
         traceback: Optional[TracebackType],
     ) -> Union[None, bool]:
         stack = self.state.stacks[self.scope]
-        if TYPE_CHECKING:
-            stack = cast(ExitStack, stack)
+        stack = cast(ExitStack, stack)
         self.state.stacks.pop(self.scope)
         self.state.cached_values.pop_scope(self.scope)
         return stack.__exit__(exc_type, exc_value, traceback)
@@ -107,8 +151,7 @@ class ScopeContext(FusedContextManager[None]):
         traceback: Optional[TracebackType],
     ) -> Union[None, bool]:
         stack = self.state.stacks[self.scope]
-        if TYPE_CHECKING:
-            stack = cast(AsyncExitStack, stack)
+        stack = cast(AsyncExitStack, stack)
         self.state.stacks.pop(self.scope)
         self.state.cached_values.pop_scope(self.scope)
         return await stack.__aexit__(exc_type, exc_value, traceback)
