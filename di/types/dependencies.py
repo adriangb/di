@@ -60,10 +60,13 @@ class DependantBase(Generic[DependencyType], abc.ABC):
         """Called by the parent so that us / this / the child can register
         the parameter it is attached to.
 
-        It is *required* that this method register a noe None `call` method,
+        It is *required* that this method register a non None `call` method,
         if one is not already present.
+        That is, after this is run, self.call should not be None.
 
         This can also be used for recording type annotations or parameter names.
+
+        This method may return the same instance or another DependantBase altogether.
         """
         pass  # pragma: no cover
 

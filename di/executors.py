@@ -131,5 +131,5 @@ class ConcurrentAsyncExecutor(AsyncExecutor):
                     taskgroup.start_soon(_async_worker, newtask, send.send)
 
 
-class DefaultExecutor(ConcurrentSyncExecutor, ConcurrentAsyncExecutor):
-    ...
+class DefaultExecutor(ConcurrentAsyncExecutor, ConcurrentSyncExecutor):
+    pass

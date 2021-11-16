@@ -15,7 +15,6 @@ if sys.version_info < (3, 9):
 else:
     from typing import Annotated, get_args, get_origin
 
-from di._utils.docstrings import join_docstring_from
 from di._utils.inspect import get_parameters, infer_call_from_annotation
 from di.exceptions import WiringError
 from di.types.dependencies import DependantBase, DependencyParameter, T
@@ -118,12 +117,18 @@ class Dependant(DependantBase[DependencyType]):
         self.overrides = overrides or {}
         self.sync_to_thread = sync_to_thread
 
-    @join_docstring_from(DependantBase[Any].__hash__)
     def __hash__(self) -> int:
+        """Used to identify Dependants.
+        By default, we identify Dependant's by their callable.
+        See DependantBase for more details.
+        """
         return id(self.call)
 
-    @join_docstring_from(DependantBase[Any].__eq__)
     def __eq__(self, o: object) -> bool:
+        """Used to identify Dependants.
+        By default, just checks that both are marked as shared.
+        See DependantBase for more details.
+        """
         if type(self) != type(o):
             return False
         o = cast(Dependant[Any], o)
@@ -131,11 +136,12 @@ class Dependant(DependantBase[DependencyType]):
             return False
         return self.call is o.call
 
-    @join_docstring_from(DependantBase[Any].get_dependencies)
     def get_dependencies(
         self,
     ) -> List[DependencyParameter[DependantBase[Any]]]:
-        """For the Dependant implementation, this serves as a cache layer on
+        """Collect all of the sub dependencies for this dependant
+
+        For the Dependant implementation, this serves as a cache layer on
         top of gather_dependencies.
         """
         if self.dependencies is None:
@@ -153,6 +159,10 @@ class Dependant(DependantBase[DependencyType]):
     def register_parameter(
         self: Dependant[T], param: inspect.Parameter
     ) -> Dependant[T]:
+        """Called by the parent so that us / this / the child can register the parameter it is attached to.
+
+        This is where you would hook to get information from this Dependant's parameter.
+        """
         if self.call is None:
             if get_origin(param.annotation) is Annotated:
                 annotation = next(iter(get_args(param.annotation)))
@@ -163,9 +173,14 @@ class Dependant(DependantBase[DependencyType]):
         return self
 
     @staticmethod
-    def get_dependant_from_paramter(
+    def get_sub_dependant_from_paramter(
         param: inspect.Parameter,
     ) -> Optional[DependantBase[Any]]:
+        """Infer a sub-dependant from a parameter of this Dependant's .call
+
+        By default, we look for Depends(...) markers (which are instances of DependantBase)
+        in the default values and PEP 593 typing annotations.
+        """
         if isinstance(param.default, DependantBase):
             return param.default
         if get_origin(param.annotation) is Annotated:
@@ -195,7 +210,7 @@ class Dependant(DependantBase[DependencyType]):
             elif param.kind in _VARIABLE_PARAMETER_KINDS and self.autowire:
                 continue
             else:
-                maybe_sub_dependant = self.get_dependant_from_paramter(param)
+                maybe_sub_dependant = self.get_sub_dependant_from_paramter(param)
                 if maybe_sub_dependant is None:
                     if param.default is param.empty and self.autowire:
                         sub_dependant = self.create_sub_dependant(param)
@@ -261,6 +276,7 @@ class JoinedDependant(DependantBase[DependencyType]):
         self.share = dependant.share
 
     def get_dependencies(self) -> List[DependencyParameter[DependantBase[Any]]]:
+        """Get the dependencies of our main dependant and all siblings"""
         if self._dependencies is None:
             self._dependencies = list(
                 chain(
@@ -298,6 +314,8 @@ class UniqueDependant(Dependant[DependencyType]):
 
 
 class CallableClass(Protocol[T]):
+    """A callable class that has a __call__ that is valid as dependency provider"""
+
     __call__: DependencyProviderType[T]
 
 
@@ -311,6 +329,11 @@ def CallableClassDependant(
     wire: bool = True,
     autowire: bool = True,
 ) -> Dependant[T]:
+    """Create a Dependant that will create and call a callable class
+
+    The class instance can come from the class' constructor (by default)
+    or be provided by cls_provider.
+    """
     if not (inspect.isclass(call) and hasattr(call, "__call__")):
         raise TypeError("call must be a callable class")
     cls_provider = cls_provider or call
