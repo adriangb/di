@@ -16,7 +16,29 @@ except PackageNotFoundError:
 
 
 from di.container import Container  # noqa: E402
-from di.dependant import Dependant  # noqa: E402
+from di.dependant import (  # noqa: E402
+    CallableClassDependant,
+    Dependant,
+    JoinedDependant,
+)
+from di.executors import (  # noqa: E402
+    ConcurrentAsyncExecutor,
+    ConcurrentSyncExecutor,
+    DefaultExecutor,
+    SimpleAsyncExecutor,
+    SimpleSyncExecutor,
+)
 from di.params import Depends  # noqa: E402
 
-__all__ = ("Container", "Dependant", "Depends")
+__all__ = (
+    "Container",
+    "Dependant",
+    "JoinedDependant",
+    "CallableClassDependant",
+    "Depends",
+    "DefaultExecutor",
+    "ConcurrentAsyncExecutor",
+    "ConcurrentSyncExecutor",
+    "SimpleAsyncExecutor",
+    "SimpleSyncExecutor",
+)
