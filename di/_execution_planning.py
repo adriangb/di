@@ -1,9 +1,9 @@
 from collections import deque
 from typing import (
+    AbstractSet,
     Any,
     Deque,
     Dict,
-    FrozenSet,
     Iterable,
     List,
     Mapping,
@@ -29,7 +29,7 @@ class ExecutionPlan(NamedTuple):
 
     # the cache_key is used to compare execution plans and know if we need to re-create it
     # for a given SolvedDependant if the cache_key is equal, the plans will be equal
-    cache_key: FrozenSet[DependantBase[Any]]
+    cache_key: AbstractSet[DependantBase[Any]]
     # mapping of which dependencies require computation for each dependant
     # it is possible that some of them were passed by value or cached
     # and hence do not require computation
@@ -60,6 +60,11 @@ def plan_execution(
     Iterable[DependantBase[Any]],
 ]:
     """Re-use or create an ExecutionPlan"""
+    # This function is a hot loop
+    # It is run for every execution, and even with the cache it can be a bottleneck
+    # This would be the best place to Cythonize or otherwise take more drastic
+    # measures to improve performance
+
     user_values = values or {}
     if validate_scopes:
         scope_validation.validate_scopes(state.scopes, solved)
@@ -76,6 +81,8 @@ def plan_execution(
     # (1) dict.update is fast
     # (2) we will be doing a lot of lookups (one for each key in the DAG)
     # (3) this converts an iteration over scopes into a dict lookup
+    # The cost of this is extra memory: we are building up `cache` w/ values that will never be used
+    # And then we are throwing `cache` away when we exit this function
     cache: Dict[DependencyProvider, Any] = {}
     for mapping in state.cached_values.mappings.values():
         cache.update(mapping)
@@ -88,15 +95,13 @@ def plan_execution(
 
     # For each dependency, check if we can use a cached value or a user supplied value
     # If so, put that value into our results dict
-    def use_cache(dep: DependantBase[Any]) -> None:
+    for dep in solved.dag:
         call = dep.call
         if call in cache:
             if call in user_values:
                 results[dep] = user_values[call]
-                return
             elif dep.share:
                 results[dep] = cache[call]
-                return
         else:
             # skip caching the innermost scope since it would be dropped
             # right after saving the value
@@ -104,12 +109,8 @@ def plan_execution(
                 # mark this dependency to have it's value stored in the cache
                 # after we are done w/ this execution
                 to_cache.append(dep)
-        return
 
-    for dep in solved.dag:
-        use_cache(dep)
-
-    execution_plan_cache_key = frozenset(results.keys())
+    execution_plan_cache_key = results.keys()
 
     execution_plan = solved_dependency_cache.execution_plan
 
@@ -140,7 +141,8 @@ def plan_execution(
                             unvisited.append(subdep)
 
         execution_plan = ExecutionPlan(
-            cache_key=execution_plan_cache_key,
+            # use frozenset to hold a shallow copy of the dict keys
+            cache_key=frozenset(execution_plan_cache_key),
             dependant_dag=dependant_dag,
             dependency_counts=dependency_counts,
             leaf_tasks=[
