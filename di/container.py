@@ -73,7 +73,7 @@ class Container:
     def enter_local_scope(self, scope: Scope) -> FusedContextManager[None]:
         """Enter a local scope that is localized to the current thread or coroutine.
 
-        If you enter a global scope in one thread / coroutine, it will NOT propagate to others.
+        If you enter a local scope in one thread / coroutine, it will NOT propagate to others.
         """
         if scope in self._state.stacks:
             raise DuplicateScopeError(f"Scope {scope} has already been entered!")
@@ -105,9 +105,6 @@ class Container:
         """Solve a dependency.
 
         Returns a SolvedDependant that can be executed to get the dependency's value.
-
-        The `siblings` paramter can be used to pass additional dependencies that should be executed
-        that aren't strictly needed to solve `dependency`.
         """
 
         # If the SolvedDependant itself is a bind, replace it's dependant
@@ -242,6 +239,9 @@ class Container:
         values: Optional[Mapping[DependencyProvider, Any]] = None,
     ) -> DependencyType:
         """Execute an already solved dependency.
+
+        This method is synchronous and uses a synchronous executor,
+        but the executor may still be able to execute async dependencies.
 
         If you are not dynamically changing scopes, you can run once with `validate_scopes=True`
         and then disable scope validation in subsequent runs with `validate_scope=False`.
