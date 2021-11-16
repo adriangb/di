@@ -38,18 +38,43 @@ Here is a simple example of how `di` works:
 --8<-- "docs/src/simple.py"
 ```
 
+### Why do I need dependency injection in Python? Isn't that a Java thing?
+
+Dependency injection is a software architecture technique that helps us achieve [inversion of control] and [dependency inversion] (one of the five [SOLID] design principles).
+
+It is a common misconception that traditional software design principles do not apply to Python.
+As a matter of fact, you are probably using a lot of these techniques already!
+
+For example, the `transport` argument to httpx's Client [docs](https://www.python-httpx.org/advanced/#custom-transports) is an excellent example of dependency injection.
+
+Most web frameworks employ inversion of control: when you define a view / controller, the web framework calls you! The same thing applies to CLIs (like [click]) or TUIs (like [Textual]).
+
+This is especially true for many newer webframeworks that not only use inversion of control but also dependency injection. Two great examples of this are [FastAPI] and [BlackSheep].
+
+This project was born out of a desire to generalize and improve upon FastAPI's dependency injection system so that it can be used outside of FastAPI and even in other libraries.
+
+For a more comprehensive overview of Python projectes related to dependency injection, see [Awesome Dependency Injection in Python].
+
+## Project Aims
+
+This project aims to be a general dependency injection system, with a focus on providing the underlaying dependency injection functionality for other libaries.
+
+In other words, while you could use this as your a standalone dependency injection framework, you may find it to be a bit terse and verbose. There are also much more mature standalone dependency injection frameworks; I would recommend at least looking into [python-dependency-injector] since it is currently the most popular / widely used of the bunch.
+
 ### In-depth example
+
+With this background in place, let's dive into a more in-depth example.
 
 In this example, we'll look at what it would take for a web framework to provide dependecy injection to it's users via `di`.
 
 Let's start by looking at the User's code.
 
-```Python hl_lines="17-25"
+```Python hl_lines="17-"
 --8<-- "docs/src/web_framework.py"
 ```
 
 As a user, you have very little boilerplate.
-In fact, there is not a single LOC here that is not transmitting information.
+In fact, there is not a single line of code here that is not transmitting information.
 
 Now let's look at the web framework side of things.
 This part can get a bit complex, but it's okay because it's written once, in a library.
@@ -81,10 +106,13 @@ When we do this, we provide the `Request` instance as a value.
 This means that `di` does not introspect at all into the `Request` to figure out how to build it, it just hands the value off to anything that requests it.
 You can also "bind" providers, which is covered in the [binds] section of the docs.
 
-## Project Aims
-
-This project is primarily geared for enviroments that already use inversion of control (think web frameworks, CLI frameworks or anything else where you define functions and "it calls you").
-
-It particularly excels in async / concurrent environments, since the DI system has first class support for async dependencies and can gather dependencies concurrently.
-
 [binds]: binds.md
+[dependency inversion]: https://en.wikipedia.org/wiki/Dependency_inversion_principle
+[SOLID]: https://en.wikipedia.org/wiki/SOLID
+[inversion of control]: https://en.wikipedia.org/wiki/Inversion_of_control
+[click]: https://click.palletsprojects.com/en/8.0.x/
+[Textual]: https://github.com/willmcgugan/textual
+[FastAPI]: https://fastapi.tiangolo.com/tutorial/dependencies/
+[BlackSheep]: https://www.neoteroi.dev/blacksheep/dependency-injection/
+[Awesome Dependency Injection in Python]: https://github.com/sfermigier/awesome-dependency-injection-in-python
+[python-dependency-injector]: https://github.com/ets-labs/python-dependency-injector

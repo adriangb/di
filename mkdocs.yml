@@ -23,6 +23,7 @@ edit_uri: "blob/main/docs/"
 
 nav:
   - Intro: 'README.md'
+  - Architecture: 'architecture.md'
   - Wiring: 'wiring.md'
   - Scopes: 'scopes.md'
   - Binds: 'binds.md'
@@ -36,8 +37,10 @@ markdown_extensions:
   - mkautodoc
   - admonition
   - pymdownx.highlight
-  - pymdownx.superfences
   - pymdownx.snippets
+  - pymdownx.superfences
+  - attr_list
+  - md_in_html
 
 extra_css:
   - css/termynal.css

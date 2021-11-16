@@ -8,7 +8,7 @@ Binds provide two important functions:
 Every bind in `di` consists of:
 
 - A target callable: this can be a function, an interface / protocol or a concrete class
-- A substitute dependency: an object implementing the `DependencyProtocol`, usually just an instance of `Dependant`
+- A substitute dependency: an object implementing the `DependantBase`, usually just an instance of `Dependant`
 
 This means that binds are themselves dependencies:
 

@@ -18,7 +18,7 @@ Here is an example that extracts headers from requests:
 --8<-- "docs/src/headers_example.py"
 ```
 
-Another good example of the customizability provided by `DependantBase` is the implementation of [`JointDependant`], which lets you schedule and execute dependencies together even if they are not directly connected by wiring:
+Another good example of the customizability provided by `DependantBase` is the implementation of [JointDependant], which lets you schedule and execute dependencies together even if they are not directly connected by wiring:
 
 ```python
 --8<-- "docs/src/joined_dependant.py"
@@ -28,4 +28,4 @@ Here `B` is executed even though `A` does not depend on it.
 This is because `JoinedDependant` leverages the `DependantBase` interface to tell `di` that `B` is a dependency of `A` even if `B` is not a parameter or otherwise releated to `A`.
 
 [Solving docs]: solving.md
-[`JointDependant`]: https://github.com/adriangb/di/blob/b7398fbdf30213c1acb94b423bb4f2e2badd0fdd/di/dependant.py#L194-L218
+[JointDependant]: https://github.com/adriangb/di/blob/b7398fbdf30213c1acb94b423bb4f2e2badd0fdd/di/dependant.py#L194-L218

@@ -3,9 +3,15 @@
 Solving a dependency means build a directed acyclic graph (DAG) of dependencies by inspecting sub dependencies and resolving binds.
 Once we solve a dependency, we can execute it without doing any introspection.
 
-Accordingly, a `SolvedDependant` in `di` corresponds of a DAG of `DependencyProtocol`'s and some metadata used by the container.
-You can get a `SolvedDependant` via `Container.solve`.
-You can then store this value or provide it to `Container.execute_sync` or `Container.execute_async`.
+Solving is done by the `Container`.
+The result of solving is stored in a `SolvedDependant` object which you can pass to `Container.execute` to get back the result.
+The simplest form of executing a dependency is thus:
+
+```python
+result = container.execute(container.solve(Dependant(lambda: 1)))
+```
+
+For a more comprehensive overview, see the [architecture] section.
 
 During solving, several things are checked:
 
@@ -60,5 +66,6 @@ class Header(Dependant[str]):
 
 See the [dependants] section for a more complete example of this.
 
+[architecture]: architecture.md
 [Performance section of the Wiring docs]: wiring.md#performance
 [dependants]: dependants.md

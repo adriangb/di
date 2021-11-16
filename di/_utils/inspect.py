@@ -100,6 +100,6 @@ def infer_call_from_annotation(parameter: inspect.Parameter) -> Callable[..., An
     if not callable(parameter.annotation):
         raise WiringError(
             f"Annotation for {parameter.name} is not a callable class or function and so we cannot autowire it."
-            " You must explicity provide a default value implementing the DependencyProtocol"
+            " You must explicity provide a default value implementing the DependantBase"
         )
     return parameter.annotation  # type: ignore[no-any-return]

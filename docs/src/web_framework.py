@@ -16,10 +16,12 @@ async def web_framework():
 
 # User code
 class MyClass:
-    def use_value(self, value: int) -> None:
-        print(value)
+    def __init__(self, request: Request) -> None:
+        self.value = request.value
+
+    def add(self, value: int) -> int:
+        return self.value + value
 
 
-async def controller(request: Request, myobj: MyClass) -> int:
-    myobj.use_value(request.value)
-    return request.value + 1
+async def controller(myobj: MyClass) -> int:
+    return myobj.add(1)
