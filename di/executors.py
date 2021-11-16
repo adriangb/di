@@ -5,7 +5,7 @@ from collections import deque
 import anyio
 import anyio.abc
 
-from di._concurrency import callable_in_thread_pool, curry_context
+from di._utils.concurrency import callable_in_thread_pool, curry_context
 from di.types.executor import AsyncExecutor, AsyncTaskInfo, SyncExecutor, TaskInfo
 
 

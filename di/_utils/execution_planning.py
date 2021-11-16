@@ -13,9 +13,9 @@ from typing import (
     Tuple,
 )
 
-from di import _scope_validation as scope_validation
-from di._state import ContainerState
-from di._task import ExecutionState, Task
+from di._utils import scope_validation
+from di._utils.state import ContainerState
+from di._utils.task import ExecutionState, Task
 from di.types.dependencies import DependantBase
 from di.types.executor import TaskInfo
 from di.types.providers import DependencyProvider

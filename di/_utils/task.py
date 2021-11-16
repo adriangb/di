@@ -21,8 +21,8 @@ from typing import (
     cast,
 )
 
-from di._inspect import is_async_gen_callable, is_gen_callable
-from di._state import ContainerState
+from di._utils.inspect import is_async_gen_callable, is_gen_callable
+from di._utils.state import ContainerState
 from di.exceptions import IncompatibleDependencyError
 from di.types.dependencies import DependantBase, DependencyParameter
 from di.types.executor import AsyncTaskInfo, SyncTaskInfo, TaskInfo

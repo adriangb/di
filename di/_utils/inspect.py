@@ -2,16 +2,7 @@ import functools
 import inspect
 import sys
 from functools import lru_cache, wraps
-from typing import (
-    Any,
-    AsyncGenerator,
-    Callable,
-    Coroutine,
-    Dict,
-    Generator,
-    Mapping,
-    Union,
-)
+from typing import Any, Callable, Dict, Mapping, Union
 
 if sys.version_info < (3, 9):
     from typing_extensions import Annotated, get_args, get_origin, get_type_hints
@@ -19,18 +10,6 @@ else:
     from typing import Annotated, get_type_hints, get_origin, get_args
 
 from di.exceptions import WiringError
-
-CallableProvider = Callable[..., Any]
-CoroutineProvider = Callable[..., Coroutine[Any, Any, Any]]
-GeneratorProvider = Callable[..., Generator[Any, None, None]]
-AsyncGeneratorProvider = Callable[..., AsyncGenerator[Any, None]]
-
-DependencyProvider = Union[
-    AsyncGeneratorProvider,
-    CoroutineProvider,
-    GeneratorProvider,
-    CallableProvider,
-]
 
 
 def cached_accept_callable_class(
@@ -60,12 +39,12 @@ def cached_accept_callable_class(
 
 
 @cached_accept_callable_class(maxsize=2048)
-def is_coroutine_callable(call: DependencyProvider) -> bool:
+def is_coroutine_callable(call: Callable[..., Any]) -> bool:
     return inspect.iscoroutinefunction(call)
 
 
 @cached_accept_callable_class(maxsize=2048)
-def is_async_gen_callable(call: DependencyProvider) -> bool:
+def is_async_gen_callable(call: Callable[..., Any]) -> bool:
     return inspect.isasyncgenfunction(call)
 
 
@@ -75,8 +54,8 @@ def is_gen_callable(call: Any) -> bool:
 
 
 @lru_cache(maxsize=2048)
-def get_annotations(call: DependencyProvider) -> Dict[str, Any]:
-    types_from: DependencyProvider
+def get_annotations(call: Callable[..., Any]) -> Dict[str, Any]:
+    types_from: Callable[..., Any]
     if not (
         inspect.isclass(call) or inspect.isfunction(call) or inspect.ismethod(call)
     ) and hasattr(call, "__call__"):
@@ -96,7 +75,7 @@ def get_annotations(call: DependencyProvider) -> Dict[str, Any]:
 
 
 @lru_cache(maxsize=2048)
-def get_parameters(call: DependencyProvider) -> Dict[str, inspect.Parameter]:
+def get_parameters(call: Callable[..., Any]) -> Dict[str, inspect.Parameter]:
     params: Mapping[str, inspect.Parameter]
     if inspect.isclass(call) and call.__new__ is not object.__new__:
         # classes overriding __new__, including some generic metaclasses, result in __new__ getting read
@@ -117,7 +96,7 @@ def get_parameters(call: DependencyProvider) -> Dict[str, inspect.Parameter]:
     return processed_params
 
 
-def infer_call_from_annotation(parameter: inspect.Parameter) -> DependencyProvider:
+def infer_call_from_annotation(parameter: inspect.Parameter) -> Callable[..., Any]:
     if not callable(parameter.annotation):
         raise WiringError(
             f"Annotation for {parameter.name} is not a callable class or function and so we cannot autowire it."

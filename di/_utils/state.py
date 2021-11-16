@@ -15,7 +15,7 @@ from typing import (
     cast,
 )
 
-from di._scope_map import ScopeMap
+from di._utils.scope_map import ScopeMap
 from di.types import FusedContextManager
 from di.types.dependencies import DependantBase
 from di.types.providers import (

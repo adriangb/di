@@ -15,8 +15,8 @@ if sys.version_info < (3, 9):
 else:
     from typing import Annotated, get_args, get_origin
 
-from di._docstrings import join_docstring_from
-from di._inspect import get_parameters, infer_call_from_annotation
+from di._utils.docstrings import join_docstring_from
+from di._utils.inspect import get_parameters, infer_call_from_annotation
 from di.exceptions import WiringError
 from di.types.dependencies import DependantBase, DependencyParameter, T
 from di.types.providers import (
@@ -321,7 +321,7 @@ def CallableClassDependant(
         wire=wire,
         autowire=autowire,
     )
-    return Dependant(
+    return Dependant[T](
         call=call.__call__,
         scope=scope,
         share=share,

@@ -15,12 +15,12 @@ from typing import (
     cast,
 )
 
-from di._dag import topsort
-from di._execution_planning import SolvedDependantCache, plan_execution
-from di._inspect import is_async_gen_callable, is_coroutine_callable
-from di._nullcontext import nullcontext
-from di._state import ContainerState, LocalScopeContext
-from di._task import AsyncTask, SyncTask, Task
+from di._utils.dag import topsort
+from di._utils.execution_planning import SolvedDependantCache, plan_execution
+from di._utils.inspect import is_async_gen_callable, is_coroutine_callable
+from di._utils.nullcontext import nullcontext
+from di._utils.state import ContainerState, LocalScopeContext
+from di._utils.task import AsyncTask, SyncTask, Task
 from di.exceptions import DuplicateScopeError, SolvingError
 from di.executors import DefaultExecutor
 from di.types import FusedContextManager
@@ -252,7 +252,7 @@ class Container:
         else:
             cm = self.enter_local_scope(self._execution_scope)
         with cm:
-            results, queue, to_cache = plan_execution(
+            results, leaf_tasks, to_cache = plan_execution(
                 self._state, solved, validate_scopes=validate_scopes, values=values
             )
             if not hasattr(self._executor, "execute_sync"):  # pragma: no cover
@@ -260,8 +260,8 @@ class Container:
                     "execute_sync requires an executor implementing the SyncExecutor protocol"
                 )
             executor = cast(SyncExecutor, self._executor)
-            if queue:
-                executor.execute_sync(queue)
+            if leaf_tasks:
+                executor.execute_sync(leaf_tasks)
             self._update_cache(results, to_cache)
             return results[solved.dependency]  # type: ignore[no-any-return]
 
@@ -283,7 +283,7 @@ class Container:
         else:
             cm = self.enter_local_scope(self._execution_scope)
         async with cm:
-            results, queue, to_cache = plan_execution(
+            results, leaf_tasks, to_cache = plan_execution(
                 self._state, solved, validate_scopes=validate_scopes, values=values
             )
             if not hasattr(self._executor, "execute_async"):  # pragma: no cover
@@ -291,7 +291,7 @@ class Container:
                     "execute_async requires an executor implementing the AsyncExecutor protocol"
                 )
             executor = cast(AsyncExecutor, self._executor)
-            if queue:
-                await executor.execute_async(queue)
+            if leaf_tasks:
+                await executor.execute_async(leaf_tasks)
             self._update_cache(results, to_cache)
             return results[solved.dependency]  # type: ignore[no-any-return]

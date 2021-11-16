@@ -4,7 +4,7 @@ import typing
 
 import pytest
 
-from di._dag import topsort
+from di._utils.dag import topsort
 from di.exceptions import CircularDependencyError
 
 
