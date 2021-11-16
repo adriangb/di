@@ -192,32 +192,18 @@ class Container:
     ) -> Dict[DependantBase[Any], Union[AsyncTask[Any], SyncTask[Any]]]:
         tasks: Dict[DependantBase[Any], Union[AsyncTask[Any], SyncTask[Any]]] = {}
         for dep in reversed(topsorted):
-            tasks[dep] = self._build_task(dep, tasks, dag)
+            task_dependencies: List[DependencyParameter[Task[Any]]] = [
+                DependencyParameter(
+                    dependency=tasks[param.dependency], parameter=param.parameter
+                )
+                for param in dag[dep]
+            ]
+
+            if is_async_gen_callable(dep.call) or is_coroutine_callable(dep.call):
+                tasks[dep] = AsyncTask(dependant=dep, dependencies=task_dependencies)
+            else:
+                tasks[dep] = SyncTask(dependant=dep, dependencies=task_dependencies)
         return tasks
-
-    def _build_task(
-        self,
-        dependency: DependantBase[Any],
-        tasks: Dict[DependantBase[Any], Union[AsyncTask[Any], SyncTask[Any]]],
-        dag: Dict[
-            DependantBase[Any],
-            List[DependencyParameter[DependantBase[Any]]],
-        ],
-    ) -> Union[AsyncTask[Any], SyncTask[Any]]:
-
-        task_dependencies: List[DependencyParameter[Task[Any]]] = [
-            DependencyParameter(
-                dependency=tasks[param.dependency], parameter=param.parameter
-            )
-            for param in dag[dependency]
-        ]
-
-        if is_async_gen_callable(dependency.call) or is_coroutine_callable(
-            dependency.call
-        ):
-            return AsyncTask(dependant=dependency, dependencies=task_dependencies)
-        else:
-            return SyncTask(dependant=dependency, dependencies=task_dependencies)
 
     def _update_cache(
         self,
