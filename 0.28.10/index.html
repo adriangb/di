@@ -629,7 +629,7 @@ Until there is 1.X.Y release, expect breaking changes.</p>
 <p>Dependency injection is a software architecture technique that helps us achieve <a href="https://en.wikipedia.org/wiki/Inversion_of_control">inversion of control</a> and <a href="https://en.wikipedia.org/wiki/Dependency_inversion_principle">dependency inversion</a> (one of the five <a href="https://en.wikipedia.org/wiki/SOLID">SOLID</a> design principles).</p>
 <p>It is a common misconception that traditional software design principles do not apply to Python.
 As a matter of fact, you are probably using a lot of these techniques already!</p>
-<p>For example, the <code>transport</code> argument to httpx's Client <a href="https://www.python-httpx.org/advanced/#custom-transports">docs</a> is an excellent example of dependency injection.</p>
+<p>For example, the <code>transport</code> argument to httpx's Client (<a href="https://www.python-httpx.org/advanced/#custom-transports">docs</a>) is an excellent example of dependency injection.</p>
 <p>Most web frameworks employ inversion of control: when you define a view / controller, the web framework calls you! The same thing applies to CLIs (like <a href="https://click.palletsprojects.com/en/8.0.x/">click</a>) or TUIs (like <a href="https://github.com/willmcgugan/textual">Textual</a>).</p>
 <p>This is especially true for many newer webframeworks that not only use inversion of control but also dependency injection. Two great examples of this are <a href="https://fastapi.tiangolo.com/tutorial/dependencies/">FastAPI</a> and <a href="https://www.neoteroi.dev/blacksheep/dependency-injection/">BlackSheep</a>.</p>
 <p>This project was born out of a desire to generalize and improve upon FastAPI's dependency injection system so that it can be used outside of FastAPI and even in other libraries.</p>
@@ -641,64 +641,68 @@ As a matter of fact, you are probably using a lot of these techniques already!</
 <p>With this background in place, let's dive into a more in-depth example.</p>
 <p>In this example, we'll look at what it would take for a web framework to provide dependecy injection to it's users via <code>di</code>.</p>
 <p>Let's start by looking at the User's code.</p>
-<p>```Python hl_lines="17-"
-from di import Container, Dependant</p>
-<h1 id="framework-code">Framework code</h1>
-<p>class Request:
-    def <strong>init</strong>(self, value: int) -&gt; None:
-        self.value = value</p>
-<p>async def web_framework():
-    container = Container()
-    solved = container.solve(Dependant(controller))
-    res = await container.execute_async(solved, values={Request: Request(1)})
-    assert res == 2</p>
-<h1 id="user-code">User code</h1>
-<p>class MyClass:
-    def <strong>init</strong>(self, request: Request) -&gt; None:
-        self.value = request.value</p>
-<div class="highlight"><pre><span></span><code>def add(self, value: int) -&gt; int:
-    return self.value + value
+<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">di</span> <span class="kn">import</span> <span class="n">Container</span><span class="p">,</span> <span class="n">Dependant</span>
+
+
+<span class="c1"># Framework code</span>
+<span class="k">class</span> <span class="nc">Request</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">value</span>
+
+
+<span class="k">async</span> <span class="k">def</span> <span class="nf">web_framework</span><span class="p">():</span>
+    <span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+    <span class="n">solved</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">))</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">container</span><span class="o">.</span><span class="n">execute_async</span><span class="p">(</span><span class="n">solved</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="p">{</span><span class="n">Request</span><span class="p">:</span> <span class="n">Request</span><span class="p">(</span><span class="mi">1</span><span class="p">)})</span>
+    <span class="k">assert</span> <span class="n">res</span> <span class="o">==</span> <span class="mi">2</span>
+
+
+<span class="hll"><span class="c1"># User code</span>
+</span><span class="hll"><span class="k">class</span> <span class="nc">MyClass</span><span class="p">:</span>
+</span><span class="hll">    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span class="hll">        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">value</span>
+</span><span class="hll">
+</span><span class="hll">    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span class="hll">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span> <span class="n">value</span>
+</span><span class="hll">
+</span><span class="hll">
+</span><span class="hll"><span class="k">async</span> <span class="k">def</span> <span class="nf">controller</span><span class="p">(</span><span class="n">myobj</span><span class="p">:</span> <span class="n">MyClass</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span class="hll">    <span class="k">return</span> <span class="n">myobj</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span></code></pre></div>
+<p>As a user, you have very little boilerplate.
+In fact, there is not a single line of code here that is not transmitting information.</p>
+<p>Now let's look at the web framework side of things.
+This part can get a bit complex, but it's okay because it's written once, in a library.</p>
+<p>First, we'll need to create a <code>Container</code> instance.
+This would be tied to the <code>App</code> or <code>Router</code> instance of the web framwork.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">di</span> <span class="kn">import</span> <span class="n">Container</span><span class="p">,</span> <span class="n">Dependant</span>
+
+
+<span class="c1"># Framework code</span>
+<span class="k">class</span> <span class="nc">Request</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">value</span>
+
+
+<span class="k">async</span> <span class="k">def</span> <span class="nf">web_framework</span><span class="p">():</span>
+<span class="hll">    <span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+</span>    <span class="n">solved</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">))</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">container</span><span class="o">.</span><span class="n">execute_async</span><span class="p">(</span><span class="n">solved</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="p">{</span><span class="n">Request</span><span class="p">:</span> <span class="n">Request</span><span class="p">(</span><span class="mi">1</span><span class="p">)})</span>
+    <span class="k">assert</span> <span class="n">res</span> <span class="o">==</span> <span class="mi">2</span>
+
+
+<span class="c1"># User code</span>
+<span class="k">class</span> <span class="nc">MyClass</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">value</span>
+
+    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span> <span class="n">value</span>
+
+
+<span class="k">async</span> <span class="k">def</span> <span class="nf">controller</span><span class="p">(</span><span class="n">myobj</span><span class="p">:</span> <span class="n">MyClass</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">myobj</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 </code></pre></div>
-<p>async def controller(myobj: MyClass) -&gt; int:
-    return myobj.add(1)
-<div class="highlight"><pre><span></span><code>As a user, you have very little boilerplate.
-In fact, there is not a single line of code here that is not transmitting information.
-
-Now let&#39;s look at the web framework side of things.
-This part can get a bit complex, but it&#39;s okay because it&#39;s written once, in a library.
-
-First, we&#39;ll need to create a `Container` instance.
-This would be tied to the `App` or `Router` instance of the web framwork.
-
-```Python hl_lines=&quot;11&quot;
-from di import Container, Dependant
-
-
-# Framework code
-class Request:
-    def __init__(self, value: int) -&gt; None:
-        self.value = value
-
-
-async def web_framework():
-    container = Container()
-    solved = container.solve(Dependant(controller))
-    res = await container.execute_async(solved, values={Request: Request(1)})
-    assert res == 2
-
-
-# User code
-class MyClass:
-    def __init__(self, request: Request) -&gt; None:
-        self.value = request.value
-
-    def add(self, value: int) -&gt; int:
-        return self.value + value
-
-
-async def controller(myobj: MyClass) -&gt; int:
-    return myobj.add(1)
-</code></pre></div></p>
 <p>Next, we "solve" the users endpoint:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">di</span> <span class="kn">import</span> <span class="n">Container</span><span class="p">,</span> <span class="n">Dependant</span>
 
