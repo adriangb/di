@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any, Collection, Dict
 
 from di.exceptions import ScopeViolationError, UnknownScopeError

@@ -12,6 +12,7 @@ from typing import (
     List,
     Mapping,
     Optional,
+    Set,
     Union,
     cast,
 )
@@ -36,6 +37,9 @@ from di.types.scopes import Scope
 from di.types.solved import SolvedDependant
 
 Dependency = Any
+
+_DependantDag = Dict[DependantBase[Any], Set[DependantBase[Any]]]
+_DependantTaskDag = Dict[Task[Any], Set[Task[Any]]]
 
 
 class Container:
@@ -164,18 +168,31 @@ class Container:
                 param_graph[dep] = params
                 dep_dag[dep] = []
                 for param in params:
-                    subdep = param.dependency
-                    dep_dag[dep].append(subdep)
-                    if subdep not in dep_registry:
-                        q.append(subdep)
+                    predecessor_dep = param.dependency
+                    dep_dag[dep].append(predecessor_dep)
+                    if predecessor_dep not in dep_registry:
+                        q.append(predecessor_dep)
         # The whole concept of Tasks is something that can perhaps be cleaned up / optimized
         # The main reason to have it is to save some computation at runtime
         # but currently that is just checking if the dependendency is sync or async
         # So perhaps that can be done in a simpler manner
         tasks = self._build_tasks(param_graph, topsort(dep_dag))
-        dependency_dag = {dep: set(subdeps) for dep, subdeps in dep_dag.items()}
+        dependency_dag: _DependantDag = {
+            dep: set(predecessor_deps) for dep, predecessor_deps in dep_dag.items()
+        }
+        task_dependency_dag: _DependantTaskDag = {
+            tasks[dep]: {tasks[predecessor_dep] for predecessor_dep in predecessor_deps}
+            for dep, predecessor_deps in dependency_dag.items()
+        }
+        task_dependant_dag: _DependantTaskDag = {tasks[dep]: set() for dep in dep_dag}
+        for task, predecessor_tasks in task_dependency_dag.items():
+            for predecessor_task in predecessor_tasks:
+                task_dependant_dag[predecessor_task].add(task)
         container_cache = SolvedDependantCache(
-            dependency_dag=dependency_dag, tasks=tasks
+            dependency_dag=dependency_dag,
+            tasks=tasks,
+            task_dependency_dag=task_dependency_dag,
+            task_dependant_dag=task_dependant_dag,
         )
         return SolvedDependant(
             dependency=dependency,

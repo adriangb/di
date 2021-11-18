@@ -30,11 +30,13 @@ from di.types.executor import AsyncTaskInfo, SyncTaskInfo, TaskInfo
 class ExecutionState(typing.NamedTuple):
     container_state: ContainerState
     results: Dict[DependantBase[Any], Any]
-    dependency_counts: MutableMapping[DependantBase[Any], int]
-    dependants: Mapping[DependantBase[Any], Iterable[Task[Any]]]
+    dependency_counts: MutableMapping[Task[Any], int]
+    dependants: Mapping[Task[Any], Iterable[Task[Any]]]
 
 
 DependencyType = TypeVar("DependencyType")
+
+TaskQueue = Deque[Optional[TaskInfo]]
 
 
 class Task(Generic[DependencyType]):
@@ -75,23 +77,18 @@ class Task(Generic[DependencyType]):
 
     def gather_new_tasks(self, state: ExecutionState) -> Iterable[Optional[TaskInfo]]:
         """Look amongst our dependants to see if any of them are now dependency free"""
-        new_tasks: Deque[Optional[TaskInfo]] = deque()
-        for dependant in state.dependants[self.dependant]:
-            count = state.dependency_counts[dependant.dependant]
-            if count == 1:
+        new_tasks: TaskQueue = deque()
+        for dependant in state.dependants[self]:
+            state.dependency_counts[dependant] -= 1
+            if state.dependency_counts[dependant] == 0:
                 # this dependant has no further dependencies, so we can compute it now
                 new_tasks.append(dependant.as_executor_task(state))
-                # pop it from dependency counts so that we can
-                # tell when we've satisfied all dependencies below
-                state.dependency_counts.pop(dependant.dependant)
-            else:
-                state.dependency_counts[dependant.dependant] = count - 1
-        # also pop ourselves if we have no deps
-        if state.dependency_counts.get(self.dependant, -1) == 0:
-            state.dependency_counts.pop(self.dependant)
-        if not state.dependency_counts:
-            # all dependencies are taken care of, insert sentinel None value
-            new_tasks.append(None)
+        # remove ourselves if we have no deps
+        if state.dependency_counts[self] == 0:
+            del state.dependency_counts[self]
+            if not state.dependency_counts:
+                # all dependencies are taken care of, insert sentinel None value
+                new_tasks.append(None)
         return new_tasks
 
     def __repr__(self) -> str:
