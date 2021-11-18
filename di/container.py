@@ -4,6 +4,7 @@ from collections import deque
 from contextvars import ContextVar
 from typing import (
     Any,
+    Collection,
     ContextManager,
     Deque,
     Dict,
@@ -60,7 +61,7 @@ class Container:
         return self._context.get()
 
     @property
-    def scopes(self) -> List[Scope]:
+    def scopes(self) -> Collection[Scope]:
         return self._state.scopes
 
     def enter_global_scope(self, scope: Scope) -> FusedContextManager[None]:
@@ -239,7 +240,11 @@ class Container:
             cm = self.enter_local_scope(self._execution_scope)
         with cm:
             results, leaf_tasks, to_cache = plan_execution(
-                self._state, solved, validate_scopes=validate_scopes, values=values
+                self._state,
+                solved,
+                execution_scope=self._execution_scope,
+                validate_scopes=validate_scopes,
+                values=values,
             )
             if not hasattr(self._executor, "execute_sync"):  # pragma: no cover
                 raise TypeError(
@@ -270,7 +275,11 @@ class Container:
             cm = self.enter_local_scope(self._execution_scope)
         async with cm:
             results, leaf_tasks, to_cache = plan_execution(
-                self._state, solved, validate_scopes=validate_scopes, values=values
+                self._state,
+                solved,
+                execution_scope=self._execution_scope,
+                validate_scopes=validate_scopes,
+                values=values,
             )
             if not hasattr(self._executor, "execute_async"):  # pragma: no cover
                 raise TypeError(

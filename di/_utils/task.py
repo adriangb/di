@@ -3,9 +3,8 @@ from __future__ import annotations
 import functools
 import typing
 from collections import deque
-from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
+from contextlib import asynccontextmanager, contextmanager
 from typing import (
-    TYPE_CHECKING,
     Any,
     Awaitable,
     Deque,
@@ -17,8 +16,8 @@ from typing import (
     MutableMapping,
     Optional,
     Tuple,
+    TypeVar,
     Union,
-    cast,
 )
 
 from di._utils.inspect import is_async_gen_callable, is_gen_callable
@@ -26,13 +25,6 @@ from di._utils.state import ContainerState
 from di.exceptions import IncompatibleDependencyError
 from di.types.dependencies import DependantBase, DependencyParameter
 from di.types.executor import AsyncTaskInfo, SyncTaskInfo, TaskInfo
-from di.types.providers import (
-    AsyncGeneratorProvider,
-    CallableProvider,
-    CoroutineProvider,
-    DependencyType,
-    GeneratorProvider,
-)
 
 
 class ExecutionState(typing.NamedTuple):
@@ -40,6 +32,9 @@ class ExecutionState(typing.NamedTuple):
     results: Dict[DependantBase[Any], Any]
     dependency_counts: MutableMapping[DependantBase[Any], int]
     dependants: Mapping[DependantBase[Any], Iterable[Task[Any]]]
+
+
+DependencyType = TypeVar("DependencyType")
 
 
 class Task(Generic[DependencyType]):
@@ -131,20 +126,18 @@ class AsyncTask(Task[DependencyType]):
         call = self.call
         if self.is_generator:
             stack = state.container_state.stacks[self.dependant.scope]
-            if not isinstance(stack, AsyncExitStack):
+            try:
+                enter = stack.enter_async_context  # type: ignore[union-attr]
+            except AttributeError:
                 raise IncompatibleDependencyError(
                     f"The dependency {self.dependant} is an awaitable dependency"
                     f" and canot be used in the sync scope {self.dependant.scope}"
                 )
-            if TYPE_CHECKING:
-                call = cast(AsyncGeneratorProvider[DependencyType], call)
-            state.results[self.dependant] = await stack.enter_async_context(
-                asynccontextmanager(call)(*args, **kwargs)
+            state.results[self.dependant] = await enter(
+                asynccontextmanager(call)(*args, **kwargs)  # type: ignore[arg-type]
             )
         else:
-            if TYPE_CHECKING:
-                call = cast(CoroutineProvider[DependencyType], call)
-            state.results[self.dependant] = await call(*args, **kwargs)
+            state.results[self.dependant] = await call(*args, **kwargs)  # type: ignore[misc]
 
         return self.gather_new_tasks(state)
 
@@ -177,15 +170,11 @@ class SyncTask(Task[DependencyType]):
 
         call = self.call
         if self.is_generator:
-            if TYPE_CHECKING:
-                call = cast(GeneratorProvider[DependencyType], call)
             stack = state.container_state.stacks[self.dependant.scope]
             state.results[self.dependant] = stack.enter_context(
-                contextmanager(call)(*args, **kwargs)
+                contextmanager(call)(*args, **kwargs)  # type: ignore[arg-type]
             )
         else:
-            if TYPE_CHECKING:
-                call = cast(CallableProvider[DependencyType], call)
             state.results[self.dependant] = call(*args, **kwargs)
 
         return self.gather_new_tasks(state)

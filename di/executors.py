@@ -8,10 +8,12 @@ import anyio.abc
 from di._utils.concurrency import callable_in_thread_pool, curry_context
 from di.types.executor import AsyncExecutor, AsyncTaskInfo, SyncExecutor, TaskInfo
 
+TaskQueue = typing.Deque[TaskInfo]
+
 
 class SimpleSyncExecutor(SyncExecutor):
     def execute_sync(self, tasks: typing.Iterable[TaskInfo]) -> None:
-        q: typing.Deque[TaskInfo] = deque(tasks)
+        q: TaskQueue = deque(tasks)
         while True:
             task = q.popleft()
             if isinstance(task, AsyncTaskInfo):
@@ -32,7 +34,7 @@ class SimpleSyncExecutor(SyncExecutor):
 
 class SimpleAsyncExecutor(AsyncExecutor):
     async def execute_async(self, tasks: typing.Iterable[TaskInfo]) -> None:
-        q: typing.Deque[TaskInfo] = deque(tasks)
+        q: TaskQueue = deque(tasks)
         while True:
             task = q.popleft()
             if isinstance(task, AsyncTaskInfo):
@@ -49,6 +51,10 @@ class SimpleAsyncExecutor(AsyncExecutor):
                     return
                 else:
                     q.append(newtask)
+
+
+TaskCall = typing.Callable[[], typing.Iterable[typing.Optional[TaskInfo]]]
+TaskCallback = typing.Callable[[], None]
 
 
 class ConcurrentSyncExecutor(AsyncExecutor):
@@ -76,11 +82,7 @@ class ConcurrentSyncExecutor(AsyncExecutor):
                         getattr(task.dependant, "sync_to_thread", False) is True
                     ):  # instance of Dependant
                         # Use a double closure to bind the value of task in the loop
-                        def make_call(
-                            task_call: typing.Callable[
-                                [], typing.Iterable[typing.Optional[TaskInfo]]
-                            ]
-                        ) -> typing.Callable[[], None]:
+                        def make_call(task_call: TaskCall) -> TaskCallback:
                             def call() -> None:
                                 q.extend(task_call())
 

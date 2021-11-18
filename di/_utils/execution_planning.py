@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections import deque
 from typing import (
     AbstractSet,
@@ -19,9 +21,14 @@ from di._utils.task import ExecutionState, Task
 from di.types.dependencies import DependantBase
 from di.types.executor import TaskInfo
 from di.types.providers import DependencyProvider
+from di.types.scopes import Scope
 from di.types.solved import SolvedDependant
 
 Dependency = Any
+
+DependantDeque = Deque[DependantBase[Any]]
+
+Results = Dict[DependantBase[Any], Any]
 
 
 class ExecutionPlan(NamedTuple):
@@ -52,6 +59,7 @@ def plan_execution(
     state: ContainerState,
     solved: SolvedDependant[Any],
     *,
+    execution_scope: Scope,
     validate_scopes: bool = True,
     values: Optional[Mapping[DependencyProvider, Any]] = None,
 ) -> Tuple[
@@ -88,10 +96,9 @@ def plan_execution(
         cache.update(mapping)
     cache.update(user_values)
 
-    to_cache: Deque[DependantBase[Any]] = deque()
-    execution_scope = state.scopes[-1]
+    to_cache: DependantDeque = deque()
 
-    results: Dict[DependantBase[Any], Any] = {}
+    results: Results = {}
 
     # For each dependency, check if we can use a cached value or a user supplied value
     # If so, put that value into our results dict

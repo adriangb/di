@@ -15,11 +15,11 @@ def test_execution_scope() -> None:
 
 def test_scopes_property() -> None:
     container = Container()
-    assert container.scopes == []
+    assert list(container.scopes) == []
     with container.enter_global_scope("test"):
-        assert container.scopes == ["test"]
+        assert list(container.scopes) == ["test"]
         with container.enter_local_scope("another"):
-            assert container.scopes == ["test", "another"]
+            assert list(container.scopes) == ["test", "another"]
 
 
 def test_binds_property():

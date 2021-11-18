@@ -1,6 +1,5 @@
 from typing import Tuple
 
-import anyio
 import pytest
 
 from di import Container, Dependant, Depends
@@ -59,21 +58,6 @@ async def run_endpoint2(expected: Tuple[int, int, int], container: Container):
         with container.bind(Dependant(lambda: expected[2]), inject3):
             got = await container.execute_async(container.solve(Dependant(endpoint2)))
     assert expected == got, (expected, got)
-
-
-@pytest.mark.anyio
-async def test_concurrent_binds():
-    """We can bind different values at the same time as long as we are within
-    different local scopes
-    """
-    container = Container()
-    async with container.enter_local_scope("app-local"):
-        container.bind(Dependant(lambda: -10), inject1)
-        async with container.enter_global_scope("app-global"):
-            container.bind(Dependant(lambda: -20), inject2)
-            async with anyio.create_task_group() as tg:
-                for i in range(10):
-                    tg.start_soon(run_endpoint2, (-10, -20, i), container)
 
 
 def raises_exception() -> None:
