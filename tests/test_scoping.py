@@ -4,8 +4,8 @@ import anyio
 import pytest
 
 from di import Container, Dependant, Depends
+from di.api.scopes import Scope
 from di.exceptions import DuplicateScopeError, UnknownScopeError
-from di.types.scopes import Scope
 
 
 class Dep:
@@ -38,7 +38,7 @@ def default_scope(v: int = Depends(dep1)):
 
 def test_scoped_execute():
     container = Container()
-    with container.enter_global_scope("app"):
+    with container.enter_scope("app"):
         dep1.value = 1
         r = container.execute_sync(container.solve(Dependant(app_scoped)))
         assert r == 1, r
@@ -69,7 +69,7 @@ def test_unknown_scope():
         return v
 
     container = Container()
-    with container.enter_global_scope("app"):
+    with container.enter_scope("app"):
         with pytest.raises(UnknownScopeError):
             container.execute_sync(container.solve(Dependant(bad_dep)))
 
@@ -82,8 +82,8 @@ def test_duplicate_global_scope(outer: Scope, inner: Scope):
     container = Container()
 
     fn = {
-        typing.cast(Scope, "global"): container.enter_global_scope,
-        typing.cast(Scope, "local"): container.enter_local_scope,
+        typing.cast(Scope, "global"): container.enter_scope,
+        typing.cast(Scope, "local"): container.enter_scope,
     }
 
     with fn[outer]("app"):
@@ -109,8 +109,8 @@ def test_nested_caching():
         return c
 
     container = Container()
-    with container.enter_local_scope("lifespan"):
-        with container.enter_local_scope("request"):
+    with container.enter_scope("lifespan"):
+        with container.enter_scope("request"):
             res = container.execute_sync(container.solve(Dependant(endpoint)))
             assert res == "ABC"
             # values should be cached as long as we're within the request scope
@@ -148,8 +148,8 @@ def test_nested_lifecycle():
         return
 
     container = Container()
-    with container.enter_local_scope("lifespan"):
-        with container.enter_local_scope("request"):
+    with container.enter_scope("lifespan"):
+        with container.enter_scope("request"):
             assert list(state.values()) == ["uninitialized"] * 3
             container.execute_sync(container.solve(Dependant(endpoint)))
             assert list(state.values()) == ["initialized"] * 3
@@ -164,7 +164,7 @@ async def test_concurrent_local_scopes():
     container = Container()
 
     async def endpoint() -> None:
-        async with container.enter_local_scope("request"):
+        async with container.enter_scope("request"):
             await anyio.sleep(
                 0.05  # make sure execution overlaps, the number is arbitrary
             )
@@ -183,9 +183,9 @@ async def test_execution_scope_already_entered():
     def dep() -> None:
         ...
 
-    async with container.enter_local_scope(None):
+    async with container.enter_scope(None):
         await container.execute_async(container.solve(Dependant(dep)))
         container.execute_sync(container.solve(Dependant(dep)))
 
-    with container.enter_local_scope(None):
+    with container.enter_scope(None):
         container.execute_sync(container.solve(Dependant(dep)))

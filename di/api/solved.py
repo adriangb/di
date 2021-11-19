@@ -4,8 +4,8 @@ import dataclasses
 import typing
 from typing import Any, Generic, List, Mapping
 
-from di.types.dependencies import DependantBase, DependencyParameter
-from di.types.providers import DependencyType
+from di.api.dependencies import DependantBase, DependencyParameter
+from di.api.providers import DependencyType
 
 Dependency = Any
 
@@ -25,3 +25,9 @@ class SolvedDependant(Generic[DependencyType]):
         in no particular order.
         """
         return list(self.dag.keys() - {self.dependency})
+
+    def __hash__(self) -> int:
+        return id(self)
+
+    def __eq__(self, __o: object) -> bool:
+        return __o is self

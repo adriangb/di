@@ -15,6 +15,7 @@ We map these responsibilities to well defined classes/interfaces:
 There are also some ancilliary support classes:
 
 - [SolvedDependant] holds the result of a call to `Container.solve` that can be passed to `Container.execute_sync` or `Container.exeucte_async`.
+- [ContainerState] holds the state of the container; abstracted away in `di.Container` but available in `di.container.ContainerBase`.
 
 Fundamentally, our class diagram looks like this:
 
@@ -40,12 +41,13 @@ classDiagram
     }
     class Container{
       +bind(Callable, Dependant)
+      +enter_scope(Scope) Container
       +solve(Dependant) SolvedDependant
       +execute(SolvedDependant, Executor) Result
     }
 ```
 
-[Dependant]: https://github.com/adriangb/di/blob/main/di/types/dependencies.py
-[Container]: https://github.com/adriangb/di/blob/main/di/container.py
-[Executor]: https://github.com/adriangb/di/blob/main/di/types/executor.py
-[SolvedDependant]: https://github.com/adriangb/di/blob/main/di/types/solved.py
+[Dependant]: https://github.com/adriangb/di/blob/main/di/api/dependencies.py
+[Container]: https://github.com/adriangb/di/blob/main/di/api/container.py
+[Executor]: https://github.com/adriangb/di/blob/main/di/api/executor.py
+[SolvedDependant]: https://github.com/adriangb/di/blob/main/di/api/solved.py

@@ -11,8 +11,8 @@ else:
 import pytest
 
 from di import Container, Dependant, Depends
+from di.api.dependencies import DependantBase, DependencyParameter
 from di.exceptions import ScopeViolationError, SolvingError, WiringError
-from di.types.dependencies import DependantBase, DependencyParameter
 
 
 def test_no_annotations():
@@ -85,8 +85,8 @@ def test_dissalow_depending_on_inner_scope():
         ...
 
     container = Container()
-    with container.enter_local_scope("outer"):
-        with container.enter_local_scope("inner"):
+    with container.enter_scope("outer"):
+        with container.enter_scope("inner"):
             match = r"scope \(inner\) is narrower than .+'s scope \(outer\)"
             with pytest.raises(ScopeViolationError, match=match):
                 container.execute_sync(container.solve(Dependant(B, scope="outer")))
@@ -106,8 +106,8 @@ def test_dependency_with_multiple_scopes():
         ...
 
     container = Container()
-    with container.enter_local_scope("app"):
-        with container.enter_local_scope("request"):
+    with container.enter_scope("app"):
+        with container.enter_scope("request"):
             match = r"have the same lookup \(__hash__ and __eq__\) but have different scopes"
             with pytest.raises(SolvingError, match=match):
                 container.execute_sync(container.solve(Dependant(D)))

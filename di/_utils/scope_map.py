@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Dict, Generic, Hashable, List, Optional, TypeVar
 
+from di.api.scopes import Scope
 from di.exceptions import DuplicateScopeError
-from di.types.scopes import Scope
 
 KT = TypeVar("KT", bound=Hashable)
 VT = TypeVar("VT")

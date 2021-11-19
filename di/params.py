@@ -3,8 +3,7 @@
 
 from typing import Optional, overload
 
-from di.dependant import Dependant
-from di.types.providers import (
+from di.api.providers import (
     AsyncGeneratorProvider,
     CallableProvider,
     CoroutineProvider,
@@ -12,7 +11,8 @@ from di.types.providers import (
     DependencyType,
     GeneratorProvider,
 )
-from di.types.scopes import Scope
+from di.api.scopes import Scope
+from di.dependant import Dependant
 
 
 @overload

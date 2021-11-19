@@ -17,7 +17,7 @@ class App(TextualApp):
         self.container = container or Container()
 
     async def process_messages(self) -> None:
-        async with self.container.enter_global_scope("app"):
+        async with self.container.enter_scope("app"):
             return await super().process_messages()
 
     async def on_event(self, event: Event) -> None:

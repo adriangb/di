@@ -1,40 +1,41 @@
 from __future__ import annotations
 
+import abc
+import contextvars
 from collections import deque
-from contextvars import ContextVar
+from contextlib import contextmanager
+from types import TracebackType
 from typing import (
     Any,
     Collection,
     ContextManager,
     Deque,
     Dict,
+    Generator,
     Iterable,
     List,
     Mapping,
     Optional,
     Set,
+    Type,
+    TypeVar,
     Union,
-    cast,
 )
 
 from di._utils.dag import topsort
 from di._utils.execution_planning import SolvedDependantCache, plan_execution
 from di._utils.inspect import is_async_gen_callable, is_coroutine_callable
 from di._utils.nullcontext import nullcontext
-from di._utils.state import ContainerState, LocalScopeContext
+from di._utils.state import ContainerState
 from di._utils.task import AsyncTask, SyncTask, Task
+from di._utils.types import FusedContextManager
+from di.api.dependencies import DependantBase, DependencyParameter
+from di.api.executor import AsyncExecutor, SyncExecutor
+from di.api.providers import DependencyProvider, DependencyProviderType, DependencyType
+from di.api.scopes import Scope
+from di.api.solved import SolvedDependant
 from di.exceptions import SolvingError
 from di.executors import DefaultExecutor
-from di.types import FusedContextManager
-from di.types.dependencies import DependantBase, DependencyParameter
-from di.types.executor import AsyncExecutor, SyncExecutor
-from di.types.providers import (
-    DependencyProvider,
-    DependencyProviderType,
-    DependencyType,
-)
-from di.types.scopes import Scope
-from di.types.solved import SolvedDependant
 
 Dependency = Any
 
@@ -42,46 +43,31 @@ _DependantDag = Dict[DependantBase[Any], Set[DependantBase[Any]]]
 _DependantTaskDag = Dict[Task[Any], Set[Task[Any]]]
 _DependantQueue = Deque[DependantBase[Any]]
 _ExecutionCM = FusedContextManager[None]
-_nullcontext = nullcontext()
+_nullcontext = nullcontext(None)
 
 
-class Container:
-    _context: ContextVar[ContainerState]
-    _executor: Union[AsyncExecutor, SyncExecutor]
+__all__ = ("BaseContainer", "Container", "ContainerState")
 
-    def __init__(
-        self,
-        *,
-        execution_scope: Scope = None,
-        executor: Optional[Union[AsyncExecutor, SyncExecutor]] = None,
-    ) -> None:
-        self._context = ContextVar("context")
-        state = ContainerState()
-        self._context.set(state)
-        self._executor = executor or DefaultExecutor()
-        self._execution_scope = execution_scope
+
+class _ContainerCommon(metaclass=abc.ABCMeta):
+    __slots__ = ("_executor", "_execution_scope", "_binds")
+
+    _executor: Union[SyncExecutor, AsyncExecutor]
+    _execution_scope: Scope
+    _binds: Dict[DependencyProvider, DependantBase[Any]]
 
     @property
-    def _state(self) -> ContainerState:
-        return self._context.get()
+    def binds(self) -> Mapping[DependencyProvider, DependantBase[Any]]:
+        return self._binds
 
     @property
     def scopes(self) -> Collection[Scope]:
-        return self._state.scopes
+        return self._state.stacks.keys()
 
-    def enter_global_scope(self, scope: Scope) -> FusedContextManager[None]:
-        """Enter a global scope that is share amongst threads and coroutines.
-
-        If you enter a global scope in one thread / coroutine, it will propagate to others.
-        """
-        return self._state.enter_scope(scope)
-
-    def enter_local_scope(self, scope: Scope) -> FusedContextManager[None]:
-        """Enter a local scope that is localized to the current thread or coroutine.
-
-        If you enter a local scope in one thread / coroutine, it will NOT propagate to others.
-        """
-        return LocalScopeContext(self._context, scope)
+    @property
+    @abc.abstractmethod
+    def _state(self) -> ContainerState:
+        pass
 
     def bind(
         self,
@@ -96,11 +82,20 @@ class Container:
         Binds are only identified by the identity of the callable and do not take into account
         the scope or any other data from the dependency they are replacing.
         """
-        return self._state.bind(provider=provider, dependency=dependency)
+        previous_provider = self.binds.get(dependency, None)
 
-    @property
-    def binds(self) -> Mapping[DependencyProvider, DependantBase[Any]]:
-        return self._state.binds
+        self._binds[dependency] = provider
+
+        @contextmanager
+        def unbind() -> Generator[None, None, None]:
+            try:
+                yield
+            finally:
+                self._binds.pop(dependency)
+                if previous_provider is not None:
+                    self._binds[dependency] = previous_provider
+
+        return unbind()
 
     def solve(
         self,
@@ -112,8 +107,8 @@ class Container:
         """
 
         # If the SolvedDependant itself is a bind, replace it's dependant
-        if dependency.call in self._state.binds:
-            dependency = self._state.binds[dependency.call]
+        if dependency.call in self._binds:
+            dependency = self._binds[dependency.call]
 
         # Mapping of already seen dependants to itself for hash based lookups
         dep_registry: Dict[DependantBase[Any], DependantBase[Any]] = {}
@@ -135,9 +130,9 @@ class Container:
             params = dep.get_dependencies().copy()
             for idx, param in enumerate(params):
                 assert param.dependency.call is not None
-                if param.dependency.call in self._state.binds:
+                if param.dependency.call in self._binds:
                     params[idx] = DependencyParameter[Any](
-                        dependency=self._state.binds[param.dependency.call],
+                        dependency=self._binds[param.dependency.call],
                         parameter=param.parameter,
                     )
             return params
@@ -171,10 +166,8 @@ class Container:
                     dep_dag[dep].append(predecessor_dep)
                     if predecessor_dep not in dep_registry:
                         q.append(predecessor_dep)
-        # The whole concept of Tasks is something that can perhaps be cleaned up / optimized
-        # The main reason to have it is to save some computation at runtime
-        # but currently that is just checking if the dependendency is sync or async
-        # So perhaps that can be done in a simpler manner
+
+        # Build tasks and SolvedDependency
         tasks = self._build_tasks(param_graph, topsort(dep_dag))
         dependency_dag: _DependantDag = {
             dep: set(predecessor_deps) for dep, predecessor_deps in dep_dag.items()
@@ -196,13 +189,6 @@ class Container:
             dependency=dependency,
             dag=param_graph,
             container_cache=container_cache,
-        )
-        # run plan to populate cache
-        plan_execution(
-            self._state,
-            solved,
-            execution_scope=self._execution_scope,
-            validate_scopes=False,
         )
         return solved
 
@@ -231,11 +217,12 @@ class Container:
 
     def _update_cache(
         self,
+        state: ContainerState,
         results: Dict[DependantBase[Any], Any],
         to_cache: Iterable[DependantBase[Any]],
     ) -> None:
         for dep in to_cache:
-            self._state.cached_values.set(
+            state.cached_values.set(  # type: ignore  # protected member of friend class
                 dep.call,  # type: ignore[arg-type]
                 results[dep],
                 scope=dep.scope,
@@ -245,77 +232,255 @@ class Container:
         self,
         solved: SolvedDependant[DependencyType],
         *,
-        validate_scopes: bool = True,
         values: Optional[Mapping[DependencyProvider, Any]] = None,
     ) -> DependencyType:
         """Execute an already solved dependency.
 
         This method is synchronous and uses a synchronous executor,
         but the executor may still be able to execute async dependencies.
-
-        If you are not dynamically changing scopes, you can run once with `validate_scopes=True`
-        and then disable scope validation in subsequent runs with `validate_scope=False`.
         """
         cm: _ExecutionCM
         state = self._state
-        if self._execution_scope in state.scopes:
+        if self._execution_scope in state.stacks.keys():
             cm = _nullcontext
         else:
-            cm = self.enter_local_scope(self._execution_scope)
+            state = state.copy()
+            cm = state.enter_scope(self._execution_scope)
         with cm:
-            if cm is not _nullcontext:
-                state = cm.state
             results, leaf_tasks, to_cache = plan_execution(
                 state,
                 solved,
                 execution_scope=self._execution_scope,
-                validate_scopes=validate_scopes,
                 values=values,
             )
-            if not hasattr(self._executor, "execute_sync"):  # pragma: no cover
-                raise TypeError(
-                    "execute_sync requires an executor implementing the SyncExecutor protocol"
-                )
-            executor = cast(SyncExecutor, self._executor)
             if leaf_tasks:
-                executor.execute_sync(leaf_tasks)
-            self._update_cache(results, to_cache)
+                if not hasattr(self._executor, "execute_sync"):  # pragma: no cover
+                    raise TypeError(
+                        "execute_sync requires an executor implementing the SyncExecutor protocol"
+                    )
+                self._executor.execute_sync(leaf_tasks)  # type: ignore[union-attr]
+            self._update_cache(state, results, to_cache)
             return results[solved.dependency]  # type: ignore[no-any-return]
 
     async def execute_async(
         self,
         solved: SolvedDependant[DependencyType],
         *,
-        validate_scopes: bool = True,
         values: Optional[Mapping[DependencyProvider, Any]] = None,
     ) -> DependencyType:
-        """Execute an already solved dependency.
-
-        If you are not dynamically changing scopes, you can run once with `validate_scopes=True`
-        and then disable scope validation in subsequent runs with `validate_scope=False`.
-        """
+        """Execute an already solved dependency."""
         cm: _ExecutionCM
         state = self._state
-        if self._execution_scope in state.scopes:
+        if self._execution_scope in state.stacks.keys():
             cm = _nullcontext
         else:
-            cm = self.enter_local_scope(self._execution_scope)
+            state = state.copy()
+            cm = state.enter_scope(self._execution_scope)
         async with cm:
-            if cm is not _nullcontext:
-                state = cm.state
             results, leaf_tasks, to_cache = plan_execution(
                 state,
                 solved,
                 execution_scope=self._execution_scope,
-                validate_scopes=validate_scopes,
                 values=values,
             )
-            if not hasattr(self._executor, "execute_async"):  # pragma: no cover
-                raise TypeError(
-                    "execute_async requires an executor implementing the AsyncExecutor protocol"
-                )
-            executor = cast(AsyncExecutor, self._executor)
             if leaf_tasks:
-                await executor.execute_async(leaf_tasks)
-            self._update_cache(results, to_cache)
+                if not hasattr(self._executor, "execute_async"):  # pragma: no cover
+                    raise TypeError(
+                        "execute_async requires an executor implementing the AsyncExecutor protocol"
+                    )
+                await self._executor.execute_async(leaf_tasks)  # type: ignore[union-attr]
+            self._update_cache(state, results, to_cache)
             return results[solved.dependency]  # type: ignore[no-any-return]
+
+
+class BaseContainer(_ContainerCommon):
+    """Basic container that lets you manage it's state yourself"""
+
+    __slots__ = ("__state",)
+    __state: ContainerState
+
+    def __init__(
+        self,
+        *,
+        execution_scope: Scope = None,
+        executor: Optional[Union[AsyncExecutor, SyncExecutor]] = None,
+        _state: Optional[ContainerState] = None,
+        _binds: Optional[Dict[DependencyProvider, DependantBase[Any]]] = None,
+    ) -> None:
+        self._executor = executor or DefaultExecutor()
+        self._execution_scope = execution_scope
+        self.__state = _state or ContainerState()
+        self._binds = _binds or {}
+
+    @property
+    def binds(self) -> Mapping[DependencyProvider, DependantBase[Any]]:
+        return self._binds
+
+    @property
+    def scopes(self) -> Collection[Scope]:
+        return self.__state.stacks.keys()
+
+    @property
+    def _state(self) -> ContainerState:
+        return self.__state
+
+    def copy(self: _BaseContainerType) -> _BaseContainerType:
+        new = type(self)(
+            execution_scope=self._execution_scope,
+            executor=self._executor,
+            _state=self.__state.copy(),  # cached values and scopes are not shared
+            _binds=self._binds,  # binds are shared
+        )
+        return new
+
+    def enter_scope(
+        self: _BaseContainerType, scope: Scope
+    ) -> FusedContextManager[_BaseContainerType]:
+        """Enter a scope and get back a new BaseContainer in that scope"""
+        new = self.copy()
+        return _ContainerScopeContext(scope, new, new.__state)
+
+
+_BaseContainerType = TypeVar("_BaseContainerType", bound=BaseContainer)
+
+
+class _ContainerScopeContext(FusedContextManager[_BaseContainerType]):
+    __slots__ = ("scope", "container", "state", "cm")
+    cm: FusedContextManager[None]
+
+    def __init__(
+        self,
+        scope: Scope,
+        container: _BaseContainerType,
+        state: ContainerState,
+    ) -> None:
+        self.scope = scope
+        self.container = container
+        self.state = state
+
+    def __enter__(self) -> _BaseContainerType:
+        self.cm = self.state.enter_scope(self.scope)
+        self.cm.__enter__()
+        return self.container
+
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> Union[None, bool]:
+        return self.cm.__exit__(exc_type, exc_value, traceback)
+
+    async def __aenter__(self) -> _BaseContainerType:
+        self.cm = self.state.enter_scope(self.scope)
+        await self.cm.__aenter__()
+        return self.container
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> Union[None, bool]:
+        return await self.cm.__aexit__(exc_type, exc_value, traceback)
+
+
+class Container(_ContainerCommon):
+    """A container that manages it's own state via ContextVars"""
+
+    __slots__ = "_context"
+
+    _context: contextvars.ContextVar[ContainerState]
+
+    def __init__(
+        self,
+        *,
+        execution_scope: Scope = None,
+        executor: Optional[Union[AsyncExecutor, SyncExecutor]] = None,
+        _context: Optional[contextvars.ContextVar[ContainerState]] = None,
+        _binds: Optional[Dict[DependencyProvider, DependantBase[Any]]] = None,
+    ) -> None:
+        if _context is None:
+            self._context = contextvars.ContextVar(f"{self}._context")
+            self._context.set(ContainerState())
+        else:
+            self._context = _context
+        self._execution_scope = execution_scope
+        self._executor = executor or DefaultExecutor()
+        self._binds = _binds or {}
+
+    @property
+    def _state(self) -> ContainerState:
+        return self._context.get()
+
+    @property
+    def scopes(self) -> Collection[Scope]:
+        return self._state.stacks.keys()
+
+    def copy(self: _ContainerType) -> _ContainerType:
+        new = type(self)(
+            execution_scope=self._execution_scope,
+            executor=self._executor,
+            _binds=self._binds,
+            _context=self._context,
+        )
+        return new
+
+    def enter_scope(
+        self: _ContainerType, scope: Scope
+    ) -> FusedContextManager[_ContainerType]:
+        new = self.copy()
+        return _ContextVarStateManager(
+            self._context, scope, new  # type: ignore[attr-defined]
+        )
+
+
+_ContainerType = TypeVar("_ContainerType", bound=Container)
+
+
+class _ContextVarStateManager(FusedContextManager[_ContainerType]):
+    __slots__ = ("scope", "container", "context", "cm", "token")
+
+    cm: FusedContextManager[None]
+
+    def __init__(
+        self,
+        context: contextvars.ContextVar[ContainerState],
+        scope: Scope,
+        container: _ContainerType,
+    ) -> None:
+        self.context = context
+        self.scope = scope
+        self.container = container
+
+    def __enter__(self) -> _ContainerType:
+        new_state = self.context.get().copy()
+        self.cm = new_state.enter_scope(self.scope)
+        self.cm.__enter__()
+        self.token = self.context.set(new_state)
+        return self.container
+
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> Union[None, bool]:
+        self.context.reset(self.token)
+        return self.cm.__exit__(exc_type, exc_value, traceback)
+
+    async def __aenter__(self) -> _ContainerType:
+        new_state = self.context.get().copy()
+        self.cm = new_state.enter_scope(self.scope)
+        await self.cm.__aenter__()
+        self.token = self.context.set(new_state)
+        return self.container
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> Union[None, bool]:
+        self.context.reset(self.token)
+        return await self.cm.__aexit__(exc_type, exc_value, traceback)
