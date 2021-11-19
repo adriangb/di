@@ -45,7 +45,7 @@ Dependency injection is a software architecture technique that helps us achieve 
 It is a common misconception that traditional software design principles do not apply to Python.
 As a matter of fact, you are probably using a lot of these techniques already!
 
-For example, the `transport` argument to httpx's Client [docs](https://www.python-httpx.org/advanced/#custom-transports) is an excellent example of dependency injection.
+For example, the `transport` argument to httpx's Client ([docs](https://www.python-httpx.org/advanced/#custom-transports)) is an excellent example of dependency injection.
 
 Most web frameworks employ inversion of control: when you define a view / controller, the web framework calls you! The same thing applies to CLIs (like [click]) or TUIs (like [Textual]).
 
@@ -69,7 +69,7 @@ In this example, we'll look at what it would take for a web framework to provide
 
 Let's start by looking at the User's code.
 
-```Python hl_lines="17-"
+```Python hl_lines="17-27"
 --8<-- "docs/src/web_framework.py"
 ```
 
