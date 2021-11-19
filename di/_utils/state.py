@@ -126,7 +126,7 @@ class LocalScopeContext(FusedContextManager[None]):
     def __enter__(self) -> None:
         current = self.context.get()
         self.state = current.copy()
-        self.token = self.context.set(new)
+        self.token = self.context.set(self.state)
         self._sync_cm = self.state.enter_scope(self.scope)
         self._sync_cm.__enter__()
 
@@ -141,9 +141,9 @@ class LocalScopeContext(FusedContextManager[None]):
 
     async def __aenter__(self) -> None:
         current = self.context.get()
-        new = current.copy()
-        self.token = self.context.set(new)
-        self._async_cm = new.enter_scope(self.scope)
+        self.state = current.copy()
+        self.token = self.context.set(self.state)
+        self._async_cm = self.state.enter_scope(self.scope)
         await self._async_cm.__aenter__()
 
     async def __aexit__(
