@@ -41,7 +41,7 @@ class ScopeMap(Generic[KT, VT]):
         self.mappings[scope] = {}
 
     def pop_scope(self, scope: Scope) -> None:
-        self.mappings.pop(scope)
+        del self.mappings[scope]
 
     def copy(self) -> ScopeMap[KT, VT]:
         return ScopeMap(self.mappings.copy())
