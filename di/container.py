@@ -42,6 +42,8 @@ _DependantDag = Dict[DependantBase[Any], Set[DependantBase[Any]]]
 _DependantTaskDag = Dict[Task[Any], Set[Task[Any]]]
 _DependantQueue = Deque[DependantBase[Any]]
 
+_nullcontext = nullcontext()
+
 
 class Container:
     _context: ContextVar[ContainerState]
@@ -256,7 +258,7 @@ class Container:
         """
         cm: FusedContextManager[None]
         if self._execution_scope in self.scopes:
-            cm = nullcontext()
+            cm = _nullcontext
         else:
             cm = self.enter_local_scope(self._execution_scope)
         with cm:
@@ -291,7 +293,7 @@ class Container:
         """
         cm: FusedContextManager[None]
         if self._execution_scope in self.scopes:
-            cm = nullcontext()
+            cm = _nullcontext
         else:
             cm = self.enter_local_scope(self._execution_scope)
         async with cm:
