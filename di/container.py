@@ -23,7 +23,7 @@ from di._utils.inspect import is_async_gen_callable, is_coroutine_callable
 from di._utils.nullcontext import nullcontext
 from di._utils.state import ContainerState, LocalScopeContext
 from di._utils.task import AsyncTask, SyncTask, Task
-from di.exceptions import DuplicateScopeError, SolvingError
+from di.exceptions import SolvingError
 from di.executors import DefaultExecutor
 from di.types import FusedContextManager
 from di.types.dependencies import DependantBase, DependencyParameter
