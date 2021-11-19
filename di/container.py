@@ -79,8 +79,6 @@ class Container:
 
         If you enter a local scope in one thread / coroutine, it will NOT propagate to others.
         """
-        if scope in self._state.stacks:
-            raise DuplicateScopeError(f"Scope {scope} has already been entered!")
         return LocalScopeContext(self._context, scope)
 
     def bind(
