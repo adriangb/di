@@ -14,7 +14,6 @@ from typing import (
     Optional,
     Set,
     Union,
-    cast,
 )
 
 from di._utils.dag import topsort
@@ -275,9 +274,12 @@ class Container:
                 raise TypeError(
                     "execute_sync requires an executor implementing the SyncExecutor protocol"
                 )
-            executor = cast(SyncExecutor, self._executor)
             if leaf_tasks:
-                executor.execute_sync(leaf_tasks)
+                if not hasattr(self._executor, "execute_sync"):  # pragma: no cover
+                    raise TypeError(
+                        "execute_sync requires an executor implementing the SyncExecutor protocol"
+                    )
+                self._executor.execute_sync(leaf_tasks)  # type: ignore[union-attr]
             self._update_cache(results, to_cache)
             return results[solved.dependency]  # type: ignore[no-any-return]
 
@@ -308,12 +310,11 @@ class Container:
                 validate_scopes=validate_scopes,
                 values=values,
             )
-            if not hasattr(self._executor, "execute_async"):  # pragma: no cover
-                raise TypeError(
-                    "execute_async requires an executor implementing the AsyncExecutor protocol"
-                )
-            executor = cast(AsyncExecutor, self._executor)
             if leaf_tasks:
-                await executor.execute_async(leaf_tasks)
+                if not hasattr(self._executor, "execute_async"):  # pragma: no cover
+                    raise TypeError(
+                        "execute_async requires an executor implementing the AsyncExecutor protocol"
+                    )
+                await self._executor.execute_async(leaf_tasks)  # type: ignore[union-attr]
             self._update_cache(results, to_cache)
             return results[solved.dependency]  # type: ignore[no-any-return]
