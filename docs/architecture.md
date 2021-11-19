@@ -47,7 +47,7 @@ classDiagram
     }
 ```
 
-[Dependant]: https://github.com/adriangb/di/blob/main/di/types/dependencies.py
-[Container]: https://github.com/adriangb/di/blob/main/di/container.py
-[Executor]: https://github.com/adriangb/di/blob/main/di/types/executor.py
-[SolvedDependant]: https://github.com/adriangb/di/blob/main/di/types/solved.py
+[Dependant]: https://github.com/adriangb/di/blob/main/di/api/dependencies.py
+[Container]: https://github.com/adriangb/di/blob/main/di/api/container.py
+[Executor]: https://github.com/adriangb/di/blob/main/di/api/executor.py
+[SolvedDependant]: https://github.com/adriangb/di/blob/main/di/api/solved.py
