@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import pytest
 
 from di import Container, Dependant, Depends
@@ -33,31 +31,6 @@ def test_bind():
         # when we exit the request scope, the bind of value=1 gets cleared
         r = container.execute_sync(container.solve(Dependant(endpoint)))
         assert r == 0  # back to the default value
-
-
-def inject1() -> int:
-    return 1  # pragma: no cover
-
-
-def inject2() -> int:
-    return 2  # pragma: no cover
-
-
-def inject3() -> int:
-    return 3  # pragma: no cover
-
-
-async def endpoint2(
-    v1: int = Depends(inject1), v2: int = Depends(inject2), v3: int = Depends(inject3)
-) -> Tuple[int, int, int]:
-    return v1, v2, v3
-
-
-async def run_endpoint2(expected: Tuple[int, int, int], container: Container):
-    async with container.enter_local_scope("request"):
-        with container.bind(Dependant(lambda: expected[2]), inject3):
-            got = await container.execute_async(container.solve(Dependant(endpoint2)))
-    assert expected == got, (expected, got)
 
 
 def raises_exception() -> None:
