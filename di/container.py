@@ -55,8 +55,6 @@ class Container:
     ) -> None:
         self._context = ContextVar("context")
         state = ContainerState()
-        state.cached_values.add_scope("container")
-        state.cached_values.set(Container, self, scope="container")
         self._context.set(state)
         self._executor = executor or DefaultExecutor()
         self._execution_scope = execution_scope
