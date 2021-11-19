@@ -261,10 +261,9 @@ class Container:
         if self._execution_scope in state.scopes:
             cm = _nullcontext
         else:
-            cm = self.enter_local_scope(self._execution_scope)
+            state = state.copy()
+            cm = state.enter_scope(self._execution_scope)
         with cm:
-            if cm is not _nullcontext:
-                state = cm.state
             results, leaf_tasks, to_cache = plan_execution(
                 state,
                 solved,
@@ -299,10 +298,9 @@ class Container:
         if self._execution_scope in state.scopes:
             cm = _nullcontext
         else:
-            cm = self.enter_local_scope(self._execution_scope)
+            state = state.copy()
+            cm = state.enter_scope(self._execution_scope)
         async with cm:
-            if cm is not _nullcontext:
-                state = cm.state
             results, leaf_tasks, to_cache = plan_execution(
                 state,
                 solved,
