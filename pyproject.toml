@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "di"
-version = "0.29.1"
+version = "0.30.0"
 description = "Autowiring dependency injection"
 authors = ["Adrian Garcia Badaracco <adrian@adriangb.com>"]
 readme = "README.md"
@@ -68,9 +68,19 @@ exclude_lines = ["pragma: no cover", '\.\.\.', "raise NotImplementedError", "TYP
 testpaths = ["tests"]
 
 [tool.mypy]
-files = "di/**/*.py,tests/**/*.py,docs/**/*.py"
-strict = false
+files = "di/**/*.py,tests/**/*.py,docs/src/**/*.py"
+show_error_codes = true
+pretty = true
+warn_unreachable = true
 
 [[tool.mypy.overrides]]
 module = "di.*"
-# strict = true
+strict_equality = true
+warn_return_any = true
+no_implicit_optional = true
+disallow_untyped_decorators = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+disallow_untyped_calls = true
+disallow_subclassing_any = true
+warn_unused_ignores = false

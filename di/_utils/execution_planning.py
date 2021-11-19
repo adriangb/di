@@ -18,11 +18,11 @@ from typing import (
 from di._utils import scope_validation
 from di._utils.state import ContainerState
 from di._utils.task import ExecutionState, Task
-from di.types.dependencies import DependantBase
-from di.types.executor import TaskInfo
-from di.types.providers import DependencyProvider
-from di.types.scopes import Scope
-from di.types.solved import SolvedDependant
+from di.api.dependencies import DependantBase
+from di.api.executor import TaskInfo
+from di.api.providers import DependencyProvider
+from di.api.scopes import Scope
+from di.api.solved import SolvedDependant
 
 Dependency = Any
 
@@ -63,7 +63,6 @@ def plan_execution(
     solved: SolvedDependant[Any],
     *,
     execution_scope: Scope,
-    validate_scopes: bool = True,
     values: Optional[Mapping[DependencyProvider, Any]] = None,
 ) -> Tuple[
     Dict[DependantBase[Any], Any],
@@ -73,12 +72,10 @@ def plan_execution(
     """Re-use or create an ExecutionPlan"""
     # This function is a hot loop
     # It is run for every execution, and even with the cache it can be a bottleneck
-    # This would be the best place to Cythonize or otherwise take more drastic
-    # measures to improve performance
+    # This would be the best place to Cythonize or otherwise take more drastic measures
 
     user_values = values or {}
-    if validate_scopes:
-        scope_validation.validate_scopes(state.scopes, solved)
+    scope_validation.validate_scopes(tuple(state.stacks.keys()), solved)
 
     solved_dependency_cache: SolvedDependantCache = solved.container_cache
 
@@ -90,7 +87,7 @@ def plan_execution(
     # The cost of this is extra memory: we are building up `cache` w/ values that will never be used
     # And then we are throwing `cache` away when we exit this function
     cache: Dict[DependencyProvider, Any] = {}
-    for mapping in state.cached_values.mappings.values():
+    for mapping in state.cached_values.mappings.values():  # type: ignore  # protected member of friend class
         cache.update(mapping)
     cache.update(user_values)
 

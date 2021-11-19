@@ -22,9 +22,9 @@ from typing import (
 
 from di._utils.inspect import is_async_gen_callable, is_gen_callable
 from di._utils.state import ContainerState
+from di.api.dependencies import DependantBase, DependencyParameter
+from di.api.executor import AsyncTaskInfo, SyncTaskInfo, TaskInfo
 from di.exceptions import IncompatibleDependencyError
-from di.types.dependencies import DependantBase, DependencyParameter
-from di.types.executor import AsyncTaskInfo, SyncTaskInfo, TaskInfo
 
 
 class ExecutionState(typing.NamedTuple):
@@ -122,7 +122,7 @@ class AsyncTask(Task[DependencyType]):
 
         call = self.call
         if self.is_generator:
-            stack = state.container_state.stacks[self.dependant.scope]
+            stack = state.container_state.stacks[self.dependant.scope]  # type: ignore  # protected member on friend class
             try:
                 enter = stack.enter_async_context  # type: ignore[union-attr]
             except AttributeError:
@@ -167,7 +167,7 @@ class SyncTask(Task[DependencyType]):
 
         call = self.call
         if self.is_generator:
-            stack = state.container_state.stacks[self.dependant.scope]
+            stack = state.container_state.stacks[self.dependant.scope]  # type: ignore  # protected member on friend class
             state.results[self.dependant] = stack.enter_context(
                 contextmanager(call)(*args, **kwargs)  # type: ignore[arg-type]
             )

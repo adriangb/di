@@ -5,8 +5,8 @@ import inspect
 from dataclasses import dataclass
 from typing import Any, Generic, List, Optional, TypeVar
 
-from di.types.providers import DependencyProviderType
-from di.types.scopes import Scope
+from di.api.providers import DependencyProviderType
+from di.api.scopes import Scope
 
 DependencyType = TypeVar("DependencyType")
 

@@ -9,7 +9,7 @@ if sys.version_info < (3, 8):
 else:
     from typing import Protocol
 
-from di.types.dependencies import DependantBase
+from di.api.dependencies import DependantBase
 
 
 class AsyncTaskInfo(typing.NamedTuple):

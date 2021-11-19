@@ -2,7 +2,7 @@
 
 Most of these docs use `Depends` and `Dependency` as the main markers and containers for dependencies.
 But the container doesn't actually know about either of these two things!
-In fact, the container only knows about the `DependantBase`, which you can find in `di.types.dependencies`.
+In fact, the container only knows about the `DependantBase`, which you can find in `di.api.dependencies`.
 `Dependency` is just a concrete implementation of the `DependantBase`, and `Depends` is in turn a wrapper function around `Dependency` for the sole purpose of overriding the types that type checkers see.
 
 You can easily build your own version of `Dependency` and `Depends`, by inheriting from `Dependency` or by writing a `DependantBase` implementation from scratch.

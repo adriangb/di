@@ -1,8 +1,8 @@
 import pytest
 
 from di import Container
+from di.api.providers import DependencyProviderType
 from di.dependant import CallableClassDependant
-from di.types.providers import DependencyProviderType
 
 
 def test_callable_class_dependant():
@@ -25,13 +25,13 @@ def test_callable_class_dependant():
 
     dep1 = CallableClassDependant(CallableClass, instance_scope="app")
     solved1 = container.solve(dep1)
-    with container.enter_global_scope("app"):
+    with container.enter_scope("app"):
         v1 = container.execute_sync(solved1)
         v2 = container.execute_sync(solved1)
 
     dep2 = CallableClassDependant(CallableClass, instance_scope="app")
     solved2 = container.solve(dep2)
-    with container.enter_global_scope("app"):
+    with container.enter_scope("app"):
         v3 = container.execute_sync(solved2)
         v4 = container.execute_sync(solved2)
 

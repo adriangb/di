@@ -16,9 +16,8 @@ else:
     from typing import Annotated, get_args, get_origin
 
 from di._utils.inspect import get_parameters, infer_call_from_annotation
-from di.exceptions import WiringError
-from di.types.dependencies import DependantBase, DependencyParameter, T
-from di.types.providers import (
+from di.api.dependencies import DependantBase, DependencyParameter, T
+from di.api.providers import (
     AsyncGeneratorProvider,
     CallableProvider,
     CoroutineProvider,
@@ -26,7 +25,8 @@ from di.types.providers import (
     DependencyType,
     GeneratorProvider,
 )
-from di.types.scopes import Scope
+from di.api.scopes import Scope
+from di.exceptions import WiringError
 
 _VARIABLE_PARAMETER_KINDS = (
     inspect.Parameter.VAR_POSITIONAL,
