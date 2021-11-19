@@ -38,22 +38,22 @@ def cached_accept_callable_class(
     return wrapper
 
 
-@cached_accept_callable_class(maxsize=2048)
+@cached_accept_callable_class(maxsize=2 ** 10)
 def is_coroutine_callable(call: Callable[..., Any]) -> bool:
     return inspect.iscoroutinefunction(call)
 
 
-@cached_accept_callable_class(maxsize=2048)
+@cached_accept_callable_class(maxsize=2 ** 10)
 def is_async_gen_callable(call: Callable[..., Any]) -> bool:
     return inspect.isasyncgenfunction(call)
 
 
-@cached_accept_callable_class(maxsize=2048)
+@cached_accept_callable_class(maxsize=2 ** 10)
 def is_gen_callable(call: Any) -> bool:
     return inspect.isgeneratorfunction(call)
 
 
-@lru_cache(maxsize=2048)
+@lru_cache(maxsize=2 ** 10)
 def get_annotations(call: Callable[..., Any]) -> Dict[str, Any]:
     types_from: Callable[..., Any]
     if not (
@@ -74,7 +74,7 @@ def get_annotations(call: Callable[..., Any]) -> Dict[str, Any]:
     return hints
 
 
-@lru_cache(maxsize=2048)
+@lru_cache(maxsize=2 ** 10)
 def get_parameters(call: Callable[..., Any]) -> Dict[str, inspect.Parameter]:
     params: Mapping[str, inspect.Parameter]
     if inspect.isclass(call) and call.__new__ is not object.__new__:
