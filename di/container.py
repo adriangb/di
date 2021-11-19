@@ -194,11 +194,19 @@ class Container:
             task_dependency_dag=task_dependency_dag,
             task_dependant_dag=task_dependant_dag,
         )
-        return SolvedDependant(
+        solved = SolvedDependant(
             dependency=dependency,
             dag=param_graph,
             container_cache=container_cache,
         )
+        # run plan to populate cache
+        plan_execution(
+            self._state,
+            solved,
+            execution_scope=self._execution_scope,
+            validate_scopes=False,
+        )
+        return solved
 
     def _build_tasks(
         self,
