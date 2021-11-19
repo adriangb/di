@@ -40,6 +40,7 @@ Dependency = Any
 
 _DependantDag = Dict[DependantBase[Any], Set[DependantBase[Any]]]
 _DependantTaskDag = Dict[Task[Any], Set[Task[Any]]]
+_DependantQueue = Deque[DependantBase[Any]]
 
 
 class Container:
@@ -157,7 +158,7 @@ class Container:
                 )
 
         # Do a DFS of the DAG checking constraints along the way
-        q: Deque[DependantBase[Any]] = deque([dependency])
+        q: _DependantQueue = deque((dependency,))
         while q:
             dep = q.popleft()
             if dep in dep_registry:
@@ -189,8 +190,7 @@ class Container:
             for predecessor_task in predecessor_tasks:
                 task_dependant_dag[predecessor_task].add(task)
         container_cache = SolvedDependantCache(
-            dependency_dag=dependency_dag,
-            tasks=tasks,
+            root_task=tasks[dependency],
             task_dependency_dag=task_dependency_dag,
             task_dependant_dag=task_dependant_dag,
         )

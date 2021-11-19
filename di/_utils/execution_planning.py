@@ -52,8 +52,7 @@ class ExecutionPlan(NamedTuple):
 class SolvedDependantCache(NamedTuple):
     """Private data that the Container attaches to SolvedDependant"""
 
-    tasks: Mapping[DependantBase[Any], Task[Any]]
-    dependency_dag: Mapping[DependantBase[Any], Set[DependantBase[Any]]]
+    root_task: Task[Any]
     task_dependency_dag: Mapping[Task[Any], Set[Task[Any]]]
     task_dependant_dag: Mapping[Task[Any], Set[Task[Any]]]
     execution_plan: Optional[ExecutionPlan] = None
@@ -125,7 +124,7 @@ def plan_execution(
         # Build a DAG of Tasks that we actually need to execute
         # this allows us to prune subtrees that will come
         # from pre-computed values (values paramter or cache)
-        unvisited = deque([solved_dependency_cache.tasks[solved.dependency]])
+        unvisited = deque((solved_dependency_cache.root_task,))
         dependency_counts: TaskDependencyCounts = {}
 
         while unvisited:
@@ -156,8 +155,7 @@ def plan_execution(
         )
 
         solved.container_cache = SolvedDependantCache(
-            tasks=solved_dependency_cache.tasks,
-            dependency_dag=solved_dependency_cache.dependency_dag,
+            root_task=solved_dependency_cache.root_task,
             task_dependency_dag=solved_dependency_cache.task_dependency_dag,
             task_dependant_dag=solved_dependency_cache.task_dependant_dag,
             execution_plan=execution_plan,

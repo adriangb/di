@@ -18,7 +18,7 @@ from di.executors import ConcurrentAsyncExecutor, SimpleSyncExecutor
 async def async_concurrent():
     container = Container(executor=ConcurrentAsyncExecutor())
     solved = container.solve(
-        Dependant(generate_dag(Depends, 4, 3, 3, sync=True, sleep=(0, 0)))
+        Dependant(generate_dag(Depends, 4, 3, 3, sync=True, sleep=(0, 1e-3)))
     )
     profiler = cProfile.Profile()
     profiler.enable()
@@ -80,5 +80,5 @@ def sync_sequential_small():
 
 if __name__ == "__main__":
     anyio.run(async_concurrent)
-    # sync_sequential_large()
-    # sync_sequential_small()
+    sync_sequential_large()
+    sync_sequential_small()
