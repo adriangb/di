@@ -112,7 +112,7 @@ class ScopeContext(FusedContextManager[None]):
 
 
 class LocalScopeContext(FusedContextManager[None]):
-    __slots__ = ("context", "scope", "token", "_sync_cm", "_async_cm")
+    __slots__ = ("context", "scope", "token", "state", "_sync_cm", "_async_cm")
     context: contextvars.ContextVar[ContainerState]
     scope: Scope
     token: contextvars.Token[ContainerState]
@@ -125,9 +125,9 @@ class LocalScopeContext(FusedContextManager[None]):
 
     def __enter__(self) -> None:
         current = self.context.get()
-        new = current.copy()
+        self.state = current.copy()
         self.token = self.context.set(new)
-        self._sync_cm = new.enter_scope(self.scope)
+        self._sync_cm = self.state.enter_scope(self.scope)
         self._sync_cm.__enter__()
 
     def __exit__(
