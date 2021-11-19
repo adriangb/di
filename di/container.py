@@ -41,7 +41,7 @@ Dependency = Any
 _DependantDag = Dict[DependantBase[Any], Set[DependantBase[Any]]]
 _DependantTaskDag = Dict[Task[Any], Set[Task[Any]]]
 _DependantQueue = Deque[DependantBase[Any]]
-
+_ExecutionCM = FusedContextManager[None]
 _nullcontext = nullcontext()
 
 
@@ -256,14 +256,15 @@ class Container:
         If you are not dynamically changing scopes, you can run once with `validate_scopes=True`
         and then disable scope validation in subsequent runs with `validate_scope=False`.
         """
-        cm: FusedContextManager[None]
-        if self._execution_scope in self.scopes:
+        cm: _ExecutionCM
+        state = self._state
+        if self._execution_scope in state.scopes:
             cm = _nullcontext
         else:
             cm = self.enter_local_scope(self._execution_scope)
         with cm:
             results, leaf_tasks, to_cache = plan_execution(
-                self._state,
+                state,
                 solved,
                 execution_scope=self._execution_scope,
                 validate_scopes=validate_scopes,
@@ -291,14 +292,15 @@ class Container:
         If you are not dynamically changing scopes, you can run once with `validate_scopes=True`
         and then disable scope validation in subsequent runs with `validate_scope=False`.
         """
-        cm: FusedContextManager[None]
-        if self._execution_scope in self.scopes:
+        cm: _ExecutionCM
+        state = self._state
+        if self._execution_scope in state.scopes:
             cm = _nullcontext
         else:
             cm = self.enter_local_scope(self._execution_scope)
         async with cm:
             results, leaf_tasks, to_cache = plan_execution(
-                self._state,
+                state,
                 solved,
                 execution_scope=self._execution_scope,
                 validate_scopes=validate_scopes,
