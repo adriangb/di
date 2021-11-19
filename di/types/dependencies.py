@@ -14,13 +14,15 @@ DependencyType = TypeVar("DependencyType")
 T = TypeVar("T")
 
 
-class DependantBase(Generic[DependencyType], abc.ABC):
+class DependantBase(Generic[DependencyType], metaclass=abc.ABCMeta):
     """A dependant is an object that can provide the container with:
     - A hash, to compare itself against other dependants
     - A scope
     - A callable that can be used to assemble itself
     - The dependants that correspond to the keyword arguments of that callable
     """
+
+    __slots__ = ("call", "scope", "share")
 
     call: Optional[DependencyProviderType[DependencyType]]
     scope: Scope
@@ -75,11 +77,8 @@ class DependantBase(Generic[DependencyType], abc.ABC):
         return f"{self.__class__.__name__}(call={self.call}, scope={self.scope}{share})"
 
 
-# this could be a NamedTuple
-# but https://github.com/python/mypy/issues/685
-# we need the generic type
-# so we can use it for DependantBase and Task
 @dataclass
 class DependencyParameter(Generic[DependencyType]):
+    __slots__ = ("dependency", "parameter")
     dependency: DependencyType
     parameter: Optional[inspect.Parameter]

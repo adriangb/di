@@ -38,6 +38,7 @@ class Dependant(DependantBase[DependencyType]):
     wire: bool
     autowire: bool
     sync_to_thread: bool
+    __slots__ = ("wire", "autowire", "sync_to_thread", "dependencies", "overrides")
 
     @overload
     def __init__(
@@ -259,6 +260,8 @@ class Dependant(DependantBase[DependencyType]):
 
 class JoinedDependant(DependantBase[DependencyType]):
     """A Dependant that aggregates other dependants without directly depending on them"""
+
+    __slots__ = ("dependant", "siblings", "_dependencies")
 
     _dependencies: Optional[List[DependencyParameter[Any]]]
 

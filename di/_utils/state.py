@@ -5,10 +5,10 @@ from contextlib import AsyncExitStack, ExitStack, contextmanager
 from types import TracebackType
 from typing import (
     Any,
+    Collection,
     ContextManager,
     Dict,
     Generator,
-    List,
     Optional,
     Type,
     Union,
@@ -73,28 +73,31 @@ class LocalScopeContext(FusedContextManager[None]):
 
 class ContainerState:
     __slots__ = ("binds", "cached_values", "stacks")
-    binds: Dict[DependencyProvider, DependantBase[Any]]
     cached_values: ScopeMap[DependencyProvider, Any]
-    stacks: Dict[Scope, Union[AsyncExitStack, ExitStack]]
 
-    def __init__(self) -> None:
-        self.binds = {}
-        self.cached_values = ScopeMap()
-        self.stacks = {}
+    def __init__(
+        self,
+        binds: Optional[Dict[DependencyProvider, DependantBase[Any]]] = None,
+        cached_values: Optional[ScopeMap[DependencyProvider, Any]] = None,
+        stacks: Optional[Dict[Scope, Union[AsyncExitStack, ExitStack]]] = None,
+    ) -> None:
+        self.binds = binds if binds is not None else {}
+        self.cached_values = cached_values if cached_values is not None else ScopeMap()
+        self.stacks = stacks if stacks is not None else {}
 
     def copy(self) -> ContainerState:
-        new = ContainerState()
-        new.binds = self.binds.copy()
-        new.stacks = self.stacks.copy()
-        new.cached_values = self.cached_values.copy()
-        return new
+        return ContainerState(
+            binds=self.binds,
+            cached_values=self.cached_values.copy(),
+            stacks=self.stacks.copy(),
+        )
 
     def enter_scope(self, scope: Scope) -> FusedContextManager[None]:
         return ScopeContext(self, scope)
 
     @property
-    def scopes(self) -> List[Scope]:
-        return list(self.stacks.keys())
+    def scopes(self) -> Collection[Scope]:
+        return self.stacks.keys()
 
     def bind(
         self,
@@ -134,9 +137,7 @@ class ScopeContext(FusedContextManager[None]):
         exc_value: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> Union[None, bool]:
-        stack = self.state.stacks[self.scope]
-        stack = cast(ExitStack, stack)
-        self.state.stacks.pop(self.scope)
+        stack = cast(ExitStack, self.state.stacks.pop(self.scope))
         self.state.cached_values.pop_scope(self.scope)
         return stack.__exit__(exc_type, exc_value, traceback)
 
@@ -150,8 +151,6 @@ class ScopeContext(FusedContextManager[None]):
         exc_value: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> Union[None, bool]:
-        stack = self.state.stacks[self.scope]
-        stack = cast(AsyncExitStack, stack)
-        self.state.stacks.pop(self.scope)
+        stack = cast(AsyncExitStack, self.state.stacks.pop(self.scope))
         self.state.cached_values.pop_scope(self.scope)
         return await stack.__aexit__(exc_type, exc_value, traceback)

@@ -283,51 +283,6 @@ async def test_concurrency_async(dep1: Any, dep2: Any):
     await container.execute_async(container.solve(Dependant(collector)))
 
 
-@pytest.mark.parametrize(
-    "dep1",
-    [
-        sync_callable_func_slow,
-        sync_gen_func_slow,
-        SyncCallableClsSlow(),
-        SyncGenClsSlow(),
-    ],
-    ids=[
-        "sync_callable_func",
-        "sync_gen_func",
-        "SyncCallableCls",
-        "SyncGenCls",
-    ],
-)
-@pytest.mark.parametrize(
-    "dep2",
-    [
-        sync_callable_func_slow,
-        sync_gen_func_slow,
-        SyncCallableClsSlow(),
-        SyncGenClsSlow(),
-    ],
-    ids=[
-        "sync_callable_func",
-        "sync_gen_func",
-        "SyncCallableCls",
-        "SyncGenCls",
-    ],
-)
-def test_concurrency_sync(dep1: Any, dep2: Any):
-    container = Container()
-
-    counter = Counter()
-    container.bind(Dependant(lambda: counter), Counter)
-
-    def collector(
-        a: None = Depends(dep1, share=False, sync_to_thread=True),
-        b: None = Depends(dep2, share=False, sync_to_thread=True),
-    ):
-        ...
-
-    container.execute_sync(container.solve(Dependant(collector)))
-
-
 @pytest.mark.anyio
 async def test_concurrent_executions_do_not_share_results():
     """If the same solved depedant is executed twice concurrently we should not

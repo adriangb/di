@@ -4,6 +4,7 @@ from collections import deque
 from contextvars import ContextVar
 from typing import (
     Any,
+    Collection,
     ContextManager,
     Deque,
     Dict,
@@ -11,6 +12,7 @@ from typing import (
     List,
     Mapping,
     Optional,
+    Set,
     Union,
     cast,
 )
@@ -36,6 +38,10 @@ from di.types.solved import SolvedDependant
 
 Dependency = Any
 
+_DependantDag = Dict[DependantBase[Any], Set[DependantBase[Any]]]
+_DependantTaskDag = Dict[Task[Any], Set[Task[Any]]]
+_DependantQueue = Deque[DependantBase[Any]]
+
 
 class Container:
     _context: ContextVar[ContainerState]
@@ -49,8 +55,6 @@ class Container:
     ) -> None:
         self._context = ContextVar("context")
         state = ContainerState()
-        state.cached_values.add_scope("container")
-        state.cached_values.set(Container, self, scope="container")
         self._context.set(state)
         self._executor = executor or DefaultExecutor()
         self._execution_scope = execution_scope
@@ -60,7 +64,7 @@ class Container:
         return self._context.get()
 
     @property
-    def scopes(self) -> List[Scope]:
+    def scopes(self) -> Collection[Scope]:
         return self._state.scopes
 
     def enter_global_scope(self, scope: Scope) -> FusedContextManager[None]:
@@ -152,7 +156,7 @@ class Container:
                 )
 
         # Do a DFS of the DAG checking constraints along the way
-        q: Deque[DependantBase[Any]] = deque([dependency])
+        q: _DependantQueue = deque((dependency,))
         while q:
             dep = q.popleft()
             if dep in dep_registry:
@@ -163,24 +167,44 @@ class Container:
                 param_graph[dep] = params
                 dep_dag[dep] = []
                 for param in params:
-                    subdep = param.dependency
-                    dep_dag[dep].append(subdep)
-                    if subdep not in dep_registry:
-                        q.append(subdep)
+                    predecessor_dep = param.dependency
+                    dep_dag[dep].append(predecessor_dep)
+                    if predecessor_dep not in dep_registry:
+                        q.append(predecessor_dep)
         # The whole concept of Tasks is something that can perhaps be cleaned up / optimized
         # The main reason to have it is to save some computation at runtime
         # but currently that is just checking if the dependendency is sync or async
         # So perhaps that can be done in a simpler manner
         tasks = self._build_tasks(param_graph, topsort(dep_dag))
-        dependency_dag = {dep: set(subdeps) for dep, subdeps in dep_dag.items()}
+        dependency_dag: _DependantDag = {
+            dep: set(predecessor_deps) for dep, predecessor_deps in dep_dag.items()
+        }
+        task_dependency_dag: _DependantTaskDag = {
+            tasks[dep]: {tasks[predecessor_dep] for predecessor_dep in predecessor_deps}
+            for dep, predecessor_deps in dependency_dag.items()
+        }
+        task_dependant_dag: _DependantTaskDag = {tasks[dep]: set() for dep in dep_dag}
+        for task, predecessor_tasks in task_dependency_dag.items():
+            for predecessor_task in predecessor_tasks:
+                task_dependant_dag[predecessor_task].add(task)
         container_cache = SolvedDependantCache(
-            dependency_dag=dependency_dag, tasks=tasks
+            root_task=tasks[dependency],
+            task_dependency_dag=task_dependency_dag,
+            task_dependant_dag=task_dependant_dag,
         )
-        return SolvedDependant(
+        solved = SolvedDependant(
             dependency=dependency,
             dag=param_graph,
             container_cache=container_cache,
         )
+        # run plan to populate cache
+        plan_execution(
+            self._state,
+            solved,
+            execution_scope=self._execution_scope,
+            validate_scopes=False,
+        )
+        return solved
 
     def _build_tasks(
         self,
@@ -239,7 +263,11 @@ class Container:
             cm = self.enter_local_scope(self._execution_scope)
         with cm:
             results, leaf_tasks, to_cache = plan_execution(
-                self._state, solved, validate_scopes=validate_scopes, values=values
+                self._state,
+                solved,
+                execution_scope=self._execution_scope,
+                validate_scopes=validate_scopes,
+                values=values,
             )
             if not hasattr(self._executor, "execute_sync"):  # pragma: no cover
                 raise TypeError(
@@ -270,7 +298,11 @@ class Container:
             cm = self.enter_local_scope(self._execution_scope)
         async with cm:
             results, leaf_tasks, to_cache = plan_execution(
-                self._state, solved, validate_scopes=validate_scopes, values=values
+                self._state,
+                solved,
+                execution_scope=self._execution_scope,
+                validate_scopes=validate_scopes,
+                values=values,
             )
             if not hasattr(self._executor, "execute_async"):  # pragma: no cover
                 raise TypeError(

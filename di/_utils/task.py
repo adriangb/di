@@ -3,9 +3,8 @@ from __future__ import annotations
 import functools
 import typing
 from collections import deque
-from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
+from contextlib import asynccontextmanager, contextmanager
 from typing import (
-    TYPE_CHECKING,
     Any,
     Awaitable,
     Deque,
@@ -17,8 +16,8 @@ from typing import (
     MutableMapping,
     Optional,
     Tuple,
+    TypeVar,
     Union,
-    cast,
 )
 
 from di._utils.inspect import is_async_gen_callable, is_gen_callable
@@ -26,20 +25,18 @@ from di._utils.state import ContainerState
 from di.exceptions import IncompatibleDependencyError
 from di.types.dependencies import DependantBase, DependencyParameter
 from di.types.executor import AsyncTaskInfo, SyncTaskInfo, TaskInfo
-from di.types.providers import (
-    AsyncGeneratorProvider,
-    CallableProvider,
-    CoroutineProvider,
-    DependencyType,
-    GeneratorProvider,
-)
 
 
 class ExecutionState(typing.NamedTuple):
     container_state: ContainerState
     results: Dict[DependantBase[Any], Any]
-    dependency_counts: MutableMapping[DependantBase[Any], int]
-    dependants: Mapping[DependantBase[Any], Iterable[Task[Any]]]
+    dependency_counts: MutableMapping[Task[Any], int]
+    dependants: Mapping[Task[Any], Iterable[Task[Any]]]
+
+
+DependencyType = TypeVar("DependencyType")
+
+TaskQueue = Deque[Optional[TaskInfo]]
 
 
 class Task(Generic[DependencyType]):
@@ -80,23 +77,18 @@ class Task(Generic[DependencyType]):
 
     def gather_new_tasks(self, state: ExecutionState) -> Iterable[Optional[TaskInfo]]:
         """Look amongst our dependants to see if any of them are now dependency free"""
-        new_tasks: Deque[Optional[TaskInfo]] = deque()
-        for dependant in state.dependants[self.dependant]:
-            count = state.dependency_counts[dependant.dependant]
-            if count == 1:
+        new_tasks: TaskQueue = deque()
+        for dependant in state.dependants[self]:
+            state.dependency_counts[dependant] -= 1
+            if state.dependency_counts[dependant] == 0:
                 # this dependant has no further dependencies, so we can compute it now
                 new_tasks.append(dependant.as_executor_task(state))
-                # pop it from dependency counts so that we can
-                # tell when we've satisfied all dependencies below
-                state.dependency_counts.pop(dependant.dependant)
-            else:
-                state.dependency_counts[dependant.dependant] = count - 1
-        # also pop ourselves if we have no deps
-        if state.dependency_counts.get(self.dependant, -1) == 0:
-            state.dependency_counts.pop(self.dependant)
-        if not state.dependency_counts:
-            # all dependencies are taken care of, insert sentinel None value
-            new_tasks.append(None)
+        # remove ourselves if we have no deps
+        if state.dependency_counts[self] == 0:
+            del state.dependency_counts[self]
+            if not state.dependency_counts:
+                # all dependencies are taken care of, insert sentinel None value
+                new_tasks.append(None)
         return new_tasks
 
     def __repr__(self) -> str:
@@ -131,20 +123,18 @@ class AsyncTask(Task[DependencyType]):
         call = self.call
         if self.is_generator:
             stack = state.container_state.stacks[self.dependant.scope]
-            if not isinstance(stack, AsyncExitStack):
+            try:
+                enter = stack.enter_async_context  # type: ignore[union-attr]
+            except AttributeError:
                 raise IncompatibleDependencyError(
                     f"The dependency {self.dependant} is an awaitable dependency"
                     f" and canot be used in the sync scope {self.dependant.scope}"
                 )
-            if TYPE_CHECKING:
-                call = cast(AsyncGeneratorProvider[DependencyType], call)
-            state.results[self.dependant] = await stack.enter_async_context(
-                asynccontextmanager(call)(*args, **kwargs)
+            state.results[self.dependant] = await enter(
+                asynccontextmanager(call)(*args, **kwargs)  # type: ignore[arg-type]
             )
         else:
-            if TYPE_CHECKING:
-                call = cast(CoroutineProvider[DependencyType], call)
-            state.results[self.dependant] = await call(*args, **kwargs)
+            state.results[self.dependant] = await call(*args, **kwargs)  # type: ignore[misc]
 
         return self.gather_new_tasks(state)
 
@@ -177,15 +167,11 @@ class SyncTask(Task[DependencyType]):
 
         call = self.call
         if self.is_generator:
-            if TYPE_CHECKING:
-                call = cast(GeneratorProvider[DependencyType], call)
             stack = state.container_state.stacks[self.dependant.scope]
             state.results[self.dependant] = stack.enter_context(
-                contextmanager(call)(*args, **kwargs)
+                contextmanager(call)(*args, **kwargs)  # type: ignore[arg-type]
             )
         else:
-            if TYPE_CHECKING:
-                call = cast(CallableProvider[DependencyType], call)
             state.results[self.dependant] = call(*args, **kwargs)
 
         return self.gather_new_tasks(state)

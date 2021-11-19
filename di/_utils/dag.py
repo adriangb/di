@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections import deque
 from typing import Deque, Dict, Iterable, List, Mapping, MutableMapping, TypeVar
 

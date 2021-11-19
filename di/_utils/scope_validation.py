@@ -1,4 +1,6 @@
-from typing import Any, Dict, List
+from __future__ import annotations
+
+from typing import Any, Collection, Dict
 
 from di.exceptions import ScopeViolationError, UnknownScopeError
 from di.types.dependencies import DependantBase
@@ -26,11 +28,11 @@ def check_scope(dep: DependantBase[Any], scope_idxs: Dict[Scope, int]) -> None:
         )
 
 
-def validate_scopes(scopes: List[Scope], solved: SolvedDependant[Any]) -> None:
+def validate_scopes(scopes: Collection[Scope], solved: SolvedDependant[Any]) -> None:
     """Validate that dependencies all have a valid scope and
     that dependencies only depend on outer scopes or their own scope.
     """
-    scope_idxs = {scope: idx for idx, scope in enumerate(reversed(scopes + [None]))}
+    scope_idxs = {scope: idx for idx, scope in enumerate(reversed([*scopes, None]))}
 
     for dep, params in solved.dag.items():
         check_scope(dep, scope_idxs)

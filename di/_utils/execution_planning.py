@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections import deque
 from typing import (
     AbstractSet,
@@ -19,9 +21,16 @@ from di._utils.task import ExecutionState, Task
 from di.types.dependencies import DependantBase
 from di.types.executor import TaskInfo
 from di.types.providers import DependencyProvider
+from di.types.scopes import Scope
 from di.types.solved import SolvedDependant
 
 Dependency = Any
+
+DependantDeque = Deque[DependantBase[Any]]
+
+Results = Dict[DependantBase[Any], Any]
+
+TaskDependencyCounts = Dict[Task[Any], int]
 
 
 class ExecutionPlan(NamedTuple):
@@ -33,18 +42,19 @@ class ExecutionPlan(NamedTuple):
     # mapping of which dependencies require computation for each dependant
     # it is possible that some of them were passed by value or cached
     # and hence do not require computation
-    dependant_dag: Mapping[DependantBase[Any], Iterable[Task[Any]]]
+    task_dependant_dag: Mapping[Task[Any], Iterable[Task[Any]]]
     # count of how many uncompomputed dependencies each dependant has
     # this is used to keep track of what dependencies are now available for computation
-    dependency_counts: Dict[DependantBase[Any], int]
+    dependency_counts: Dict[Task[Any], int]
     leaf_tasks: Iterable[Task[Any]]  # these are the tasks w/ no dependencies
 
 
 class SolvedDependantCache(NamedTuple):
     """Private data that the Container attaches to SolvedDependant"""
 
-    tasks: Mapping[DependantBase[Any], Task[Any]]
-    dependency_dag: Mapping[DependantBase[Any], Set[DependantBase[Any]]]
+    root_task: Task[Any]
+    task_dependency_dag: Mapping[Task[Any], Set[Task[Any]]]
+    task_dependant_dag: Mapping[Task[Any], Set[Task[Any]]]
     execution_plan: Optional[ExecutionPlan] = None
 
 
@@ -52,6 +62,7 @@ def plan_execution(
     state: ContainerState,
     solved: SolvedDependant[Any],
     *,
+    execution_scope: Scope,
     validate_scopes: bool = True,
     values: Optional[Mapping[DependencyProvider, Any]] = None,
 ) -> Tuple[
@@ -69,11 +80,6 @@ def plan_execution(
     if validate_scopes:
         scope_validation.validate_scopes(state.scopes, solved)
 
-    if type(solved.container_cache) is not SolvedDependantCache:
-        raise TypeError(
-            "This SolvedDependant was not created by this Container"
-        )  # pragma: no cover
-
     solved_dependency_cache: SolvedDependantCache = solved.container_cache
 
     # dump all cached values into one mapping for faster lookups
@@ -88,10 +94,9 @@ def plan_execution(
         cache.update(mapping)
     cache.update(user_values)
 
-    to_cache: Deque[DependantBase[Any]] = deque()
-    execution_scope = state.scopes[-1]
+    to_cache: DependantDeque = deque()
 
-    results: Dict[DependantBase[Any], Any] = {}
+    results: Results = {}
 
     # For each dependency, check if we can use a cached value or a user supplied value
     # If so, put that value into our results dict
@@ -119,42 +124,40 @@ def plan_execution(
         # Build a DAG of Tasks that we actually need to execute
         # this allows us to prune subtrees that will come
         # from pre-computed values (values paramter or cache)
-        unvisited = deque([solved.dependency])
-        dependency_counts: Dict[DependantBase[Any], int] = {}
-        dependant_dag: Dict[DependantBase[Any], Deque[Task[Any]]] = {
-            dep: deque() for dep in solved_dependency_cache.dependency_dag
-        }
+        unvisited = deque((solved_dependency_cache.root_task,))
+        dependency_counts: TaskDependencyCounts = {}
+
         while unvisited:
-            dep = unvisited.pop()
-            if dep in dependency_counts:
-                continue
+            task = unvisited.pop()
             # if the dependency is cached or was provided by value
             # we don't need to compute it or any of it's dependencies
-            if dep not in results:
-                # otherwise, we add it to our DAG and visit it's children
-                dependency_counts[dep] = 0
-                for subdep in solved_dependency_cache.dependency_dag[dep]:
-                    if subdep not in results:
-                        dependant_dag[subdep].append(solved_dependency_cache.tasks[dep])
-                        dependency_counts[dep] += 1
-                        if subdep not in dependency_counts:
-                            unvisited.append(subdep)
+            if task.dependant in results:
+                continue
+            # we can also skip this dep if it's already been accounted for
+            if task in dependency_counts:
+                continue
+            # otherwise, we add it to our DAG and visit it's children
+            dependency_counts[task] = 0
+            for predecessor_task in solved_dependency_cache.task_dependency_dag[task]:
+                if predecessor_task.dependant not in results:
+                    dependency_counts[task] += 1
+                    if predecessor_task not in dependency_counts:
+                        unvisited.append(predecessor_task)
 
         execution_plan = ExecutionPlan(
             # use frozenset to hold a shallow copy of the dict keys
             cache_key=frozenset(execution_plan_cache_key),
-            dependant_dag=dependant_dag,
+            task_dependant_dag=solved_dependency_cache.task_dependant_dag,
             dependency_counts=dependency_counts,
             leaf_tasks=[
-                solved_dependency_cache.tasks[dep]
-                for dep, count in dependency_counts.items()
-                if count == 0
+                task for task, count in dependency_counts.items() if count == 0
             ],
         )
 
         solved.container_cache = SolvedDependantCache(
-            tasks=solved_dependency_cache.tasks,
-            dependency_dag=solved_dependency_cache.dependency_dag,
+            root_task=solved_dependency_cache.root_task,
+            task_dependency_dag=solved_dependency_cache.task_dependency_dag,
+            task_dependant_dag=solved_dependency_cache.task_dependant_dag,
             execution_plan=execution_plan,
         )
 
@@ -162,7 +165,7 @@ def plan_execution(
         container_state=state,
         results=results,
         dependency_counts=execution_plan.dependency_counts.copy(),
-        dependants=execution_plan.dependant_dag,
+        dependants=execution_plan.task_dependant_dag,
     )
 
     return (

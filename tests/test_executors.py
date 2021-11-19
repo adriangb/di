@@ -4,18 +4,11 @@ from typing import Iterable, Optional
 import pytest
 
 from di.dependant import Dependant
-from di.executors import (
-    ConcurrentSyncExecutor,
-    DefaultExecutor,
-    SimpleAsyncExecutor,
-    SimpleSyncExecutor,
-)
+from di.executors import DefaultExecutor, SimpleAsyncExecutor, SimpleSyncExecutor
 from di.types.executor import AsyncTaskInfo, SyncExecutor, SyncTaskInfo, TaskInfo
 
 
-@pytest.mark.parametrize(
-    "exc_cls", [DefaultExecutor, SimpleSyncExecutor, ConcurrentSyncExecutor]
-)
+@pytest.mark.parametrize("exc_cls", [DefaultExecutor, SimpleSyncExecutor])
 def test_executing_async_dependencies_in_sync_executor(
     exc_cls: typing.Type[SyncExecutor],
 ):
