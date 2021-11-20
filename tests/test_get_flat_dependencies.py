@@ -3,8 +3,8 @@ from typing import Any, List
 import pytest
 
 from di import Container, Dependant, Depends
-from di.types.dependencies import DependantBase
-from di.types.providers import DependencyProvider
+from di.api.dependencies import DependantBase
+from di.api.providers import DependencyProvider
 
 
 def call1():
@@ -45,7 +45,7 @@ def assert_compare_call(
 async def test_get_flat_dependencies():
     container = Container()
 
-    async with container.enter_global_scope("dummy"):
+    async with container.enter_scope("dummy"):
         assert_compare_call(
             container.solve(Dependant(call=call7)).get_flat_subdependants(),
             [call1, call2, call3, call4, call6],

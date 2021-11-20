@@ -7,7 +7,9 @@ from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.routing import Route
 
-from di import Container, Dependant
+from di import Dependant
+from di.api.container import ContainerProtocol
+from di.container import BaseContainer
 
 
 class WiredGetRoute(Route):
@@ -16,34 +18,34 @@ class WiredGetRoute(Route):
         path: str,
         endpoint: Callable[..., Any],
         *,
-        container: Container,
+        container: ContainerProtocol,
     ) -> None:
 
         solved_endpoint = container.solve(Dependant(endpoint))
 
         async def wrapped_endpoint(request: Request) -> Any:
-            return await container.execute_async(
-                solved_endpoint, values={Request: request}
-            )
+            app_container: ContainerProtocol = request.app.container
+            async with app_container.enter_scope("request") as request_container:
+                return await request_container.execute_async(
+                    solved_endpoint,
+                    values={Request: request},
+                )
 
         super().__init__(path=path, endpoint=wrapped_endpoint, methods=["GET"])  # type: ignore
 
 
 class App(Starlette):
-    def __init__(self, container: Container | None = None, **kwargs: Any) -> None:
-        self.container = container or Container()
+    def __init__(self) -> None:
+        self.container = BaseContainer()
         self.container.bind(Dependant(Request, autowire=False), Request)
 
         @contextlib.asynccontextmanager
         async def lifespan(app: App):
-            async with self.container.enter_global_scope("app"):
-                if kwargs.get("lifespan", None) is not None:
-                    with kwargs.pop("lifepsan"):
-                        yield
-                else:
-                    yield
+            async with self.container.enter_scope("app") as container:
+                self.container = container
+                yield
 
-        super().__init__(lifespan=lifespan, **kwargs)  # type: ignore
+        super().__init__(lifespan=lifespan)
 
     def get(self, path: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         def wrappper(func: Callable[..., Any]) -> Callable[..., Any]:

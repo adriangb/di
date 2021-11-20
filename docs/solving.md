@@ -38,17 +38,11 @@ Instead, only some basic checks on scopes are done and the dependencies are exec
 --8<-- "docs/src/solved_dependant.py"
 ```
 
-To disable scope checks (perhaps something reasonable to do in a web framework after 1 request is processed), you can pass the `validate_scopes=False` parameter to `execute_sync` or `execute_async`.
-
-```Python hl_lines="17"
---8<-- "docs/src/solved_dependant.py"
-```
-
 ## Getting a list of dependencies
 
 `di` provides a convenience function to flatten the dependency DAG into a list off all sub dependencies in `Container.get_flat_subdependants`.
 
-```Python hl_lines="19-21"
+```Python hl_lines="17-19"
 --8<-- "docs/src/solved_dependant.py"
 ```
 

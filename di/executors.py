@@ -7,7 +7,7 @@ import anyio
 import anyio.abc
 
 from di._utils.concurrency import callable_in_thread_pool
-from di.types.executor import AsyncExecutor, AsyncTaskInfo, SyncExecutor, TaskInfo
+from di.api.executor import AsyncExecutor, AsyncTaskInfo, SyncExecutor, TaskInfo
 
 TaskQueue = typing.Deque[TaskInfo]
 

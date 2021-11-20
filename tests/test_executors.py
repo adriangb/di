@@ -3,9 +3,9 @@ from typing import Iterable, Optional
 
 import pytest
 
+from di.api.executor import AsyncTaskInfo, SyncExecutor, SyncTaskInfo, TaskInfo
 from di.dependant import Dependant
 from di.executors import DefaultExecutor, SimpleAsyncExecutor, SimpleSyncExecutor
-from di.types.executor import AsyncTaskInfo, SyncExecutor, SyncTaskInfo, TaskInfo
 
 
 @pytest.mark.parametrize("exc_cls", [DefaultExecutor, SimpleSyncExecutor])

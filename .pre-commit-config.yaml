@@ -30,6 +30,6 @@ repos:
     - id: mypy
       name: mypy
       language: system
-      entry: poetry run mypy --strict --show-error-codes di
+      entry: poetry run mypy
       types: [python]
       pass_filenames: false

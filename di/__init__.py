@@ -15,7 +15,8 @@ except PackageNotFoundError:
     __version__ = "0.0.0"
 
 
-from di.container import Container  # noqa: E402
+import di.api as api  # noqa: E402
+from di.container import BaseContainer, Container  # noqa: E402
 from di.dependant import (  # noqa: E402
     CallableClassDependant,
     Dependant,
@@ -30,6 +31,8 @@ from di.executors import (  # noqa: E402
 from di.params import Depends  # noqa: E402
 
 __all__ = (
+    "api",
+    "BaseContainer",
     "Container",
     "Dependant",
     "JoinedDependant",

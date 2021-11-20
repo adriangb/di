@@ -14,10 +14,10 @@ def endpoint(r: Request) -> int:
 
 def test_bind():
     container = Container()
-    with container.enter_global_scope("app"):
+    with container.enter_scope("app"):
         r = container.execute_sync(container.solve(Dependant(endpoint)))
         assert r == 0  # just the default value
-        with container.enter_local_scope("request"):
+        with container.enter_scope("request"):
             request = Request(1)  # build a request
             # bind the request
             with container.bind(Dependant(lambda: request), Request):
@@ -50,7 +50,7 @@ def test_bind_transitive_dependency_results_skips_subdpendencies():
     since they are no longer required.
     """
     container = Container()
-    with container.enter_global_scope("something"):
+    with container.enter_scope("something") as container:
         # we get an error from raises_exception
         with pytest.raises(ValueError):
             container.execute_sync(container.solve(Dependant(dep)))
@@ -84,7 +84,7 @@ def test_bind_with_dependencies():
         return two + 2
 
     container = Container()
-    with container.enter_global_scope("something"):
+    with container.enter_scope("something"):
         assert (container.execute_sync(container.solve(Dependant(return_four)))) == 4
         with container.bind(Dependant(return_three), return_two):
             assert (

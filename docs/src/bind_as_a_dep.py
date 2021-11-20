@@ -37,7 +37,7 @@ async def framework() -> None:
     container = Container()
     container.bind(Dependant(Postgres, scope="app"), DBProtocol)  # type: ignore
     solved = container.solve(Dependant(controller))
-    async with container.enter_local_scope("app"):
+    async with container.enter_scope("app"):
         await container.execute_async(solved)
         db = await container.execute_async(container.solve(Dependant(DBProtocol)))
         assert isinstance(db, Postgres)

@@ -317,7 +317,7 @@ async def test_concurrent_executions_do_not_share_results():
         await container.execute_async(solved)
 
     async with anyio.create_task_group() as tg:
-        async with container.enter_global_scope("app"):
+        async with container.enter_scope("app"):
             tg.start_soon(functools.partial(execute_in_ctx, 1))
             tg.start_soon(functools.partial(execute_in_ctx, 2))
 
@@ -343,7 +343,7 @@ async def test_concurrent_executions_share_cache(
     solved1 = container.solve(Dependant(collect1))
     solved2 = container.solve(Dependant(collect2))
 
-    async with container.enter_global_scope("global"):
+    async with container.enter_scope("global"):
         async with anyio.create_task_group() as tg:
             tg.start_soon(functools.partial(container.execute_async, solved1))
             await anyio.sleep(0.05)
@@ -360,7 +360,7 @@ async def test_async_cm_de_in_sync_scope():
         yield
 
     container = Container()
-    with container.enter_local_scope("test"):
+    with container.enter_scope("test"):
         with pytest.raises(
             IncompatibleDependencyError, match="canot be used in the sync scope"
         ):

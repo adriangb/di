@@ -1,5 +1,5 @@
 from di import Container, Dependant
-from di.types.solved import SolvedDependant
+from di.api.solved import SolvedDependant
 
 
 # Framework code
@@ -13,8 +13,6 @@ def web_framework():
     assert isinstance(solved, SolvedDependant)
 
     container.execute_sync(solved, values={Request: Request()})
-
-    container.execute_sync(solved, validate_scopes=False, values={Request: Request()})
 
     dependencies = solved.get_flat_subdependants()
     assert all(isinstance(item, Dependant) for item in dependencies)
