@@ -39,8 +39,15 @@ TaskQueue = Deque[Optional[TaskInfo]]
 
 
 class Task:
-    __slots__ = ("dependant", "call", "positional_parameters", "keyword_parameters")
+    __slots__ = (
+        "dependant",
+        "call",
+        "positional_parameters",
+        "keyword_parameters",
+        "scope",
+    )
     call: DependencyProvider
+    scope: Scope
 
     def __init__(
         self,
@@ -49,6 +56,7 @@ class Task:
         keyword_parameters: Mapping[str, Task],
     ) -> None:
         self.dependant = dependant
+        self.scope = self.dependant.scope
         assert dependant.call is not None
         self.call = dependant.call
         self.positional_parameters = positional_parameters
@@ -121,9 +129,8 @@ class AsyncTask(Task):
         args, kwargs = self.gather_params(state.results)
 
         if self.is_generator:
-            stack = state.stacks[self.dependant.scope]
             try:
-                enter = stack.enter_async_context  # type: ignore[union-attr]
+                enter = state.stacks[self.scope].enter_async_context  # type: ignore[union-attr]
             except AttributeError:
                 raise IncompatibleDependencyError(
                     f"The dependency {self.dependant} is an awaitable dependency"
@@ -166,8 +173,7 @@ class SyncTask(Task):
         args, kwargs = self.gather_params(state.results)
 
         if self.is_generator:
-            stack = state.stacks[self.dependant.scope]
-            state.results[self] = stack.enter_context(
+            state.results[self] = state.stacks[self.scope].enter_context(
                 self.call(*args, **kwargs)  # type: ignore[arg-type]
             )
         else:

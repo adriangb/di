@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, Mapping, Tuple
+from typing import Any, Dict, Iterable, Mapping, Sequence
 
 from di.api.dependencies import DependantBase, DependencyParameter
 from di.api.scopes import Scope
@@ -28,7 +28,7 @@ def check_scope(dep: DependantBase[Any], scope_idxs: Dict[Scope, int]) -> None:
 
 
 def validate_scopes(
-    scopes: Tuple[Scope, ...],
+    scopes: Sequence[Scope],
     dag: Mapping[DependantBase[Any], Iterable[DependencyParameter]],
 ) -> None:
     """Validate that dependencies all have a valid scope and

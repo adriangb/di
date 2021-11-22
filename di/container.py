@@ -333,7 +333,7 @@ class BaseContainer(_ContainerCommon):
     ) -> None:
         self._executor = executor or DefaultExecutor()
         self._execution_scope = execution_scope
-        self.__state = _state or ContainerState()
+        self.__state = _state or ContainerState.initialize()
         self._binds = _binds or {}
 
     @property
@@ -426,7 +426,7 @@ class Container(_ContainerCommon):
     ) -> None:
         if _context is None:
             self._context = contextvars.ContextVar(f"{self}._context")
-            self._context.set(ContainerState())
+            self._context.set(ContainerState.initialize())
         else:
             self._context = _context
         self._execution_scope = execution_scope

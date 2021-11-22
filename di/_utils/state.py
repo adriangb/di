@@ -12,19 +12,25 @@ from di.api.scopes import Scope
 
 class ContainerState:
     __slots__ = ("cached_values", "stacks")
-    cached_values: ScopeMap[DependantBase[Any], Any]
 
     def __init__(
         self,
-        cached_values: Optional[ScopeMap[DependantBase[Any], Any]] = None,
-        stacks: Optional[Dict[Scope, Union[AsyncExitStack, ExitStack]]] = None,
+        cached_values: ScopeMap[DependantBase[Any], Any],
+        stacks: Dict[Scope, Union[AsyncExitStack, ExitStack]],
     ) -> None:
-        self.cached_values = cached_values if cached_values is not None else ScopeMap()
-        self.stacks = stacks if stacks is not None else {}
+        self.cached_values = cached_values
+        self.stacks = stacks
+
+    @staticmethod
+    def initialize() -> ContainerState:
+        return ContainerState(
+            cached_values=ScopeMap(),
+            stacks={},
+        )
 
     def copy(self) -> ContainerState:
         return ContainerState(
-            cached_values=self.cached_values.copy(),
+            cached_values=ScopeMap(self.cached_values.copy()),
             stacks=self.stacks.copy(),
         )
 
