@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, Generic, Hashable, List, Optional, TypeVar
+from typing import Dict, Generic, Hashable, List, Mapping, Optional, TypeVar
 
 from di.api.scopes import Scope
 from di.exceptions import DuplicateScopeError
@@ -31,6 +31,13 @@ class ScopeMap(Generic[KT, VT]):
 
     def __init__(self, mappings: Optional[Dict[Scope, Dict[KT, VT]]] = None) -> None:
         self.mappings = mappings if mappings is not None else {}
+
+    def to_mapping(self) -> Mapping[KT, VT]:
+        ms = iter(self.mappings.values())
+        res = (next(iter(ms), None) or {}).copy()
+        for m in ms:
+            res.update(m)
+        return res
 
     def set(self, key: KT, value: VT, *, scope: Scope) -> None:
         self.mappings[scope][key] = value

@@ -109,9 +109,7 @@ class Dependant(DependantBase[DependencyType]):
     ) -> None:
         self.call = call
         self.scope = scope
-        self.dependencies: Optional[
-            List[DependencyParameter[DependantBase[Any]]]
-        ] = None
+        self.dependencies: Optional[List[DependencyParameter]] = None
         self.share = share
         self.autowire = autowire
         self.wire = wire
@@ -139,7 +137,7 @@ class Dependant(DependantBase[DependencyType]):
 
     def get_dependencies(
         self,
-    ) -> List[DependencyParameter[DependantBase[Any]]]:
+    ) -> List[DependencyParameter]:
         """Collect all of the sub dependencies for this dependant
 
         For the Dependant implementation, this serves as a cache layer on
@@ -192,7 +190,7 @@ class Dependant(DependantBase[DependencyType]):
 
     def gather_dependencies(
         self,
-    ) -> List[DependencyParameter[DependantBase[Any]]]:
+    ) -> List[DependencyParameter]:
         """Collect this dependencies sub dependencies.
 
         The returned dict corresponds to keyword arguments that will be passed
@@ -203,7 +201,7 @@ class Dependant(DependantBase[DependencyType]):
         assert (
             self.call is not None
         ), "Container should have assigned call; this is a bug!"
-        res: List[DependencyParameter[DependantBase[Any]]] = []
+        res: List[DependencyParameter] = []
         for param in self.gather_parameters().values():
             sub_dependant: DependantBase[Any]
             if param.name in self.overrides:
@@ -263,7 +261,7 @@ class JoinedDependant(DependantBase[DependencyType]):
 
     __slots__ = ("dependant", "siblings", "_dependencies")
 
-    _dependencies: Optional[List[DependencyParameter[Any]]]
+    _dependencies: Optional[List[DependencyParameter]]
 
     def __init__(
         self,
@@ -278,7 +276,7 @@ class JoinedDependant(DependantBase[DependencyType]):
         self._dependencies = None
         self.share = dependant.share
 
-    def get_dependencies(self) -> List[DependencyParameter[DependantBase[Any]]]:
+    def get_dependencies(self) -> List[DependencyParameter]:
         """Get the dependencies of our main dependant and all siblings"""
         if self._dependencies is None:
             self._dependencies = list(

@@ -1,5 +1,5 @@
 import sys
-from typing import Any, Callable, List
+from typing import Callable, List
 
 from di.dependant import JoinedDependant
 
@@ -11,7 +11,7 @@ else:
 import pytest
 
 from di import Container, Dependant, Depends
-from di.api.dependencies import DependantBase, DependencyParameter
+from di.api.dependencies import DependencyParameter
 from di.exceptions import ScopeViolationError, SolvingError, WiringError
 
 
@@ -153,7 +153,7 @@ def test_non_parameter_dependency():
 
         def gather_dependencies(
             self,
-        ) -> List[DependencyParameter[DependantBase[Any]]]:
+        ) -> List[DependencyParameter]:
             return [
                 DependencyParameter(Dependant(call=lambda: calls.append(True)), None)
             ]

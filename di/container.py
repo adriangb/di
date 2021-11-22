@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-import abc
 import contextvars
-from collections import deque
+from collections import defaultdict, deque
 from contextlib import contextmanager
 from types import TracebackType
 from typing import (
     Any,
     Collection,
     ContextManager,
+    DefaultDict,
     Deque,
     Dict,
     Generator,
@@ -40,7 +40,8 @@ from di.executors import DefaultExecutor
 Dependency = Any
 
 _DependantDag = Dict[DependantBase[Any], Set[DependantBase[Any]]]
-_DependantTaskDag = Dict[Task[Any], Set[Task[Any]]]
+_DependantTaskDag = Dict[Task, Set[Task]]
+_CallMap = DefaultDict[DependencyProvider, Set[Task]]
 _DependantQueue = Deque[DependantBase[Any]]
 _ExecutionCM = FusedContextManager[None]
 _nullcontext = nullcontext(None)
@@ -49,7 +50,7 @@ _nullcontext = nullcontext(None)
 __all__ = ("BaseContainer", "Container", "ContainerState")
 
 
-class _ContainerCommon(metaclass=abc.ABCMeta):
+class _ContainerCommon:
     __slots__ = ("_executor", "_execution_scope", "_binds")
 
     _executor: Union[SyncExecutor, AsyncExecutor]
@@ -65,9 +66,8 @@ class _ContainerCommon(metaclass=abc.ABCMeta):
         return self._state.stacks.keys()
 
     @property
-    @abc.abstractmethod
     def _state(self) -> ContainerState:
-        pass
+        raise NotImplementedError
 
     def bind(
         self,
@@ -105,7 +105,6 @@ class _ContainerCommon(metaclass=abc.ABCMeta):
 
         Returns a SolvedDependant that can be executed to get the dependency's value.
         """
-
         # If the SolvedDependant itself is a bind, replace it's dependant
         if dependency.call in self._binds:
             dependency = self._binds[dependency.call]
@@ -119,19 +118,19 @@ class _ContainerCommon(metaclass=abc.ABCMeta):
         # The same DAG as above but including parameters (inspect.Parameter instances)
         param_graph: Dict[
             DependantBase[Any],
-            List[DependencyParameter[DependantBase[Any]]],
+            List[DependencyParameter],
         ] = {}
 
         def get_params(
             dep: DependantBase[Any],
-        ) -> List[DependencyParameter[DependantBase[Any]]]:
+        ) -> List[DependencyParameter]:
             # get parameters and swap them out w/ binds when they
             # exist as a bound value
             params = dep.get_dependencies().copy()
             for idx, param in enumerate(params):
                 assert param.dependency.call is not None
                 if param.dependency.call in self._binds:
-                    params[idx] = DependencyParameter[Any](
+                    params[idx] = DependencyParameter(
                         dependency=self._binds[param.dependency.call],
                         parameter=param.parameter,
                     )
@@ -177,13 +176,24 @@ class _ContainerCommon(metaclass=abc.ABCMeta):
             for dep, predecessor_deps in dependency_dag.items()
         }
         task_dependant_dag: _DependantTaskDag = {tasks[dep]: set() for dep in dep_dag}
+        call_map: _CallMap = defaultdict(set)
         for task, predecessor_tasks in task_dependency_dag.items():
+            call_map[task.call].add(task)
             for predecessor_task in predecessor_tasks:
                 task_dependant_dag[predecessor_task].add(task)
         container_cache = SolvedDependantCache(
             root_task=tasks[dependency],
             task_dependency_dag=task_dependency_dag,
             task_dependant_dag=task_dependant_dag,
+            cacheable_tasks={
+                tasks[d]
+                for d in dependency_dag
+                if d.scope != self._execution_scope and d.share
+            },
+            cached_tasks={tasks[d] for d in dependency_dag if d.share},
+            execution_plan=None,
+            validated_scopes=set(),
+            call_map=call_map,
         )
         solved = SolvedDependant(
             dependency=dependency,
@@ -196,36 +206,50 @@ class _ContainerCommon(metaclass=abc.ABCMeta):
         self,
         dag: Dict[
             DependantBase[Any],
-            List[DependencyParameter[DependantBase[Any]]],
+            List[DependencyParameter],
         ],
         topsorted: List[DependantBase[Any]],
-    ) -> Dict[DependantBase[Any], Union[AsyncTask[Any], SyncTask[Any]]]:
-        tasks: Dict[DependantBase[Any], Union[AsyncTask[Any], SyncTask[Any]]] = {}
+    ) -> Dict[DependantBase[Any], Union[AsyncTask, SyncTask]]:
+        tasks: Dict[DependantBase[Any], Union[AsyncTask, SyncTask]] = {}
         for dep in reversed(topsorted):
-            task_dependencies: List[DependencyParameter[Task[Any]]] = [
-                DependencyParameter(
-                    dependency=tasks[param.dependency], parameter=param.parameter
-                )
-                for param in dag[dep]
-            ]
+            positional: List[Task] = []
+            keyword: Dict[str, Task] = {}
+            for param in dag[dep]:
+                if param.parameter is not None:
+                    task = tasks[param.dependency]
+                    # prefer positional arguments since those can be unpacked from a generator
+                    # saving generation of an intermediate dict
+                    if param.parameter.kind is param.parameter.KEYWORD_ONLY:
+                        keyword[param.parameter.name] = task
+                    else:
+                        positional.append(task)
 
             if is_async_gen_callable(dep.call) or is_coroutine_callable(dep.call):
-                tasks[dep] = AsyncTask(dependant=dep, dependencies=task_dependencies)
+                tasks[dep] = AsyncTask(
+                    dependant=dep,
+                    positional_parameters=positional,
+                    keyword_parameters=keyword,
+                )
             else:
-                tasks[dep] = SyncTask(dependant=dep, dependencies=task_dependencies)
+                tasks[dep] = SyncTask(
+                    dependant=dep,
+                    positional_parameters=positional,
+                    keyword_parameters=keyword,
+                )
         return tasks
 
     def _update_cache(
         self,
         state: ContainerState,
-        results: Dict[DependantBase[Any], Any],
-        to_cache: Iterable[DependantBase[Any]],
+        results: Dict[Task, Any],
+        to_cache: Iterable[Task],
     ) -> None:
-        for dep in to_cache:
-            state.cached_values.set(  # type: ignore  # protected member of friend class
-                dep.call,  # type: ignore[arg-type]
-                results[dep],
-                scope=dep.scope,
+        cache = state.cached_values.set
+        for task in to_cache:
+            cache(
+                task.dependant,
+                results[task],
+                scope=task.dependant.scope,
             )
 
     def execute_sync(
@@ -247,10 +271,10 @@ class _ContainerCommon(metaclass=abc.ABCMeta):
             state = state.copy()
             cm = state.enter_scope(self._execution_scope)
         with cm:
-            results, leaf_tasks, to_cache = plan_execution(
-                state,
-                solved,
-                execution_scope=self._execution_scope,
+            results, leaf_tasks, to_cache, root_task = plan_execution(
+                stacks=state.stacks,
+                cached_values=state.cached_values.to_mapping(),
+                solved=solved,
                 values=values,
             )
             if leaf_tasks:
@@ -260,7 +284,7 @@ class _ContainerCommon(metaclass=abc.ABCMeta):
                     )
                 self._executor.execute_sync(leaf_tasks)  # type: ignore[union-attr]
             self._update_cache(state, results, to_cache)
-            return results[solved.dependency]  # type: ignore[no-any-return]
+            return results[root_task]  # type: ignore[no-any-return]
 
     async def execute_async(
         self,
@@ -277,10 +301,10 @@ class _ContainerCommon(metaclass=abc.ABCMeta):
             state = state.copy()
             cm = state.enter_scope(self._execution_scope)
         async with cm:
-            results, leaf_tasks, to_cache = plan_execution(
-                state,
-                solved,
-                execution_scope=self._execution_scope,
+            results, leaf_tasks, to_cache, root_task = plan_execution(
+                stacks=state.stacks,
+                cached_values=state.cached_values.to_mapping(),
+                solved=solved,
                 values=values,
             )
             if leaf_tasks:
@@ -290,13 +314,13 @@ class _ContainerCommon(metaclass=abc.ABCMeta):
                     )
                 await self._executor.execute_async(leaf_tasks)  # type: ignore[union-attr]
             self._update_cache(state, results, to_cache)
-            return results[solved.dependency]  # type: ignore[no-any-return]
+            return results[root_task]  # type: ignore[no-any-return]
 
 
 class BaseContainer(_ContainerCommon):
     """Basic container that lets you manage it's state yourself"""
 
-    __slots__ = ("__state",)
+    __slots__ = ("__state", "_tp")
     __state: ContainerState
 
     def __init__(
@@ -325,7 +349,7 @@ class BaseContainer(_ContainerCommon):
         return self.__state
 
     def copy(self: _BaseContainerType) -> _BaseContainerType:
-        new = type(self)(
+        new = self.__class__(
             execution_scope=self._execution_scope,
             executor=self._executor,
             _state=self.__state.copy(),  # cached values and scopes are not shared

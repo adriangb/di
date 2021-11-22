@@ -15,7 +15,7 @@ class SolvedDependant(Generic[DependencyType]):
     """Representation of a fully solved dependency as DAG"""
 
     dependency: DependantBase[DependencyType]
-    dag: Mapping[DependantBase[Any], List[DependencyParameter[DependantBase[Any]]]]
+    dag: Mapping[DependantBase[Any], List[DependencyParameter]]
     # container_cache can be used by the creating container to store data that is tied
     # to the SolvedDependant
     container_cache: typing.Any = None

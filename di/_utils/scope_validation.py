@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-from functools import lru_cache
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Iterable, Mapping, Tuple
 
-from di.api.dependencies import DependantBase
+from di.api.dependencies import DependantBase, DependencyParameter
 from di.api.scopes import Scope
-from di.api.solved import SolvedDependant
 from di.exceptions import ScopeViolationError, UnknownScopeError
 
 
@@ -29,20 +27,17 @@ def check_scope(dep: DependantBase[Any], scope_idxs: Dict[Scope, int]) -> None:
         )
 
 
-# Validating scopes is relatively expensive since we need to iterate over the DAG
-# But it is easily cacheable:
-# For a given sequence of scopes and solved dependant the result is always the same
-# So we trade off memory for performance
-@lru_cache(maxsize=2 ** 8)
-def validate_scopes(scopes: Tuple[Scope, ...], solved: SolvedDependant[Any]) -> None:
+def validate_scopes(
+    scopes: Tuple[Scope, ...],
+    dag: Mapping[DependantBase[Any], Iterable[DependencyParameter]],
+) -> None:
     """Validate that dependencies all have a valid scope and
     that dependencies only depend on outer scopes or their own scope.
     """
     scope_idxs = {scope: idx for idx, scope in enumerate(reversed([*scopes, None]))}
 
-    for dep, params in solved.dag.items():
+    for dep, predecessors in dag.items():
         check_scope(dep, scope_idxs)
-        for param in params:
-            subdep = param.dependency
-            check_scope(subdep, scope_idxs)
-            check_is_inner(dep, subdep, scope_idxs)
+        for predecessor in predecessors:
+            check_scope(predecessor.dependency, scope_idxs)
+            check_is_inner(dep, predecessor.dependency, scope_idxs)

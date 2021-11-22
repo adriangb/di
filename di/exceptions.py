@@ -17,7 +17,7 @@ class UnknownScopeError(DependencyInjectionException):
 
 
 class DuplicateScopeError(DependencyInjectionException):
-    """Raised when enter_local_scope() or enter_global_scope() is called with an existing scope"""
+    """Raised when enter_scope() is called with an existing scope"""
 
     pass
 
