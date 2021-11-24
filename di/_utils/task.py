@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import functools
-import typing
 from collections import deque
 from contextlib import AsyncExitStack, ExitStack, asynccontextmanager, contextmanager
 from typing import (
@@ -26,11 +25,21 @@ from di.api.scopes import Scope
 from di.exceptions import IncompatibleDependencyError
 
 
-class ExecutionState(typing.NamedTuple):
-    stacks: Mapping[Scope, Union[AsyncExitStack, ExitStack]]
-    results: Dict[Task, Any]
-    dependency_counts: MutableMapping[Task, int]
-    dependants: Mapping[Task, Iterable[Task]]
+class ExecutionState:
+    __slots__ = ("stacks", "results", "dependency_counts", "dependants", "remaining")
+
+    def __init__(
+        self,
+        stacks: Mapping[Scope, Union[AsyncExitStack, ExitStack]],
+        results: Dict[Task, Any],
+        dependency_counts: MutableMapping[Task, int],
+        dependants: Mapping[Task, Iterable[Task]],
+    ):
+        self.stacks = stacks
+        self.results = results
+        self.dependency_counts = dependency_counts
+        self.dependants = dependants
+        self.remaining = len(self.dependency_counts)
 
 
 DependencyType = TypeVar("DependencyType")
@@ -85,17 +94,14 @@ class Task:
     def gather_new_tasks(self, state: ExecutionState) -> Iterable[Optional[TaskInfo]]:
         """Look amongst our dependants to see if any of them are now dependency free"""
         new_tasks: TaskQueue = deque()
+        state.remaining -= 1
         for dependant in state.dependants[self]:
             state.dependency_counts[dependant] -= 1
             if state.dependency_counts[dependant] == 0:
                 # this dependant has no further dependencies, so we can compute it now
                 new_tasks.append(dependant.as_executor_task(state))
-        # remove ourselves if we have no deps
-        if state.dependency_counts[self] == 0:
-            del state.dependency_counts[self]
-            if not state.dependency_counts:
-                # all dependencies are taken care of, insert sentinel None value
-                new_tasks.append(None)
+        if state.remaining == 0:
+            new_tasks.append(None)
         return new_tasks
 
     def __repr__(self) -> str:
