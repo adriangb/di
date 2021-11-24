@@ -1,20 +1,14 @@
-.PHONY: install-poetry .clear test test-mutation docs-build docs-serve
+.PHONY: .clean test test-mutation docs-build docs-serve
 
 GIT_SHA = $(shell git rev-parse --short HEAD)
 PACKAGE_VERSION = $(shell poetry version -s | cut -d+ -f1)
 
-.install-poetry:
-	@echo "---- 👷 Installing build dependencies ----"
-	deactivate > /dev/null 2>&1 || true
-	pip install -U wheel
-	poetry -V || pip install -U --pre poetry
-	touch .install-poetry
-
-install-poetry: .install-poetry
-
-.init: .install-poetry
+.init:
 	@echo "---- 📦 Building package ----"
+	deactivate > /dev/null 2>&1 || true
+	poetry -V || pip install -U --pre poetry
 	rm -rf .venv
+	deactivate || true
 	poetry install --default --with lint
 	touch .init
 
@@ -37,7 +31,6 @@ install-poetry: .install-poetry
 
 .clean:
 	rm -rf .init .docs .test .lint .mypy_cache .pytest_cache
-	poetry -V || rm -rf .install-poetry
 
 init: .clean .init .lint
 	@echo ---- 🔧 Re-initialized project ----
