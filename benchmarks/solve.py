@@ -29,7 +29,7 @@ async def async_concurrent():
     stats.dump_stats(filename=filename)
     print(f"Dumped cProfile stats to {filename}")
     start = timeit.default_timer()
-    iters = 25
+    iters = 200
     for _ in range(iters):
         await container.execute_async(solved)
     elapsed = timeit.default_timer() - start
@@ -50,7 +50,7 @@ def sync_sequential_large():
     stats.dump_stats(filename=filename)
     print(f"Dumped cProfile stats to {filename}")
     start = timeit.default_timer()
-    iters = 100
+    iters = 200
     for _ in range(iters):
         container.execute_sync(solved)
     elapsed = timeit.default_timer() - start
@@ -71,7 +71,7 @@ def sync_sequential_small():
     stats.dump_stats(filename=filename)
     print(f"Dumped cProfile stats to {filename}")
     start = timeit.default_timer()
-    iters = 100
+    iters = 200
     for _ in range(iters):
         container.execute_sync(solved)
     elapsed = timeit.default_timer() - start
