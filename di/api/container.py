@@ -2,9 +2,9 @@ import sys
 from typing import Any, Collection, ContextManager, Mapping, Optional, TypeVar
 
 if sys.version_info < (3, 8):
-    from typing_extensions import Protocol, runtime_checkable
+    from typing_extensions import Protocol
 else:
-    from typing import Protocol, runtime_checkable
+    from typing import Protocol
 
 from di._utils.types import FusedContextManager
 from di.api.dependencies import DependantBase, DependencyType
@@ -15,7 +15,6 @@ from di.api.solved import SolvedDependant
 ContainerType = TypeVar("ContainerType")
 
 
-@runtime_checkable  # for use in tests
 class ContainerProtocol(Protocol):
     @property
     def scopes(self) -> Collection[Scope]:
