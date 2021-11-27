@@ -94,12 +94,15 @@ class Task:
     def gather_new_tasks(self, state: ExecutionState) -> Iterable[Optional[TaskInfo]]:
         """Look amongst our dependants to see if any of them are now dependency free"""
         new_tasks: TaskQueue = deque()
-        state.remaining -= 1
         for dependant in state.dependants[self]:
-            state.dependency_counts[dependant] -= 1
-            if state.dependency_counts[dependant] == 0:
+            v = state.dependency_counts[dependant]
+            if v == 1:
                 # this dependant has no further dependencies, so we can compute it now
                 new_tasks.append(dependant.as_executor_task(state))
+                state.dependency_counts[dependant] = 0
+            else:
+                state.dependency_counts[dependant] = v - 1
+        state.remaining -= 1
         if state.remaining == 0:
             new_tasks.append(None)
         return new_tasks
