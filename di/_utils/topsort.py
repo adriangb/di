@@ -1,7 +1,7 @@
 """Vendored copy of CPython's graphlib with the ability to clone an instance"""
 from __future__ import annotations
 
-from typing import Callable, Dict, Generator, Generic, Iterable, List, Mapping, Optional, Set, Tuple, TypeVar, Union
+from typing import Callable, Dict, Generator, Generic, Iterable, List, Mapping, Optional, Set, Tuple, TypeVar, Union, cast
 
 
 _NODE_OUT = -1
@@ -77,7 +77,7 @@ class UnpreparedState(Generic[T]):
 
 class TopologicalSorter(Generic[T]):
     """Provides functionality to topologically sort a graph of hashable nodes"""
-    __slots__ = ("_state")
+    __slots__ = ("_state", "_prepared")
     _state: Union[PreparedState[T], UnpreparedState[T]]
 
     def __init__(
@@ -87,6 +87,7 @@ class TopologicalSorter(Generic[T]):
         state: Optional[Union[PreparedState[T], UnpreparedState[T]]] = None
     ) -> None:
         self._state = state or UnpreparedState()
+        self._prepared = isinstance(self._state, PreparedState)
         if graph:
             for node, predecessors in graph.items():
                 self.add(node, *predecessors)
@@ -121,6 +122,7 @@ class TopologicalSorter(Generic[T]):
             successors=tuple((tuple(suc) for suc in self._state.successors)),
             ready_nodes=ready_nodes,
         )
+        self._prepared = True
 
         # self._state is set before we look for cycles on purpose:
         # if the user wants to catch the CycleError, that's fine,
@@ -131,19 +133,21 @@ class TopologicalSorter(Generic[T]):
             raise CycleError(f"nodes are in a cycle", cycle)
 
     def get_ready(self) -> Tuple[T, ...]:
-        if isinstance(self._state, UnpreparedState):
+        if not self._prepared:
             raise ValueError("prepare() must be called first")
+        
+        state = cast(PreparedState[T], self._state)
 
         # Get the nodes that are ready and mark them
-        pc = self._state.predecessor_counts
-        for nodeid, _ in self._state.ready_nodes:
+        pc = state.predecessor_counts
+        for nodeid, _ in state.ready_nodes:
             pc[nodeid] = _NODE_OUT
 
         # Clean the list of nodes that are ready and update
         # the counter of nodes that we have returned.
-        self._state.npassedout += len(self._state.ready_nodes)
-        res = tuple((node for _, node in self._state.ready_nodes))
-        self._state.ready_nodes.clear()
+        state.npassedout += len(state.ready_nodes)
+        res = tuple((node for _, node in state.ready_nodes))
+        state.ready_nodes.clear()
 
         return res
 
@@ -156,11 +160,16 @@ class TopologicalSorter(Generic[T]):
         return self.is_active()
 
     def done(self, *nodes: T) -> None:
-        if isinstance(self._state, UnpreparedState):
+        if not self._prepared:
             raise ValueError("prepare() must be called first")
+        
+        state = cast(PreparedState[T], self._state)
 
-        state = self._state
-        n2i = self._state.node2id
+        n2i = state.node2id
+        i2n = state.id2node
+        predecessor_counts = state.predecessor_counts
+        successors = state.successors
+        ready_nodes = state.ready_nodes
 
         for node in nodes:
             # Check if we know about this node (it was added previously using add()
@@ -169,7 +178,7 @@ class TopologicalSorter(Generic[T]):
                 raise ValueError(f"node {node!r} was not added using add()")
 
             # If the node has not being returned (marked as ready) previously, inform the user.
-            stat = state.predecessor_counts[nid]
+            stat = predecessor_counts[nid]
             if stat != _NODE_OUT:
                 if stat >= 0:
                     raise ValueError(
@@ -181,16 +190,15 @@ class TopologicalSorter(Generic[T]):
                     assert False, f"node {node!r}: unknown status {stat}"
 
             # Mark the node as processed
-            state.predecessor_counts[nid] = _NODE_DONE
+            predecessor_counts[nid] = _NODE_DONE
 
             # Go to all the successors and reduce the number of predecessors, collecting all the ones
             # that are ready to be returned in the next get_ready() call.
-            pc = state.predecessor_counts
-            for successorid in state.successors[nid]:
-                npredecessors = pc[successorid]
-                pc[successorid] = npredecessors - 1
+            for successorid in successors[nid]:
+                npredecessors = predecessor_counts[successorid]
+                predecessor_counts[successorid] = npredecessors - 1
                 if npredecessors == 1:
-                    state.ready_nodes.append((successorid, state.id2node[successorid]))
+                    ready_nodes.append((successorid, i2n[successorid]))
             state.nfinished += 1
 
     def _find_cycle(self) -> Optional[List[T]]:
@@ -245,7 +253,7 @@ class TopologicalSorter(Generic[T]):
             node_group = self.get_ready()
             yield from node_group
             self.done(*node_group)
-    
+
     def copy(self) -> TopologicalSorter[T]:
         if isinstance(self._state, UnpreparedState):
             raise ValueError("prepare() must be called first")
