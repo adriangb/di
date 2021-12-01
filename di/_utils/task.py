@@ -16,9 +16,8 @@ from typing import (
     cast,
 )
 
-from graphlib import TopologicalSorter
-
 from di._utils.inspect import is_async_gen_callable, is_gen_callable
+from di._utils.topsort import TopologicalSorter
 from di.api.dependencies import DependantBase
 from di.api.executor import AsyncTask as ExecutorAsyncTask
 from di.api.executor import State

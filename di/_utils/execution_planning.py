@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from copy import deepcopy
 from collections import deque
 from contextlib import AsyncExitStack, ExitStack
 from typing import (
@@ -17,10 +16,9 @@ from typing import (
     Union,
 )
 
-from graphlib import TopologicalSorter, _NodeInfo
-
 from di._utils.scope_validation import validate_scopes
 from di._utils.task import AsyncTask, ExecutionState, SyncTask, gather_new_tasks
+from di._utils.topsort import TopologicalSorter
 from di.api.executor import State as ExecutorState
 from di.api.executor import Task as ExecutorTask
 from di.api.providers import DependencyProvider
@@ -95,19 +93,7 @@ def plan_execution(
         elif task in cacheable_tasks:
             add_to_cache((task, scope))
     
-    def copy_node(n):
-        new = _NodeInfo.__new__(_NodeInfo)
-        new.node = n.node
-        new.successors = n.successors
-        new.npredecessors = n.npredecessors
-        return new
-
-    ts: TopologicalSorter[Task] = TopologicalSorter.__new__(TopologicalSorter)
-    ts._npassedout = solved_dependency_cache.topological_sorter._npassedout
-    ts._nfinished = solved_dependency_cache.topological_sorter._nfinished
-    ts._node2info = {k: copy_node(v) for k, v in solved_dependency_cache.topological_sorter._node2info.items()}
-    ts._ready_nodes = solved_dependency_cache.topological_sorter._ready_nodes.copy()
-
+    ts = solved_dependency_cache.topological_sorter.copy()
 
     execution_state = ExecutionState(
         stacks=stacks,
