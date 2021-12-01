@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import contextvars
-from collections import defaultdict, deque
+from collections import deque
 from contextlib import contextmanager
 from types import TracebackType
 from typing import (
     Any,
     Collection,
     ContextManager,
-    DefaultDict,
     Deque,
     Dict,
     Generator,
@@ -17,17 +16,19 @@ from typing import (
     Mapping,
     Optional,
     Set,
+    Tuple,
     Type,
     TypeVar,
     Union,
 )
 
-from di._utils.dag import topsort
+from graphlib2 import TopologicalSorter
+
 from di._utils.execution_planning import SolvedDependantCache, plan_execution
 from di._utils.inspect import is_async_gen_callable, is_coroutine_callable
 from di._utils.nullcontext import nullcontext
 from di._utils.state import ContainerState
-from di._utils.task import AsyncTask, SyncTask, Task
+from di._utils.task import AsyncTask, SyncTask
 from di._utils.types import FusedContextManager
 from di.api.dependencies import DependantBase, DependencyParameter
 from di.api.executor import AsyncExecutor, SyncExecutor
@@ -39,9 +40,9 @@ from di.executors import DefaultExecutor
 
 Dependency = Any
 
-_DependantDag = Dict[DependantBase[Any], Set[DependantBase[Any]]]
-_DependantTaskDag = Dict[Task, Set[Task]]
-_CallMap = DefaultDict[DependencyProvider, Set[Task]]
+_Task = Union[AsyncTask, SyncTask]
+
+_DependantTaskDag = Dict[_Task, Set[_Task]]
 _DependantQueue = Deque[DependantBase[Any]]
 _ExecutionCM = FusedContextManager[None]
 _nullcontext = nullcontext(None)
@@ -51,11 +52,23 @@ __all__ = ("BaseContainer", "Container", "ContainerState")
 
 
 class _ContainerCommon:
-    __slots__ = ("_executor", "_execution_scope", "_binds")
+    __slots__ = ("_executor", "_execution_scope", "_binds", "_dep_registry")
 
     _executor: Union[SyncExecutor, AsyncExecutor]
     _execution_scope: Scope
     _binds: Dict[DependencyProvider, DependantBase[Any]]
+    _dep_registry: Dict[DependantBase[Any], int]
+
+    def __init__(self) -> None:
+        self._dep_registry = {}
+
+    def _register_new_dep(self, task: _Task) -> int:
+        dep_id = self._dep_registry.get(task.dependant, None)
+        if dep_id is not None:
+            return dep_id
+        res = len(self._dep_registry)
+        self._dep_registry[task.dependant] = res
+        return res
 
     @property
     def binds(self) -> Mapping[DependencyProvider, DependantBase[Any]]:
@@ -111,7 +124,6 @@ class _ContainerCommon:
 
         # Mapping of already seen dependants to itself for hash based lookups
         dep_registry: Dict[DependantBase[Any], DependantBase[Any]] = {}
-
         # DAG mapping dependants to their dependendencies
         dep_dag: Dict[DependantBase[Any], List[DependantBase[Any]]] = {}
 
@@ -166,34 +178,39 @@ class _ContainerCommon:
                     if predecessor_dep not in dep_registry:
                         q.append(predecessor_dep)
 
-        # Build tasks and SolvedDependency
-        tasks = self._build_tasks(param_graph, topsort(dep_dag))
-        dependency_dag: _DependantDag = {
-            dep: set(predecessor_deps) for dep, predecessor_deps in dep_dag.items()
-        }
+        # Order the Dependant's topologically so that we can create Tasks
+        # with references to all of their children
+        dep_topsort = TopologicalSorter(dep_dag).static_order()
+        # Create a seperate TopologicalSorter to hold the Tasks
+        ts: TopologicalSorter[_Task] = TopologicalSorter(
+            node_id_factory=self._register_new_dep
+        )
+        tasks = self._build_tasks(param_graph, dep_topsort, ts)
+        for dep, predecessors in dep_dag.items():
+            ts.add(tasks[dep], *(tasks[p] for p in predecessors))
+        ts.prepare()
         task_dependency_dag: _DependantTaskDag = {
             tasks[dep]: {tasks[predecessor_dep] for predecessor_dep in predecessor_deps}
-            for dep, predecessor_deps in dependency_dag.items()
+            for dep, predecessor_deps in dep_dag.items()
         }
-        task_dependant_dag: _DependantTaskDag = {tasks[dep]: set() for dep in dep_dag}
-        call_map: _CallMap = defaultdict(set)
-        for task, predecessor_tasks in task_dependency_dag.items():
-            call_map[task.call].add(task)
-            for predecessor_task in predecessor_tasks:
-                task_dependant_dag[predecessor_task].add(task)
+        call_map: Dict[DependencyProvider, Set[int]] = {}
+        for t in task_dependency_dag:
+            if t.call not in call_map:
+                call_map[t.call] = set()
+            call_map[t.call].add(t.dependant_id)
         container_cache = SolvedDependantCache(
-            root_task=tasks[dependency],
-            task_dependency_dag=task_dependency_dag,
-            task_dependant_dag=task_dependant_dag,
+            root_task=tasks[dependency].dependant_id,
+            topological_sorter=ts,
             cacheable_tasks={
-                tasks[d]
-                for d in dependency_dag
+                tasks[d].dependant_id
+                for d in dep_dag
                 if d.scope != self._execution_scope and d.share
             },
-            cached_tasks={tasks[d] for d in dependency_dag if d.share},
-            execution_plan=None,
+            cached_tasks=tuple(
+                {(tasks[d].dependant_id, d.scope) for d in dep_dag if d.share}
+            ),
             validated_scopes=set(),
-            call_map=call_map,
+            call_map={k: tuple(v) for k, v in call_map.items()},
         )
         solved = SolvedDependant(
             dependency=dependency,
@@ -208,48 +225,54 @@ class _ContainerCommon:
             DependantBase[Any],
             List[DependencyParameter],
         ],
-        topsorted: List[DependantBase[Any]],
-    ) -> Dict[DependantBase[Any], Union[AsyncTask, SyncTask]]:
-        tasks: Dict[DependantBase[Any], Union[AsyncTask, SyncTask]] = {}
-        for dep in reversed(topsorted):
-            positional: List[Task] = []
-            keyword: Dict[str, Task] = {}
+        topsorted: Iterable[DependantBase[Any]],
+        ts: TopologicalSorter[_Task],
+    ) -> Dict[DependantBase[Any], _Task]:
+        tasks: Dict[DependantBase[Any], _Task] = {}
+        for dep in topsorted:
+            positional: List[int] = []
+            keyword: Dict[str, int] = {}
             for param in dag[dep]:
                 if param.parameter is not None:
                     task = tasks[param.dependency]
                     # prefer positional arguments since those can be unpacked from a generator
                     # saving generation of an intermediate dict
                     if param.parameter.kind is param.parameter.KEYWORD_ONLY:
-                        keyword[param.parameter.name] = task
+                        keyword[param.parameter.name] = task.dependant_id
                     else:
-                        positional.append(task)
+                        positional.append(task.dependant_id)
+
+            positional_parameters = tuple(positional)
+            keyword_parameters = tuple((k, v) for k, v in keyword.items())
 
             if is_async_gen_callable(dep.call) or is_coroutine_callable(dep.call):
-                tasks[dep] = AsyncTask(
+                tasks[dep] = task = AsyncTask(
                     dependant=dep,
-                    positional_parameters=positional,
-                    keyword_parameters=keyword,
+                    positional_parameters=positional_parameters,
+                    keyword_parameters=keyword_parameters,
                 )
             else:
-                tasks[dep] = SyncTask(
+                tasks[dep] = task = SyncTask(
                     dependant=dep,
-                    positional_parameters=positional,
-                    keyword_parameters=keyword,
+                    positional_parameters=positional_parameters,
+                    keyword_parameters=keyword_parameters,
                 )
+            ts.add(task, *(tasks[p.dependency] for p in dag[dep]))
+            task.dependant_id = next(iter(ts.get_ids(task)))
         return tasks
 
     def _update_cache(
         self,
         state: ContainerState,
-        results: Dict[Task, Any],
-        to_cache: Iterable[Task],
+        results: Dict[int, Any],
+        to_cache: Iterable[Tuple[int, Scope]],
     ) -> None:
         cache = state.cached_values.set
         for task in to_cache:
             cache(
-                task.dependant,
-                results[task],
-                scope=task.dependant.scope,
+                task[0],
+                results[task[0]],
+                scope=task[1],
             )
 
     def execute_sync(
@@ -271,7 +294,7 @@ class _ContainerCommon:
             state = state.copy()
             cm = state.enter_scope(self._execution_scope)
         with cm:
-            results, leaf_tasks, to_cache, root_task = plan_execution(
+            results, leaf_tasks, execution_state, to_cache, root_task = plan_execution(
                 stacks=state.stacks,
                 cached_values=state.cached_values.to_mapping(),
                 solved=solved,
@@ -282,7 +305,7 @@ class _ContainerCommon:
                     raise TypeError(
                         "execute_sync requires an executor implementing the SyncExecutor protocol"
                     )
-                self._executor.execute_sync(leaf_tasks)  # type: ignore[union-attr]
+                self._executor.execute_sync(leaf_tasks, execution_state)  # type: ignore[union-attr]
             self._update_cache(state, results, to_cache)
             return results[root_task]  # type: ignore[no-any-return]
 
@@ -301,7 +324,7 @@ class _ContainerCommon:
             state = state.copy()
             cm = state.enter_scope(self._execution_scope)
         async with cm:
-            results, leaf_tasks, to_cache, root_task = plan_execution(
+            results, leaf_tasks, execution_state, to_cache, root_task = plan_execution(
                 stacks=state.stacks,
                 cached_values=state.cached_values.to_mapping(),
                 solved=solved,
@@ -312,7 +335,7 @@ class _ContainerCommon:
                     raise TypeError(
                         "execute_async requires an executor implementing the AsyncExecutor protocol"
                     )
-                await self._executor.execute_async(leaf_tasks)  # type: ignore[union-attr]
+                await self._executor.execute_async(leaf_tasks, execution_state)  # type: ignore[union-attr]
             self._update_cache(state, results, to_cache)
             return results[root_task]  # type: ignore[no-any-return]
 
@@ -331,6 +354,7 @@ class BaseContainer(_ContainerCommon):
         _state: Optional[ContainerState] = None,
         _binds: Optional[Dict[DependencyProvider, DependantBase[Any]]] = None,
     ) -> None:
+        super().__init__()
         self._executor = executor or DefaultExecutor()
         self._execution_scope = execution_scope
         self.__state = _state or ContainerState.initialize()
@@ -424,6 +448,7 @@ class Container(_ContainerCommon):
         _context: Optional[contextvars.ContextVar[ContainerState]] = None,
         _binds: Optional[Dict[DependencyProvider, DependantBase[Any]]] = None,
     ) -> None:
+        super().__init__()
         if _context is None:
             self._context = contextvars.ContextVar(f"{self}._context")
             self._context.set(ContainerState.initialize())

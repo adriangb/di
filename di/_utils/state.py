@@ -6,7 +6,6 @@ from typing import Any, Dict, Optional, Type, Union, cast
 
 from di._utils.scope_map import ScopeMap
 from di._utils.types import FusedContextManager
-from di.api.dependencies import DependantBase
 from di.api.scopes import Scope
 
 
@@ -15,7 +14,7 @@ class ContainerState:
 
     def __init__(
         self,
-        cached_values: ScopeMap[DependantBase[Any], Any],
+        cached_values: ScopeMap[int, Any],
         stacks: Dict[Scope, Union[AsyncExitStack, ExitStack]],
     ) -> None:
         self.cached_values = cached_values
