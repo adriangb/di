@@ -22,7 +22,7 @@ from typing import (
     Union,
 )
 
-from graphlib2 import TopologicalSorter
+from graphlib import TopologicalSorter
 
 from di._utils.execution_planning import SolvedDependantCache, plan_execution
 from di._utils.inspect import is_async_gen_callable, is_coroutine_callable
@@ -61,14 +61,6 @@ class _ContainerCommon:
 
     def __init__(self) -> None:
         self._dep_registry = {}
-
-    def _register_new_dep(self, task: _Task) -> int:
-        dep_id = self._dep_registry.get(task.dependant, None)
-        if dep_id is not None:
-            return dep_id
-        res = len(self._dep_registry)
-        self._dep_registry[task.dependant] = res
-        return res
 
     @property
     def binds(self) -> Mapping[DependencyProvider, DependantBase[Any]]:
@@ -182,9 +174,7 @@ class _ContainerCommon:
         # with references to all of their children
         dep_topsort = TopologicalSorter(dep_dag).static_order()
         # Create a seperate TopologicalSorter to hold the Tasks
-        ts: TopologicalSorter[_Task] = TopologicalSorter(
-            node_id_factory=self._register_new_dep
-        )
+        ts: TopologicalSorter[_Task] = TopologicalSorter()
         tasks = self._build_tasks(param_graph, dep_topsort, ts)
         for dep, predecessors in dep_dag.items():
             ts.add(tasks[dep], *(tasks[p] for p in predecessors))
@@ -193,21 +183,21 @@ class _ContainerCommon:
             tasks[dep]: {tasks[predecessor_dep] for predecessor_dep in predecessor_deps}
             for dep, predecessor_deps in dep_dag.items()
         }
-        call_map: Dict[DependencyProvider, Set[int]] = {}
+        call_map: Dict[DependencyProvider, Set[_Task]] = {}
         for t in task_dependency_dag:
             if t.call not in call_map:
                 call_map[t.call] = set()
-            call_map[t.call].add(t.dependant_id)
+            call_map[t.call].add(t)
         container_cache = SolvedDependantCache(
-            root_task=tasks[dependency].dependant_id,
+            root_task=tasks[dependency],
             topological_sorter=ts,
             cacheable_tasks={
-                tasks[d].dependant_id
+                tasks[d]
                 for d in dep_dag
                 if d.scope != self._execution_scope and d.share
             },
             cached_tasks=tuple(
-                {(tasks[d].dependant_id, d.scope) for d in dep_dag if d.share}
+                {(tasks[d], d.scope) for d in dep_dag if d.share}
             ),
             validated_scopes=set(),
             call_map={k: tuple(v) for k, v in call_map.items()},
@@ -230,17 +220,17 @@ class _ContainerCommon:
     ) -> Dict[DependantBase[Any], _Task]:
         tasks: Dict[DependantBase[Any], _Task] = {}
         for dep in topsorted:
-            positional: List[int] = []
-            keyword: Dict[str, int] = {}
+            positional: List[_Task] = []
+            keyword: Dict[str, _Task] = {}
             for param in dag[dep]:
                 if param.parameter is not None:
                     task = tasks[param.dependency]
                     # prefer positional arguments since those can be unpacked from a generator
                     # saving generation of an intermediate dict
                     if param.parameter.kind is param.parameter.KEYWORD_ONLY:
-                        keyword[param.parameter.name] = task.dependant_id
+                        keyword[param.parameter.name] = task
                     else:
-                        positional.append(task.dependant_id)
+                        positional.append(task)
 
             positional_parameters = tuple(positional)
             keyword_parameters = tuple((k, v) for k, v in keyword.items())
@@ -258,19 +248,18 @@ class _ContainerCommon:
                     keyword_parameters=keyword_parameters,
                 )
             ts.add(task, *(tasks[p.dependency] for p in dag[dep]))
-            task.dependant_id = next(iter(ts.get_ids(task)))
         return tasks
 
     def _update_cache(
         self,
         state: ContainerState,
-        results: Dict[int, Any],
-        to_cache: Iterable[Tuple[int, Scope]],
+        results: Dict[_Task, Any],
+        to_cache: Iterable[Tuple[_Task, Scope]],
     ) -> None:
         cache = state.cached_values.set
         for task in to_cache:
             cache(
-                task[0],
+                task[0].dependant,
                 results[task[0]],
                 scope=task[1],
             )

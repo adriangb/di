@@ -16,7 +16,7 @@ from typing import (
     cast,
 )
 
-from graphlib2 import TopologicalSorter
+from graphlib import TopologicalSorter
 
 from di._utils.inspect import is_async_gen_callable, is_gen_callable
 from di.api.dependencies import DependantBase
@@ -40,7 +40,7 @@ class ExecutionState(State):
     def __init__(
         self,
         stacks: Mapping[Scope, Union[AsyncExitStack, ExitStack]],
-        results: Dict[int, Any],
+        results: Dict[Union[AsyncTask, SyncTask], Any],
         toplogical_sorter: TopologicalSorter[Union[AsyncTask, SyncTask]],
     ):
         self.stacks = stacks
@@ -60,15 +60,15 @@ def gather_new_tasks(
     """Look amongst our dependants to see if any of them are now dependency free"""
     ts = state.toplogical_sorter
     res = state.results
-    done = ts.done_by_id
+    done = ts.done
     get_ready = ts.get_ready
     while ts.is_active():
         ready = get_ready()
         if not ready:
             break
         for t in ready:
-            if t.dependant_id in res:
-                done(t.dependant_id)
+            if t in res:
+                done(t)
             else:
                 yield t
     if not ts.is_active():
@@ -82,17 +82,15 @@ class Task:
         "positional_parameters",
         "keyword_parameters",
         "scope",
-        "dependant_id",
     )
     call: DependencyProvider
     scope: Scope
-    dependant_id: int
 
     def __init__(
         self,
         dependant: DependantBase[Any],
-        positional_parameters: Iterable[int],
-        keyword_parameters: Iterable[Tuple[str, int]],
+        positional_parameters: Iterable[Union[AsyncTask, SyncTask]],
+        keyword_parameters: Iterable[Tuple[str, Union[AsyncTask, SyncTask]]],
     ) -> None:
         self.dependant = dependant
         self.scope = self.dependant.scope
@@ -100,15 +98,14 @@ class Task:
         self.call = dependant.call
         self.positional_parameters = positional_parameters
         self.keyword_parameters = keyword_parameters
-        self.dependant_id = None  # type: ignore  # gets set after construction by the Container
 
     def gather_params(
-        self, results: Dict[int, Any]
+        self, results: Dict[Union[AsyncTask, SyncTask], Any]
     ) -> Tuple[Iterable[Any], Mapping[str, Any]]:
         """Gather all parameters (aka *args and **kwargs) needed for computation"""
         return (
-            (results[t_id] for t_id in self.positional_parameters),
-            {k: results[t_id] for k, t_id in self.keyword_parameters},
+            (results[t] for t in self.positional_parameters),
+            {k: results[t] for k, t in self.keyword_parameters},
         )
 
     def __repr__(self) -> str:
@@ -121,8 +118,8 @@ class AsyncTask(Task, ExecutorAsyncTask):
     def __init__(
         self,
         dependant: DependantBase[Any],
-        positional_parameters: Iterable[int],
-        keyword_parameters: Iterable[Tuple[str, int]],
+        positional_parameters: Iterable[Union[AsyncTask, SyncTask]],
+        keyword_parameters: Iterable[Tuple[str, Union[AsyncTask, SyncTask]]],
     ) -> None:
         super().__init__(dependant, positional_parameters, keyword_parameters)
         self.is_generator = is_async_gen_callable(self.call)
@@ -144,12 +141,12 @@ class AsyncTask(Task, ExecutorAsyncTask):
                     f"The dependency {self.dependant} is an awaitable dependency"
                     f" and canot be used in the sync scope {self.dependant.scope}"
                 )
-            state.results[self.dependant_id] = await enter(
+            state.results[self] = await enter(
                 self.call(*args, **kwargs)  # type: ignore[arg-type]
             )
         else:
-            state.results[self.dependant_id] = await self.call(*args, **kwargs)  # type: ignore[misc]
-        state.toplogical_sorter.done_by_id(self.dependant_id)
+            state.results[self] = await self.call(*args, **kwargs)  # type: ignore[misc]
+        state.toplogical_sorter.done(self)
         return gather_new_tasks(state)
 
 
@@ -159,8 +156,8 @@ class SyncTask(Task, ExecutorSyncTask):
     def __init__(
         self,
         dependant: DependantBase[Any],
-        positional_parameters: Iterable[int],
-        keyword_parameters: Iterable[Tuple[str, int]],
+        positional_parameters: Iterable[Union[AsyncTask, SyncTask]],
+        keyword_parameters: Iterable[Tuple[str, Union[AsyncTask, SyncTask]]],
     ) -> None:
         super().__init__(dependant, positional_parameters, keyword_parameters)
         self.is_generator = is_gen_callable(self.call)
@@ -175,10 +172,10 @@ class SyncTask(Task, ExecutorSyncTask):
         args, kwargs = self.gather_params(state.results)
 
         if self.is_generator:
-            state.results[self.dependant_id] = state.stacks[self.scope].enter_context(
+            state.results[self] = state.stacks[self.scope].enter_context(
                 self.call(*args, **kwargs)  # type: ignore[arg-type]
             )
         else:
-            state.results[self.dependant_id] = self.call(*args, **kwargs)
-        state.toplogical_sorter.done_by_id(self.dependant_id)
+            state.results[self] = self.call(*args, **kwargs)
+        state.toplogical_sorter.done(self)
         return gather_new_tasks(state)

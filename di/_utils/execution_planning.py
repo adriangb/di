@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from collections import deque
 from contextlib import AsyncExitStack, ExitStack
 from typing import (
@@ -16,7 +17,7 @@ from typing import (
     Union,
 )
 
-from graphlib2 import TopologicalSorter
+from graphlib import TopologicalSorter, _NodeInfo
 
 from di._utils.scope_validation import validate_scopes
 from di._utils.task import AsyncTask, ExecutionState, SyncTask, gather_new_tasks
@@ -26,13 +27,15 @@ from di.api.providers import DependencyProvider
 from di.api.scopes import Scope
 from di.api.solved import SolvedDependant
 
+from di.api.dependencies import DependantBase
+
 Dependency = Any
 
-TaskCacheDeque = Deque[Tuple[int, Scope]]
-
-Results = Dict[int, Any]
-
 Task = Union[AsyncTask, SyncTask]
+
+TaskCacheDeque = Deque[Tuple[Task, Scope]]
+
+Results = Dict[Task, Any]
 
 TaskDependencyCounts = Dict[Task, int]
 
@@ -40,26 +43,26 @@ TaskDependencyCounts = Dict[Task, int]
 class SolvedDependantCache(NamedTuple):
     """Private data that the Container attaches to SolvedDependant"""
 
-    root_task: int
+    root_task: Task
     topological_sorter: TopologicalSorter[Task]
-    cacheable_tasks: AbstractSet[int]
-    cached_tasks: Iterable[Tuple[int, Scope]]
+    cacheable_tasks: AbstractSet[Task]
+    cached_tasks: Iterable[Tuple[Task, Scope]]
     validated_scopes: Set[Tuple[Scope, ...]]
-    call_map: Mapping[DependencyProvider, Iterable[int]]
+    call_map: Mapping[DependencyProvider, Iterable[Task]]
 
 
 def plan_execution(
     stacks: Mapping[Scope, Union[AsyncExitStack, ExitStack]],
-    cached_values: Mapping[int, Any],
+    cached_values: Mapping[DependantBase[Any], Any],
     solved: SolvedDependant[Any],
     *,
     values: Optional[Mapping[DependencyProvider, Any]] = None,
 ) -> Tuple[
-    Dict[int, Any],
+    Dict[Task, Any],
     Iterable[ExecutorTask],
     ExecutorState,
-    Iterable[Tuple[int, Scope]],
-    int,
+    Iterable[Tuple[Task, Scope]],
+    Task,
 ]:
     """Re-use or create an ExecutionPlan"""
     # This function is a hot loop
@@ -86,13 +89,25 @@ def plan_execution(
     cacheable_tasks = solved_dependency_cache.cacheable_tasks
     add_to_cache = to_cache.append
 
-    for task_id, scope in solved_dependency_cache.cached_tasks:
-        if task_id in cached_values:
-            results[task_id] = cached_values[task_id]
-        elif task_id in cacheable_tasks:
-            add_to_cache((task_id, scope))
+    for task, scope in solved_dependency_cache.cached_tasks:
+        if task.dependant in cached_values:
+            results[task] = cached_values[task.dependant]
+        elif task in cacheable_tasks:
+            add_to_cache((task, scope))
+    
+    def copy_node(n):
+        new = _NodeInfo.__new__(_NodeInfo)
+        new.node = n.node
+        new.successors = n.successors
+        new.npredecessors = n.npredecessors
+        return new
 
-    ts = solved_dependency_cache.topological_sorter.copy()
+    ts: TopologicalSorter[Task] = TopologicalSorter.__new__(TopologicalSorter)
+    ts._npassedout = solved_dependency_cache.topological_sorter._npassedout
+    ts._nfinished = solved_dependency_cache.topological_sorter._nfinished
+    ts._node2info = {k: copy_node(v) for k, v in solved_dependency_cache.topological_sorter._node2info.items()}
+    ts._ready_nodes = solved_dependency_cache.topological_sorter._ready_nodes.copy()
+
 
     execution_state = ExecutionState(
         stacks=stacks,
