@@ -16,9 +16,10 @@ from typing import (
     Union,
 )
 
+from graphlib2 import TopologicalSorter
+
 from di._utils.scope_validation import validate_scopes
 from di._utils.task import AsyncTask, ExecutionState, SyncTask, gather_new_tasks
-from di._utils.topsort import TopologicalSorter
 from di.api.executor import State as ExecutorState
 from di.api.executor import Task as ExecutorTask
 from di.api.providers import DependencyProvider

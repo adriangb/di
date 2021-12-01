@@ -22,12 +22,13 @@ from typing import (
     Union,
 )
 
+from graphlib2 import TopologicalSorter
+
 from di._utils.execution_planning import SolvedDependantCache, plan_execution
 from di._utils.inspect import is_async_gen_callable, is_coroutine_callable
 from di._utils.nullcontext import nullcontext
 from di._utils.state import ContainerState
 from di._utils.task import AsyncTask, SyncTask
-from di._utils.topsort import TopologicalSorter
 from di._utils.types import FusedContextManager
 from di.api.dependencies import DependantBase, DependencyParameter
 from di.api.executor import AsyncExecutor, SyncExecutor
