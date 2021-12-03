@@ -58,20 +58,30 @@ def gather_new_tasks(
     state: ExecutionState,
 ) -> Generator[Optional[ExecutorTask], None, None]:
     """Look amongst our dependants to see if any of them are now dependency free"""
-    ts = state.toplogical_sorter
     res = state.results
-    done = ts.done
-    get_ready = ts.get_ready
-    while ts.is_active():
+    done = state.toplogical_sorter.done
+    get_ready = state.toplogical_sorter.get_ready
+    is_active = state.toplogical_sorter.is_active
+    while True:
+        if not is_active():
+            yield None
+            return
         ready = get_ready()
         if not ready:
             break
+        marked = False
         for t in ready:
             if t in res:
+                # task was passed in by value or cached
                 done(t)
+                marked = True
             else:
                 yield t
-    if not ts.is_active():
+        if not marked:
+            # we didn't mark any nodes as done
+            # so there's no point in calling get_ready() again
+            break
+    if not is_active():
         yield None
 
 

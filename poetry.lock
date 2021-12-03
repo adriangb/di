@@ -221,17 +221,6 @@ python-dateutil = ">=2.8.1"
 dev = ["twine", "markdown", "flake8", "wheel"]
 
 [[package]]
-name = "graphlib2"
-version = "0.1.1"
-description = "Rust port of the Python stdlib graphlib modules"
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-typing-extensions = {version = ">=3", markers = "python_version < \"3.8\""}
-
-[[package]]
 name = "h11"
 version = "0.12.0"
 description = "A pure-Python, bring-your-own-I/O implementation of HTTP/1.1"
@@ -752,7 +741,7 @@ idna2008 = ["idna"]
 
 [[package]]
 name = "rich"
-version = "10.15.1"
+version = "10.15.2"
 description = "Render rich text, tables, progress bars, syntax highlighting, markdown and more to the terminal"
 category = "dev"
 optional = false
@@ -944,8 +933,8 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 
 [metadata]
 lock-version = "1.1"
-python-versions = ">=3.7.0,<4"
-content-hash = "d0d68d9fd8498d069f8a3980272e2e261946d75d85f721b23b22c116ef58a3a7"
+python-versions = ">=3.7,<4"
+content-hash = "6f9ddb529bf85c8157e7747d699ca6641695899ebcd4955b1cfedc14cafe0722"
 
 [metadata.files]
 anyio = [
@@ -1112,20 +1101,6 @@ flake8 = [
 ghp-import = [
     {file = "ghp-import-2.0.2.tar.gz", hash = "sha256:947b3771f11be850c852c64b561c600fdddf794bab363060854c1ee7ad05e071"},
     {file = "ghp_import-2.0.2-py3-none-any.whl", hash = "sha256:5f8962b30b20652cdffa9c5a9812f7de6bcb56ec475acac579807719bf242c46"},
-]
-graphlib2 = [
-    {file = "graphlib2-0.1.1-cp37-abi3-macosx_10_7_x86_64.whl", hash = "sha256:15ff1b97e0f35fbb6ae3661823096880eeb19ce2ebf36f1ee5233bf1cc61a4e4"},
-    {file = "graphlib2-0.1.1-cp37-abi3-macosx_10_9_x86_64.macosx_11_0_arm64.macosx_10_9_universal2.whl", hash = "sha256:235abb10496ab22f57c817df37a06cae306742bdb9c27aae1fcbc3149a4e4cc5"},
-    {file = "graphlib2-0.1.1-cp37-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:bfdd6955d9c297f33c4da8bbfe6cbcaaad966ef0ab0ca4eb836c11c0ac6963af"},
-    {file = "graphlib2-0.1.1-cp37-abi3-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:cc71285a0a5077b6b3c9c823b50229e46cbeb64e6f42c0fd9f5e9a02ec4820ce"},
-    {file = "graphlib2-0.1.1-cp37-abi3-manylinux_2_17_ppc64.manylinux2014_ppc64.whl", hash = "sha256:50b891bc0d21cc8136600f3677225ff401e03a0173b12517e3bb0f60b650f948"},
-    {file = "graphlib2-0.1.1-cp37-abi3-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:c46d12bea0f30c39f24f24279ce1c70c66a1a06a26abafb2fb02d775babba0e6"},
-    {file = "graphlib2-0.1.1-cp37-abi3-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:066a513a4d8c133b8a3fb324ed37e68f96934572a61e432f99a2f0df83a1e240"},
-    {file = "graphlib2-0.1.1-cp37-abi3-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:4a4bbdc4b0b62adcff07fc334a146ed2f2674cbc21b6c5619aff134b30369496"},
-    {file = "graphlib2-0.1.1-cp37-abi3-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:e97b7dd70c33ab3440bde22114c92b6fc1d77fde096b5b81bc98ae4053cec8de"},
-    {file = "graphlib2-0.1.1-cp37-abi3-win32.whl", hash = "sha256:dbb5ebaf9dc945138bf58b3514fc145325e2e16ecbd4747f5c9d61beadb409f3"},
-    {file = "graphlib2-0.1.1-cp37-abi3-win_amd64.whl", hash = "sha256:09cee31c580500333843a8f428db7127290bd01cdd726d27da94eb7abbf0e049"},
-    {file = "graphlib2-0.1.1.tar.gz", hash = "sha256:186ceff3748c85b47e723f85d3691906b1601c2164873d267b876a966dd504c2"},
 ]
 h11 = [
     {file = "h11-0.12.0-py3-none-any.whl", hash = "sha256:36a3cb8c0a032f56e2da7084577878a035d3b61d104230d4bd49c0c6b555a9c6"},
@@ -1464,8 +1439,8 @@ rfc3986 = [
     {file = "rfc3986-1.5.0.tar.gz", hash = "sha256:270aaf10d87d0d4e095063c65bf3ddbc6ee3d0b226328ce21e036f946e421835"},
 ]
 rich = [
-    {file = "rich-10.15.1-py3-none-any.whl", hash = "sha256:a59fb2721c52c5061ac65f318c0afb709e098b1ab6ce5813ea38982654c4b6ee"},
-    {file = "rich-10.15.1.tar.gz", hash = "sha256:93d0ea3c35ecfd8703dbe52b76885e224ad8d68c7766c921c726b14b22a57b7d"},
+    {file = "rich-10.15.2-py3-none-any.whl", hash = "sha256:43b2c6ad51f46f6c94992aee546f1c177719f4e05aff8f5ea4d2efae3ebdac89"},
+    {file = "rich-10.15.2.tar.gz", hash = "sha256:1dded089b79dd042b3ab5cd63439a338e16652001f0c16e73acdcf4997ad772d"},
 ]
 six = [
     {file = "six-1.16.0-py2.py3-none-any.whl", hash = "sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254"},
