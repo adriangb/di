@@ -196,9 +196,7 @@ class _ContainerCommon:
                 for d in dep_dag
                 if d.scope != self._execution_scope and d.share
             },
-            cached_tasks=tuple(
-                {(tasks[d], d.scope) for d in dep_dag if d.share}
-            ),
+            cached_tasks=tuple({(tasks[d], d.scope) for d in dep_dag if d.share}),
             validated_scopes=set(),
             call_map={k: tuple(v) for k, v in call_map.items()},
         )
@@ -268,6 +266,7 @@ class _ContainerCommon:
         self,
         solved: SolvedDependant[DependencyType],
         *,
+        executor: Optional[Union[SyncExecutor, AsyncExecutor]] = None,
         values: Optional[Mapping[DependencyProvider, Any]] = None,
     ) -> DependencyType:
         """Execute an already solved dependency.
@@ -290,11 +289,12 @@ class _ContainerCommon:
                 values=values,
             )
             if leaf_tasks:
-                if not hasattr(self._executor, "execute_sync"):  # pragma: no cover
+                executor = executor or self._executor
+                if not hasattr(executor, "execute_sync"):  # pragma: no cover
                     raise TypeError(
                         "execute_sync requires an executor implementing the SyncExecutor protocol"
                     )
-                self._executor.execute_sync(leaf_tasks, execution_state)  # type: ignore[union-attr]
+                executor.execute_sync(leaf_tasks, execution_state)  # type: ignore[union-attr]
             self._update_cache(state, results, to_cache)
             return results[root_task]  # type: ignore[no-any-return]
 
@@ -302,6 +302,7 @@ class _ContainerCommon:
         self,
         solved: SolvedDependant[DependencyType],
         *,
+        executor: Optional[Union[SyncExecutor, AsyncExecutor]] = None,
         values: Optional[Mapping[DependencyProvider, Any]] = None,
     ) -> DependencyType:
         """Execute an already solved dependency."""
@@ -320,11 +321,12 @@ class _ContainerCommon:
                 values=values,
             )
             if leaf_tasks:
-                if not hasattr(self._executor, "execute_async"):  # pragma: no cover
+                executor = executor or self._executor
+                if not hasattr(executor, "execute_async"):  # pragma: no cover
                     raise TypeError(
                         "execute_async requires an executor implementing the AsyncExecutor protocol"
                     )
-                await self._executor.execute_async(leaf_tasks, execution_state)  # type: ignore[union-attr]
+                await executor.execute_async(leaf_tasks, execution_state)  # type: ignore[union-attr]
             self._update_cache(state, results, to_cache)
             return results[root_task]  # type: ignore[no-any-return]
 
