@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "di"
-version = "0.30.6"
+version = "0.31.0"
 description = "Autowiring dependency injection"
 authors = ["Adrian Garcia Badaracco <adrian@adriangb.com>"]
 readme = "README.md"
@@ -20,10 +20,11 @@ classifiers=[
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.7.0,<4"
+python = ">=3.7,<4"
 anyio = "~3"
 importlib-metadata = {version = ">=3", python = "<3.8"}
 typing-extensions = {version = ">=3", python = "<3.9"}
+graphlib2 = "0.2.4"
 
 [tool.poetry.group.lint.dependencies]
 black = ">=21.9b0,<22"

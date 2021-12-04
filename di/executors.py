@@ -7,76 +7,88 @@ import anyio
 import anyio.abc
 
 from di._utils.concurrency import callable_in_thread_pool
-from di.api.executor import AsyncExecutor, AsyncTaskInfo, SyncExecutor, TaskInfo
+from di.api.executor import AsyncExecutor, AsyncTask, State, SyncExecutor, Task
 
-TaskQueue = typing.Deque[TaskInfo]
+TaskQueue = typing.Deque[typing.Optional[Task]]
 
 
 class SimpleSyncExecutor(SyncExecutor):
-    def execute_sync(self, tasks: typing.Iterable[TaskInfo]) -> None:
+    def drain(self, queue: TaskQueue, state: State) -> None:
+        for task in queue:
+            if task is None:
+                continue
+            if isinstance(task, AsyncTask):
+                raise TypeError("Cannot execute async dependencies in execute_sync")
+            task.compute(state)
+
+    def execute_sync(
+        self, tasks: typing.Iterable[typing.Optional[Task]], state: State
+    ) -> None:
         q: TaskQueue = deque(tasks)
         while True:
             task = q.popleft()
-            if isinstance(task, AsyncTaskInfo):
+            if task is None:
+                self.drain(q, state)
+                return
+            if isinstance(task, AsyncTask):
                 raise TypeError("Cannot execute async dependencies in execute_sync")
-            newtasks = task.task()
-            for newtask in newtasks:
-                if newtask is None:
-                    for task in q:
-                        if isinstance(task, AsyncTaskInfo):
-                            raise TypeError(
-                                "Cannot execute async dependencies in execute_sync"
-                            )
-                        task.task()
-                    return
-                else:
-                    q.append(newtask)
+            q.extend(task.compute(state))
 
 
 class SimpleAsyncExecutor(AsyncExecutor):
-    async def execute_async(self, tasks: typing.Iterable[TaskInfo]) -> None:
+    async def drain(self, queue: TaskQueue, state: State) -> None:
+        for task in queue:
+            if task is None:
+                continue
+            if isinstance(task, AsyncTask):
+                await task.compute(state)
+            else:
+                task.compute(state)
+            task.compute(state)
+
+    async def execute_async(
+        self, tasks: typing.Iterable[typing.Optional[Task]], state: State
+    ) -> None:
         q: TaskQueue = deque(tasks)
         while True:
             task = q.popleft()
-            if isinstance(task, AsyncTaskInfo):
-                newtasks = await task.task()
+            if task is None:
+                await self.drain(q, state)
+                return
+            if isinstance(task, AsyncTask):
+                newtasks = await task.compute(state)
             else:
-                newtasks = task.task()
-            for newtask in newtasks:
-                if newtask is None:
-                    for task in q:
-                        if isinstance(task, AsyncTaskInfo):
-                            newtasks = await task.task()
-                        else:
-                            newtasks = task.task()
-                    return
-                else:
-                    q.append(newtask)
+                newtasks = task.compute(state)
+            q.extend(newtasks)
 
 
 async def _async_worker(
-    task: TaskInfo,
+    task: Task,
+    state: State,
     taskgroup: anyio.abc.TaskGroup,
 ) -> None:
-    if isinstance(task, AsyncTaskInfo):
-        newtasks = await task.task()
+    if isinstance(task, AsyncTask):
+        newtasks = await task.compute(state)
     elif (
         getattr(task.dependant, "sync_to_thread", False) is True
     ):  # instance of Dependant
-        newtasks = await callable_in_thread_pool(task.task)()
+        newtasks = await callable_in_thread_pool(task.compute)(state)
     else:
-        newtasks = task.task()
+        newtasks = task.compute(state)
     for taskinfo in newtasks:
         if taskinfo is None:
             continue
-        taskgroup.start_soon(_async_worker, taskinfo, taskgroup)
+        taskgroup.start_soon(_async_worker, taskinfo, state, taskgroup)
 
 
 class ConcurrentAsyncExecutor(AsyncExecutor):
-    async def execute_async(self, tasks: typing.Iterable[TaskInfo]) -> None:
+    async def execute_async(
+        self, tasks: typing.Iterable[typing.Optional[Task]], state: State
+    ) -> None:
         async with anyio.create_task_group() as taskgroup:
             for task in tasks:
-                taskgroup.start_soon(_async_worker, task, taskgroup)
+                if task is not None:
+                    taskgroup.start_soon(_async_worker, task, state, taskgroup)
 
 
 class DefaultExecutor(ConcurrentAsyncExecutor, SimpleSyncExecutor):

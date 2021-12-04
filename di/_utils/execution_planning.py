@@ -8,7 +8,6 @@ from typing import (
     Deque,
     Dict,
     Iterable,
-    List,
     Mapping,
     NamedTuple,
     Optional,
@@ -17,84 +16,38 @@ from typing import (
     Union,
 )
 
+from graphlib2 import TopologicalSorter
+
 from di._utils.scope_validation import validate_scopes
-from di._utils.task import ExecutionState, Task
-from di.api.dependencies import DependantBase
-from di.api.executor import TaskInfo
+from di._utils.task import AsyncTask, ExecutionState, SyncTask, gather_new_tasks
+from di.api.executor import State as ExecutorState
+from di.api.executor import Task as ExecutorTask
 from di.api.providers import DependencyProvider
 from di.api.scopes import Scope
 from di.api.solved import SolvedDependant
 
+from di.api.dependencies import DependantBase
+
 Dependency = Any
 
-TaskDeque = Deque[Task]
+Task = Union[AsyncTask, SyncTask]
+
+TaskCacheDeque = Deque[Tuple[Task, Scope]]
 
 Results = Dict[Task, Any]
 
 TaskDependencyCounts = Dict[Task, int]
 
 
-class ExecutionPlan(NamedTuple):
-    """Cache of the execution plan, stored within SolvedDependantCache"""
-
-    cache_key: AbstractSet[Task]
-    # mapping of which dependencies require computation for each dependant
-    # it is possible that some of them were passed by value or cached
-    # and hence do not require computation
-    task_dependant_dag: Mapping[Task, Iterable[Task]]
-    # count of how many uncompomputed dependencies each dependant has
-    # this is used to keep track of what dependencies are now available for computation
-    dependency_counts: Dict[Task, int]
-    leaf_tasks: Iterable[Task]  # these are the tasks w/ no dependencies
-
-
 class SolvedDependantCache(NamedTuple):
     """Private data that the Container attaches to SolvedDependant"""
 
     root_task: Task
-    task_dependency_dag: Mapping[Task, Set[Task]]
-    task_dependant_dag: Mapping[Task, Set[Task]]
-    execution_plan: Optional[ExecutionPlan]
+    topological_sorter: TopologicalSorter[Task]
     cacheable_tasks: AbstractSet[Task]
-    cached_tasks: AbstractSet[Task]
+    cached_tasks: Iterable[Tuple[Task, Scope]]
     validated_scopes: Set[Tuple[Scope, ...]]
-    call_map: Mapping[DependencyProvider, Set[Task]]
-
-
-def make_execution_plan(
-    resolved_tasks: AbstractSet[Task],
-    root_task: Task,
-    task_dependency_dag: Mapping[Task, Set[Task]],
-    task_dependant_dag: Mapping[Task, Set[Task]],
-) -> ExecutionPlan:
-    # Build a DAG of Tasks that we actually need to execute
-    # this allows us to prune subtrees that will come
-    # from pre-computed values (values paramter or cache)
-    unvisited = deque((root_task,))
-    dependency_counts: TaskDependencyCounts = {}
-    while unvisited:
-        task = unvisited.pop()
-        # if the dependency is cached or was provided by value
-        # we don't need to compute it or any of it's dependencies
-        if task in resolved_tasks:
-            continue
-        # we can also skip this dep if it's already been accounted for
-        if task in dependency_counts:
-            continue
-        # otherwise, we add it to our DAG and visit it's children
-        dependency_counts[task] = 0
-        for predecessor_task in task_dependency_dag[task]:
-            if predecessor_task not in resolved_tasks:
-                dependency_counts[task] += 1
-                if predecessor_task not in dependency_counts:
-                    unvisited.append(predecessor_task)
-
-    return ExecutionPlan(
-        cache_key=frozenset(resolved_tasks),
-        task_dependant_dag=task_dependant_dag,
-        dependency_counts=dependency_counts,
-        leaf_tasks=[task for task, count in dependency_counts.items() if count == 0],
-    )
+    call_map: Mapping[DependencyProvider, Iterable[Task]]
 
 
 def plan_execution(
@@ -103,7 +56,13 @@ def plan_execution(
     solved: SolvedDependant[Any],
     *,
     values: Optional[Mapping[DependencyProvider, Any]] = None,
-) -> Tuple[Dict[Task, Any], List[TaskInfo], Iterable[Task], Task]:
+) -> Tuple[
+    Dict[Task, Any],
+    Iterable[ExecutorTask],
+    ExecutorState,
+    Iterable[Tuple[Task, Scope]],
+    Task,
+]:
     """Re-use or create an ExecutionPlan"""
     # This function is a hot loop
     # It is run for every execution, and even with the cache it can be a bottleneck
@@ -119,43 +78,34 @@ def plan_execution(
         solved_dependency_cache.validated_scopes.add(scopes)
 
     results: Results = {}
-    for call, value in user_values.items():
-        for task in solved_dependency_cache.call_map[call]:
-            results[task] = value
+    call_map = solved_dependency_cache.call_map
+    for call in user_values.keys() & call_map.keys():
+        value = user_values[call]
+        for task_id in call_map[call]:
+            results[task_id] = value
 
-    to_cache: TaskDeque = deque()
+    to_cache: TaskCacheDeque = deque()
+    cacheable_tasks = solved_dependency_cache.cacheable_tasks
+    add_to_cache = to_cache.append
 
-    for task in solved_dependency_cache.cached_tasks:
+    for task, scope in solved_dependency_cache.cached_tasks:
         if task.dependant in cached_values:
             results[task] = cached_values[task.dependant]
-        elif task in solved_dependency_cache.cacheable_tasks:
-            to_cache.append(task)
-
-    execution_plan = solved_dependency_cache.execution_plan
-    resolved_tasks = results.keys()
-
-    # Check if we can re-use the existing plan (if any) or create a new one
-    if execution_plan is None or execution_plan.cache_key != resolved_tasks:
-        execution_plan = make_execution_plan(
-            resolved_tasks,
-            solved_dependency_cache.root_task,
-            solved_dependency_cache.task_dependency_dag,
-            solved_dependency_cache.task_dependant_dag,
-        )
-        solved.container_cache = solved_dependency_cache._replace(
-            execution_plan=execution_plan
-        )
+        elif task in cacheable_tasks:
+            add_to_cache((task, scope))
+    
+    ts = solved_dependency_cache.topological_sorter.copy()
 
     execution_state = ExecutionState(
         stacks=stacks,
         results=results,
-        dependency_counts=execution_plan.dependency_counts.copy(),
-        dependants=execution_plan.task_dependant_dag,
+        toplogical_sorter=ts,
     )
 
-    return (
+    return (  # type: ignore[return-value]
         results,
-        [t.as_executor_task(execution_state) for t in execution_plan.leaf_tasks],
+        gather_new_tasks(execution_state),
+        execution_state,
         to_cache,
         solved_dependency_cache.root_task,
     )
