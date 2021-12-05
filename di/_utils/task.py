@@ -13,7 +13,6 @@ from typing import (
     Tuple,
     TypeVar,
     Union,
-    cast,
 )
 
 from graphlib2 import TopologicalSorter
@@ -21,7 +20,6 @@ from graphlib2 import TopologicalSorter
 from di._utils.inspect import is_async_gen_callable, is_gen_callable
 from di.api.dependencies import DependantBase
 from di.api.executor import AsyncTask as ExecutorAsyncTask
-from di.api.executor import State
 from di.api.executor import SyncTask as ExecutorSyncTask
 from di.api.executor import Task as ExecutorTask
 from di.api.providers import DependencyProvider
@@ -29,7 +27,7 @@ from di.api.scopes import Scope
 from di.exceptions import IncompatibleDependencyError
 
 
-class ExecutionState(State):
+class ExecutionState:
     __slots__ = (
         "stacks",
         "results",
@@ -59,21 +57,19 @@ def gather_new_tasks(
 ) -> Generator[Optional[ExecutorTask], None, None]:
     """Look amongst our dependants to see if any of them are now dependency free"""
     res = state.results
-    done = state.toplogical_sorter.done
-    get_ready = state.toplogical_sorter.get_ready
-    is_active = state.toplogical_sorter.is_active
+    ts = state.toplogical_sorter
     while True:
-        if not is_active():
+        if not ts.is_active():
             yield None
             return
-        ready = get_ready()
+        ready = ts.get_ready()
         if not ready:
             break
         marked = False
         for t in ready:
             if t in res:
                 # task was passed in by value or cached
-                done(t)
+                ts.done(t)
                 marked = True
             else:
                 yield t
@@ -81,7 +77,7 @@ def gather_new_tasks(
             # we didn't mark any nodes as done
             # so there's no point in calling get_ready() again
             break
-    if not is_active():
+    if not ts.is_active():
         yield None
 
 
@@ -136,11 +132,10 @@ class AsyncTask(Task, ExecutorAsyncTask):
         if self.is_generator:
             self.call = asynccontextmanager(self.call)  # type: ignore[arg-type]
 
-    async def compute(
+    async def compute(  # type: ignore[override]  # we do it this way to avoid exposing implementation details to users
         self,
-        state: State,
+        state: ExecutionState,
     ) -> Iterable[Optional[ExecutorTask]]:
-        state = cast(ExecutionState, state)
         args, kwargs = self.gather_params(state.results)
 
         if self.is_generator:
@@ -174,11 +169,10 @@ class SyncTask(Task, ExecutorSyncTask):
         if self.is_generator:
             self.call = contextmanager(self.call)  # type: ignore[arg-type]
 
-    def compute(
+    def compute(  # type: ignore[override]  # we do it this way to avoid exposing implementation details to users
         self,
-        state: State,
+        state: ExecutionState,
     ) -> Iterable[Optional[ExecutorTask]]:
-        state = cast(ExecutionState, state)
         args, kwargs = self.gather_params(state.results)
 
         if self.is_generator:

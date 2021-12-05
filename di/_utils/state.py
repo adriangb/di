@@ -6,8 +6,8 @@ from typing import Any, Dict, Optional, Type, Union, cast
 
 from di._utils.scope_map import ScopeMap
 from di._utils.types import FusedContextManager
-from di.api.scopes import Scope
 from di.api.dependencies import DependantBase
+from di.api.scopes import Scope
 
 
 class ContainerState:

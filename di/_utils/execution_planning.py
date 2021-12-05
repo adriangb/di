@@ -20,13 +20,12 @@ from graphlib2 import TopologicalSorter
 
 from di._utils.scope_validation import validate_scopes
 from di._utils.task import AsyncTask, ExecutionState, SyncTask, gather_new_tasks
+from di.api.dependencies import DependantBase
 from di.api.executor import State as ExecutorState
 from di.api.executor import Task as ExecutorTask
 from di.api.providers import DependencyProvider
 from di.api.scopes import Scope
 from di.api.solved import SolvedDependant
-
-from di.api.dependencies import DependantBase
 
 Dependency = Any
 
@@ -58,7 +57,7 @@ def plan_execution(
     values: Optional[Mapping[DependencyProvider, Any]] = None,
 ) -> Tuple[
     Dict[Task, Any],
-    Iterable[ExecutorTask],
+    Iterable[Optional[ExecutorTask]],
     ExecutorState,
     Iterable[Tuple[Task, Scope]],
     Task,
@@ -93,7 +92,7 @@ def plan_execution(
             results[task] = cached_values[task.dependant]
         elif task in cacheable_tasks:
             add_to_cache((task, scope))
-    
+
     ts = solved_dependency_cache.topological_sorter.copy()
 
     execution_state = ExecutionState(
@@ -102,10 +101,10 @@ def plan_execution(
         toplogical_sorter=ts,
     )
 
-    return (  # type: ignore[return-value]
+    return (
         results,
         gather_new_tasks(execution_state),
-        execution_state,
+        ExecutorState(execution_state),
         to_cache,
         solved_dependency_cache.root_task,
     )

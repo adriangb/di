@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from typing import Any, Iterable, Optional, Union
+from typing import Any, Iterable, NewType, Optional, Union
 
 if sys.version_info < (3, 8):
     from typing_extensions import Protocol
@@ -10,9 +10,7 @@ else:
 
 from di.api.dependencies import DependantBase
 
-
-class State:
-    __slots__ = ()
+State = NewType("State", object)
 
 
 class AsyncTask:

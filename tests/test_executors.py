@@ -36,7 +36,7 @@ def test_executing_async_dependencies_in_sync_executor(
     exc_cls: typing.Type[SyncExecutor],
 ):
 
-    state = State()
+    state = State(object())
     exc = exc_cls()
     match = "Cannot execute async dependencies in execute_sync"
     with pytest.raises(TypeError, match=match):
@@ -63,7 +63,7 @@ def test_simple_sync_executor():
 
     exc = SimpleSyncExecutor()
 
-    exc.execute_sync([Task1(Dependant())], State())
+    exc.execute_sync([Task1(Dependant())], State(object()))
 
     assert executed == [1, 2, 3]
 
@@ -89,6 +89,6 @@ async def test_simple_async_executor():
 
     exc = SimpleAsyncExecutor()
 
-    await exc.execute_async([Task1(Dependant())], State())
+    await exc.execute_async([Task1(Dependant())], State(object()))
 
     assert executed == [1, 2, 3]

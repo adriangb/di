@@ -29,6 +29,7 @@ from di._utils.inspect import is_async_gen_callable, is_coroutine_callable
 from di._utils.nullcontext import nullcontext
 from di._utils.state import ContainerState
 from di._utils.task import AsyncTask, SyncTask
+from di._utils.topsort import topsort
 from di._utils.types import FusedContextManager
 from di.api.dependencies import DependantBase, DependencyParameter
 from di.api.executor import AsyncExecutor, SyncExecutor
@@ -172,10 +173,12 @@ class _ContainerCommon:
 
         # Order the Dependant's topologically so that we can create Tasks
         # with references to all of their children
-        dep_topsort = TopologicalSorter(dep_dag).static_order()
+        dep_topsort = topsort(dep_dag)
         # Create a seperate TopologicalSorter to hold the Tasks
         ts: TopologicalSorter[_Task] = TopologicalSorter()
-        tasks = self._build_tasks(param_graph, dep_topsort, ts)
+        tasks = self._build_tasks(
+            param_graph, (node for nodes in dep_topsort for node in nodes), ts
+        )
         for dep, predecessors in dep_dag.items():
             ts.add(tasks[dep], *(tasks[p] for p in predecessors))
         ts.prepare()
@@ -203,6 +206,7 @@ class _ContainerCommon:
         solved = SolvedDependant(
             dependency=dependency,
             dag=param_graph,
+            topsort=dep_topsort,
             container_cache=container_cache,
         )
         return solved
@@ -266,7 +270,7 @@ class _ContainerCommon:
         self,
         solved: SolvedDependant[DependencyType],
         *,
-        executor: Optional[Union[SyncExecutor, AsyncExecutor]] = None,
+        executor: Optional[SyncExecutor] = None,
         values: Optional[Mapping[DependencyProvider, Any]] = None,
     ) -> DependencyType:
         """Execute an already solved dependency.
@@ -288,21 +292,16 @@ class _ContainerCommon:
                 solved=solved,
                 values=values,
             )
-            if leaf_tasks:
-                executor = executor or self._executor
-                if not hasattr(executor, "execute_sync"):  # pragma: no cover
-                    raise TypeError(
-                        "execute_sync requires an executor implementing the SyncExecutor protocol"
-                    )
-                executor.execute_sync(leaf_tasks, execution_state)  # type: ignore[union-attr]
-            self._update_cache(state, results, to_cache)
+            if root_task not in results:
+                (executor or self._executor).execute_sync(leaf_tasks, execution_state)  # type: ignore[union-attr]
+                self._update_cache(state, results, to_cache)
             return results[root_task]  # type: ignore[no-any-return]
 
     async def execute_async(
         self,
         solved: SolvedDependant[DependencyType],
         *,
-        executor: Optional[Union[SyncExecutor, AsyncExecutor]] = None,
+        executor: Optional[AsyncExecutor] = None,
         values: Optional[Mapping[DependencyProvider, Any]] = None,
     ) -> DependencyType:
         """Execute an already solved dependency."""
@@ -320,21 +319,16 @@ class _ContainerCommon:
                 solved=solved,
                 values=values,
             )
-            if leaf_tasks:
-                executor = executor or self._executor
-                if not hasattr(executor, "execute_async"):  # pragma: no cover
-                    raise TypeError(
-                        "execute_async requires an executor implementing the AsyncExecutor protocol"
-                    )
-                await executor.execute_async(leaf_tasks, execution_state)  # type: ignore[union-attr]
-            self._update_cache(state, results, to_cache)
+            if root_task not in results:
+                await (executor or self._executor).execute_async(leaf_tasks, execution_state)  # type: ignore[union-attr]
+                self._update_cache(state, results, to_cache)
             return results[root_task]  # type: ignore[no-any-return]
 
 
 class BaseContainer(_ContainerCommon):
     """Basic container that lets you manage it's state yourself"""
 
-    __slots__ = ("__state", "_tp")
+    __slots__ = ("__state",)
     __state: ContainerState
 
     def __init__(
