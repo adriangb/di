@@ -18,6 +18,10 @@ class SolvedDependant(Generic[DependencyType]):
         self,
         dependency: DependantBase[DependencyType],
         dag: Mapping[DependantBase[Any], List[DependencyParameter]],
+        # A toplogical sort represented as groups of dependencies that can be executed concurrently
+        # This is just one of many possible valid toplogical sorts
+        # It is calculated optimistically: this is how dependencies _would_ be executed
+        # if all dependencies executed instantly
         topsort: Iterable[Iterable[DependantBase[Any]]],
         # container_cache can be used by the creating container to store data that is tied
         # to the SolvedDependant
