@@ -111,21 +111,18 @@ def container() -> Container:
 
 
 @pytest.fixture(scope="session", autouse=True)
-@pytest.mark.usefixtures("anyio_backend")
 async def enter_session_scope(container: Container) -> AsyncGenerator[None, None]:
     async with container.enter_scope("session"):
         yield
 
 
 @pytest.fixture(scope="module", autouse=True)
-@pytest.mark.usefixtures("anyio_backend")
 async def enter_module_scope(container: Container) -> AsyncGenerator[None, None]:
     async with container.enter_scope("module"):
         yield
 
 
 @pytest.fixture(scope="function", autouse=True)
-@pytest.mark.usefixtures("anyio_backend")
 async def enter_function_scope(container: Container) -> AsyncGenerator[None, None]:
     async with container.enter_scope("function"):
         yield
@@ -133,7 +130,7 @@ async def enter_function_scope(container: Container) -> AsyncGenerator[None, Non
 
 def inject(
     func: Union[Callable[..., None], Callable[..., Coroutine[None, None, None]]]
-):
+) -> Union[Callable[..., None], Callable[..., Coroutine[None, None, None]]]:
     dep = Dependant(
         func,
         share=False,
@@ -148,13 +145,13 @@ def inject(
 
     if is_async_gen_callable(func) or is_coroutine_callable(func):
 
-        async def inner_async(container: Container) -> None:
-            await container.execute_async(container.solve(dep))
+        async def inner_async() -> None:
+            await _container.execute_async(_container.solve(dep))
 
         return inner_async
     else:
 
-        def inner_sync(container: Container) -> None:
-            container.execute_sync(container.solve(dep))
+        def inner_sync() -> None:
+            _container.execute_sync(_container.solve(dep))
 
         return inner_sync
