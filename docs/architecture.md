@@ -15,7 +15,6 @@ We map these responsibilities to well defined classes/interfaces:
 There are also some ancilliary support classes:
 
 - [SolvedDependant] holds the result of a call to `Container.solve` that can be passed to `Container.execute_sync` or `Container.exeucte_async`.
-- [ContainerState] holds the state of the container; abstracted away in `di.Container` but available in `di.container.ContainerBase`.
 
 Fundamentally, our class diagram looks like this:
 

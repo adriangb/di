@@ -49,7 +49,7 @@ _ExecutionCM = FusedContextManager[None]
 _nullcontext = nullcontext(None)
 
 
-__all__ = ("BaseContainer", "Container", "ContainerState")
+__all__ = ("BaseContainer", "Container")
 
 
 class _ContainerCommon:

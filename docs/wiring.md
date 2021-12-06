@@ -73,13 +73,13 @@ There are advantages and disadvantages to each method:
 
 #### Pros of default values
 
-- Incompatible with other uses of default values, like dataclass' `field` or Pydantic's `Field`.
-- Having a default value in addition to `Depends` requires some customization of `Dependant` (to add a `default: Any` argument).
+- Types will be checked: `def func(v: int = Depends(lambda: "a"))` produces an error in MyPy or Pylance.
+- Function/class can no longer be called outside of `di` without passing values: you would get an instance of `DependantBase` as the default value.
 
 #### Cons of default values
 
-- Types will be checked: `def func(v: int = Depends(lambda: "a"))` produces an error in MyPy or Pylance.
-- Function/class can no longer be called outside of `di` without passing values: you would get an instance of `DependantBase` as the default value.
+- Incompatible with other uses of default values, like dataclass' `field` or Pydantic's `Field`.
+- Having a default value in addition to `Depends` requires some customization of `Dependant` (to add a `default: Any` argument).
 
 Overall, use of `Annotated` is preferable to reduce coupling between `di` and your code, but using default values can make sense in some scenarios.
 
