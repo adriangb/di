@@ -3,38 +3,38 @@ site_description: Simple pythonic dependency injection
 site_url: https://www.adriangb.com/di
 
 theme:
-  name: 'material'
+  name: material
+  custom_dir: docs/overrides
   palette:
-    - scheme: 'default'
-      media: '(prefers-color-scheme: light)'
+    - scheme: default
+      media: "(prefers-color-scheme: light)"
       toggle:
-        icon: 'material/lightbulb'
+        icon: material/lightbulb
         name: "Switch to dark mode"
-    - scheme: 'slate'
-      media: '(prefers-color-scheme: dark)'
-      primary: 'blue'
+    - scheme: slate
+      media: "(prefers-color-scheme: dark)"
+      primary: blue
       toggle:
-        icon: 'material/lightbulb-outline'
-        name: 'Switch to light mode'
+        icon: material/lightbulb-outline
+        name: "Switch to light mode"
 
 repo_name: adriangb/di
 repo_url: https://github.com/adriangb/di
 edit_uri: "blob/main/docs/"
 
 nav:
-  - Intro: 'README.md'
-  - Architecture: 'architecture.md'
-  - Wiring: 'wiring.md'
-  - Scopes: 'scopes.md'
-  - Binds: 'binds.md'
-  - Dependants: 'dependants.md'
-  - Sharing: 'sharing.md'
-  - Solving: 'solving.md'
-  - Integrations: 'integrations.md'
-  - Contributing: 'contributing.md'
+  - Intro: README.md
+  - Architecture: architecture.md
+  - Wiring: wiring.md
+  - Scopes: scopes.md
+  - Binds: binds.md
+  - Dependants: dependants.md
+  - Sharing: sharing.md
+  - Solving: solving.md
+  - Integrations: integrations.md
+  - Contributing: contributing.md
 
 markdown_extensions:
-  - mkautodoc
   - admonition
   - pymdownx.highlight
   - pymdownx.snippets
@@ -55,5 +55,5 @@ extra:
 
 plugins:
   - mike:
-      version_selector: true   # set to false to leave out the version selector
+      version_selector: true
   - search:

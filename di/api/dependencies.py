@@ -17,8 +17,7 @@ class DependantBase(Generic[DependencyType], metaclass=abc.ABCMeta):
     """A dependant is an object that can provide the container with:
     - A hash, to compare itself against other dependants
     - A scope
-    - A callable that can be used to assemble itself
-    - The dependants that correspond to the keyword arguments of that callable
+    - A callable who's returned value is the dependency
     """
 
     __slots__ = ("call", "scope", "share")
@@ -42,7 +41,7 @@ class DependantBase(Generic[DependencyType], metaclass=abc.ABCMeta):
         If this returns `True`, the two dependencies are considered the same and
         `di` will pick one to subsitute for the other.
 
-        Note that using the same dependenyc in two different scopes is prohibited,
+        Note that using the same dependency in two different scopes is prohibited,
         so if this returns `True` and `self.scope != o.scope` `di` will raise a SolvingError.
         """
         pass  # pragma: no cover
@@ -61,9 +60,7 @@ class DependantBase(Generic[DependencyType], metaclass=abc.ABCMeta):
         """Called by the parent so that us / this / the child can register
         the parameter it is attached to.
 
-        It is *required* that this method register a non None `call` method,
-        if one is not already present.
-        That is, after this is run, self.call should not be None.
+        If this is an autowired Dependant, this can be used to register self.call.
 
         This can also be used for recording type annotations or parameter names.
 

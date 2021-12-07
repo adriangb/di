@@ -13,11 +13,16 @@ def test_wiring_based_from_annotation() -> None:
     def g() -> int:
         return 1
 
+    class G:
+        pass
+
     def f(
-        a: Annotated[int, Depends(g)], b: Annotated[Optional[int], Depends(g)] = None
+        a: Annotated[int, Depends(g)],
+        b: Annotated[G, "foo bar baz!"],
+        c: Annotated[Optional[int], Depends(g)] = None,
     ) -> None:
         pass
 
     dep = Dependant(f)
     subdeps = dep.get_dependencies()
-    assert [d.dependency.call for d in subdeps] == [g, g]
+    assert [d.dependency.call for d in subdeps] == [g, G, g]
