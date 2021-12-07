@@ -1,4 +1,10 @@
-from typing import Generator, Literal, Optional, Set, Tuple
+import sys
+from typing import Generator, Optional, Set, Tuple
+
+if sys.version_info < (3, 8):
+    from typing_extensions import Literal
+else:
+    from typing import Literal
 
 import pytest
 
