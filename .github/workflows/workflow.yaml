@@ -61,7 +61,7 @@ jobs:
           env_vars: OS,PYTHON
           fail_ci_if_error: true
   version-check:
-    nmae: Check Version Bump
+    name: Check Version Bump
     if: github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
     defaults:
