@@ -23,10 +23,18 @@ async def generator_dep(
     log.append("generator_dep teardown")
 
 
+@pytest.fixture
+def some_fixture() -> int:
+    return 3
+
+
 @pytest.mark.anyio
 @inject
 async def test_inject(
-    log: Log, v: int = Depends(generator_dep, scope="function")
+    some_fixture: int,
+    log: Log = Depends(scope="function"),
+    v: int = Depends(generator_dep, scope="function"),
 ) -> None:
+    assert some_fixture == 3
     assert v == 2
     assert log == ["dep", "generator_dep setup"]  # teardown hasn't run yet

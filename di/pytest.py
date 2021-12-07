@@ -1,4 +1,6 @@
-from typing import AsyncGenerator, Callable, Coroutine, Union
+import functools
+import inspect
+from typing import Any, AsyncGenerator, Callable, Coroutine, Union
 
 try:
     import pytest
@@ -9,7 +11,7 @@ except ImportError:
     )
 
 from di import Container, Dependant
-from di._utils.inspect import is_async_gen_callable, is_coroutine_callable
+from di.api.dependencies import DependantBase
 from di.executors import SimpleAsyncExecutor
 
 _container = Container(execution_scope="function", executor=SimpleAsyncExecutor())
@@ -47,24 +49,53 @@ async def enter_function_scope(container: Container) -> AsyncGenerator[None, Non
         yield
 
 
+class TestFunctionDependant(Dependant[None]):
+    def create_sub_dependant(self, param: inspect.Parameter) -> DependantBase[Any]:
+        return Dependant(
+            None,
+            scope=self.scope,
+            share=True,
+            wire=True,
+            autowire=True,
+        )
+
+
 def inject(
     func: Union[Callable[..., None], Callable[..., Coroutine[None, None, None]]]
 ) -> Union[Callable[..., None], Callable[..., Coroutine[None, None, None]]]:
-    dep = Dependant(func, scope="function")
+    sig = inspect.signature(func)
+    sig = sig.replace(
+        parameters=[
+            param
+            for param in sig.parameters.values()
+            if not isinstance(
+                param.default, DependantBase
+            )  # TODO: expand this to handle Annotated
+        ]
+    )
 
-    # TODO: manipulate signature to preserve compatibility w/ Pytest fixtures?
-    # This would entail removing parameters that di will inject from the signature
-    # while preserving those that it doesn't recognize
+    if inspect.iscoroutinefunction(func):
 
-    if is_async_gen_callable(func) or is_coroutine_callable(func):
+        @functools.wraps(func)
+        async def inner(**kwargs) -> None:
+            f = functools.partial(func, **kwargs)
+            dep = TestFunctionDependant(
+                f, scope="function", share=False, wire=True, autowire=False
+            )
+            solved = _container.solve(dep)
+            await _container.execute_async(solved, values=kwargs)
 
-        async def inner_async() -> None:
-            await _container.execute_async(_container.solve(dep))
-
-        return inner_async
     else:
 
-        def inner_sync() -> None:
-            _container.execute_sync(_container.solve(dep))
+        @functools.wraps(func)
+        def inner(**kwargs) -> None:
+            f = functools.partial(func, **kwargs)
+            dep = TestFunctionDependant(
+                f, scope="function", share=False, wire=True, autowire=False
+            )
+            solved = _container.solve(dep)
+            _container.execute_sync(solved)
 
-        return inner_sync
+    inner.__signature__ = sig
+
+    return inner
