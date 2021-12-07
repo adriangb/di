@@ -25,18 +25,19 @@ The mermaid diagram used to create this is below.
 ``` mermaid
 classDiagram
     SolvedDependant "1..n" --o Dependant: aggregates into a DAG
-    Container --> Dependant: calls get_dependencies()
+    Container --> Dependant: visits sub-dependencies
     Container --> Executor: delegates execution
     Container --> SolvedDependant: stores solved DAG
     Container --> SolvedDependant: executes solved DAG
     class Dependant{
       +get_dependencies() list~Dependant~
+      +register_parameter() Dependant
     }
     class SolvedDependant{
       +dag Mapping~Dependant, SetOfDependant~
     }
     class Executor{
-      +execute(Callable])
+      +execute()
     }
     class Container{
       +bind(Callable, Dependant)

@@ -4,14 +4,12 @@
 
 Key features:
 
-- **Intuitive**: simple things are easy, complex things are possible.
+- **Intuitive**: simple API, inspired by [FastAPI].
 - **Succinct**: declare what you want, and `di` figures out how to assmble it using type annotations.
 - **Correct**: tested with MyPy: `value: int = Depends(returns_str)` gives an error.
-- **Flexible**: with no fixed scopes, `di` can work within any framework, web or otherwise.
-- **Lifespans**: `di` manages lifespans for dependencies by binding them to scopes.
-- **Caching**: `di` caches values from dependencies to avoid duplicate computation.
-- **Scalability**: `di` executes dependencies in parallel and only needs to solve them once.
-- **Performant**: `di` moves sync dependencies into a threadpool to avoid blocking the event loop.
+- **Scopes**: inspired by [pytest scopes], but defined by users (no fixed "request" or "session" scopes).
+- **Flexible**: decoupled internal APIs give you the flexibility to customize wiring and execution.
+- **Performant**: `di` can execute dependencies in parallel, move sync dependencies to threads and cache results.
 
 ## Installation
 
@@ -45,13 +43,9 @@ Dependency injection is a software architecture technique that helps us achieve 
 It is a common misconception that traditional software design principles do not apply to Python.
 As a matter of fact, you are probably using a lot of these techniques already!
 
-For example, the `transport` argument to httpx's Client ([docs](https://www.python-httpx.org/advanced/#custom-transports)) is an excellent example of dependency injection.
+For example, the `transport` argument to httpx's Client ([docs](https://www.python-httpx.org/advanced/#custom-transports)) is an excellent example of dependency injection. Pytest, arguably the most popular Python test framework, uses dependency injection in the form of [pytest fixtures].
 
-Most web frameworks employ inversion of control: when you define a view / controller, the web framework calls you! The same thing applies to CLIs (like [click]) or TUIs (like [Textual]).
-
-This is especially true for many newer webframeworks that not only use inversion of control but also dependency injection. Two great examples of this are [FastAPI] and [BlackSheep].
-
-This project was born out of a desire to generalize and improve upon FastAPI's dependency injection system so that it can be used outside of FastAPI and even in other libraries.
+Most web frameworks employ inversion of control: when you define a view / controller, the web framework calls you! The same thing applies to CLIs (like [click]) or TUIs (like [Textual]). This is especially true for many newer webframeworks that not only use inversion of control but also dependency injection. Two great examples of this are [FastAPI] and [BlackSheep].
 
 For a more comprehensive overview of Python projectes related to dependency injection, see [Awesome Dependency Injection in Python].
 
@@ -116,3 +110,5 @@ You can also "bind" providers, which is covered in the [binds] section of the do
 [BlackSheep]: https://www.neoteroi.dev/blacksheep/dependency-injection/
 [Awesome Dependency Injection in Python]: https://github.com/sfermigier/awesome-dependency-injection-in-python
 [python-dependency-injector]: https://github.com/ets-labs/python-dependency-injector
+[pytest scopes]: https://docs.pytest.org/en/6.2.x/fixture.html#scope-sharing-fixtures-across-classes-modules-packages-or-session
+[pytest fixtures]: https://docs.pytest.org/en/6.2.x/fixture.html
