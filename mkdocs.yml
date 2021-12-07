@@ -55,5 +55,5 @@ extra:
 
 plugins:
   - mike:
-      version_selector: true   # set to false to leave out the version selector
+      version_selector: true
   - search:

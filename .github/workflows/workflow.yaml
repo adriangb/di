@@ -1,7 +1,9 @@
-name: Tests PR
+name: CI/CD
 
 on:
   pull_request:
+  push:
+    branches: [ main ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -9,6 +11,7 @@ concurrency:
 
 jobs:
   lint:
+    name: Run Linters
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -17,13 +20,14 @@ jobs:
         with:
           python-version: '3.x'
       - name: Install and configure Poetry
-        uses: snok/install-poetry@v1.2.0
+        uses: snok/install-poetry@v1.3.0
         with:
           version: 1.2.0a2
           virtualenvs-in-project: true
       - name: Lint
         run: make lint
   test:
+    name: Run Tests
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -40,7 +44,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install and configure Poetry
-        uses: snok/install-poetry@v1.2.0
+        uses: snok/install-poetry@v1.3.0
         with:
           version: 1.2.0a2
           virtualenvs-in-project: true
@@ -57,6 +61,8 @@ jobs:
           env_vars: OS,PYTHON
           fail_ci_if_error: true
   version-check:
+    nmae: Check Version Bump
+    if: github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -70,7 +76,7 @@ jobs:
           ref: main
           path: main
       - name: Install and configure Poetry
-        uses: snok/install-poetry@v1.2.0
+        uses: snok/install-poetry@v1.3.0
         with:
           version: 1.2.0a2
       - name: Check version bump
@@ -81,3 +87,52 @@ jobs:
           OLD_VERSION=$(poetry version -s)
           python -c "from packaging import version;assert version.parse(\"${NEW_VERSION}\") > version.parse(\"${OLD_VERSION}\"), \"❌ Bad version bump detected: you must bump the version in pyproject.toml\""
           python -c "print(\"✅ Version will be bumped from ${OLD_VERSION} to ${NEW_VERSION}\")"
+  docs:
+    if: github.ref == 'refs/heads/main'
+    concurrency: docs-branch
+    name: 🚀 Deploy Docs 📄
+    runs-on: ubuntu-latest
+    needs: ["test", "lint"]
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 # fetch all commits/branches
+      - name: Set up Python
+        uses: actions/setup-python@v2
+      - name: Install and configure Poetry
+        uses: snok/install-poetry@v1.3.0
+        with:
+          version: 1.2.0a2
+          virtualenvs-in-project: true
+      - name: Deploy docs
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          make docs-deploy
+  pypi:
+    if: github.ref == 'refs/heads/main'
+    name: 🚀 PyPi Release 📦
+    runs-on: ubuntu-latest
+    needs: ["test", "lint"]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+      - name: Install and configure Poetry
+        uses: snok/install-poetry@v1.3.0
+        with:
+          version: 1.2.0a2
+          virtualenvs-in-project: true
+      - name: Release on PyPi
+        run: |
+          PACKAGE_VERSION=$(poetry version -s)
+          echo "package_version=$PACKAGE_VERSION" >> $GITHUB_ENV
+          printf "\nSee this release on GitHub: [v$PACKAGE_VERSION](https://github.com/adriangb/di/releases/tag/$PACKAGE_VERSION)\n" >> README.md
+          poetry config pypi-token.pypi "${{ secrets.PYPI_TOKEN }}"
+          poetry publish --build
+      - name: 🚀 Create GitHub Release 😺
+        uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ env.package_version }}
+          generateReleaseNotes: true
