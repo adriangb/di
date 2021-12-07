@@ -15,17 +15,15 @@ from di.api.dependencies import DependencyParameter
 from di.exceptions import ScopeViolationError, SolvingError, WiringError
 
 
-def test_no_annotations():
-    """Dependencies must provide annotations or a default value"""
-
+def test_no_annotations_no_default_value_no_marker():
     def badfunc(value):
-        ...
+        raise AssertionError("This function should never be called")
 
     container = Container()
 
     with pytest.raises(
         WiringError,
-        match="Cannot wire a parameter with no default and no type annotation",
+        match="You must either provide a dependency marker, a type annotation or a default value",
     ):
         container.execute_sync(container.solve(Dependant(badfunc)))
 
@@ -39,6 +37,18 @@ def test_default_argument():
     container = Container()
 
     res = container.execute_sync(container.solve(Dependant(default_func)))
+    assert res == 2
+
+
+def test_marker():
+    """No type annotations or default value are required if a marker is used"""
+
+    def marker_default_func(value=Depends(lambda: 2)) -> int:
+        return value
+
+    container = Container()
+
+    res = container.execute_sync(container.solve(Dependant(marker_default_func)))
     assert res == 2
 
 

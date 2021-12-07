@@ -39,8 +39,6 @@ from di.api.solved import SolvedDependant
 from di.exceptions import SolvingError
 from di.executors import DefaultExecutor
 
-Dependency = Any
-
 _Task = Union[AsyncTask, SyncTask]
 
 _DependantTaskDag = Dict[_Task, Set[_Task]]
@@ -53,15 +51,21 @@ __all__ = ("BaseContainer", "Container")
 
 
 class _ContainerCommon:
-    __slots__ = ("_executor", "_execution_scope", "_binds", "_dep_registry")
+    __slots__ = ("_executor", "_execution_scope", "_binds")
 
     _executor: Union[SyncExecutor, AsyncExecutor]
     _execution_scope: Scope
     _binds: Dict[DependencyProvider, DependantBase[Any]]
-    _dep_registry: Dict[DependantBase[Any], int]
 
-    def __init__(self) -> None:
-        self._dep_registry = {}
+    def __init__(
+        self,
+        executor: Union[SyncExecutor, AsyncExecutor],
+        execution_scope: Scope,
+        binds: Optional[Dict[DependencyProvider, DependantBase[Any]]],
+    ):
+        self._executor = executor
+        self._execution_scope = execution_scope
+        self._binds = binds or {}
 
     @property
     def binds(self) -> Mapping[DependencyProvider, DependantBase[Any]]:
@@ -225,7 +229,7 @@ class _ContainerCommon:
             positional: List[_Task] = []
             keyword: Dict[str, _Task] = {}
             for param in dag[dep]:
-                if param.parameter is not None:
+                if param.parameter is not None and param.dependency.call is not None:
                     task = tasks[param.dependency]
                     # prefer positional arguments since those can be unpacked from a generator
                     # saving generation of an intermediate dict
@@ -339,11 +343,12 @@ class BaseContainer(_ContainerCommon):
         _state: Optional[ContainerState] = None,
         _binds: Optional[Dict[DependencyProvider, DependantBase[Any]]] = None,
     ) -> None:
-        super().__init__()
-        self._executor = executor or DefaultExecutor()
-        self._execution_scope = execution_scope
+        super().__init__(
+            executor=executor or DefaultExecutor(),
+            execution_scope=execution_scope,
+            binds=_binds,
+        )
         self.__state = _state or ContainerState.initialize()
-        self._binds = _binds or {}
 
     @property
     def binds(self) -> Mapping[DependencyProvider, DependantBase[Any]]:
@@ -433,15 +438,16 @@ class Container(_ContainerCommon):
         _context: Optional[contextvars.ContextVar[ContainerState]] = None,
         _binds: Optional[Dict[DependencyProvider, DependantBase[Any]]] = None,
     ) -> None:
-        super().__init__()
+        super().__init__(
+            executor=executor or DefaultExecutor(),
+            execution_scope=execution_scope,
+            binds=_binds,
+        )
         if _context is None:
             self._context = contextvars.ContextVar(f"{self}._context")
             self._context.set(ContainerState.initialize())
         else:
             self._context = _context
-        self._execution_scope = execution_scope
-        self._executor = executor or DefaultExecutor()
-        self._binds = _binds or {}
 
     @property
     def _state(self) -> ContainerState:
