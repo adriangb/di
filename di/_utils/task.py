@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import threading
 from contextlib import AsyncExitStack, ExitStack, asynccontextmanager, contextmanager
 from typing import (
     Any,
-    Deque,
     Dict,
     Generator,
     Iterable,
@@ -44,12 +42,9 @@ class ExecutionState:
         self.stacks = stacks
         self.results = results
         self.toplogical_sorter = toplogical_sorter
-        self.lock = threading.Lock()
 
 
 DependencyType = TypeVar("DependencyType")
-
-TaskQueue = Deque[Optional[ExecutorTask]]
 
 
 def gather_new_tasks(

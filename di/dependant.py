@@ -21,6 +21,7 @@ from di.api.providers import (
     AsyncGeneratorProvider,
     CallableProvider,
     CoroutineProvider,
+    DependencyProvider,
     DependencyProviderType,
     DependencyType,
     GeneratorProvider,
@@ -147,28 +148,23 @@ class Dependant(DependantBase[DependencyType]):
             self.dependencies = self.gather_dependencies()
         return self.dependencies
 
-    def gather_parameters(self) -> Dict[str, inspect.Parameter]:
+    @staticmethod
+    def gather_parameters(call: DependencyProvider) -> Dict[str, inspect.Parameter]:
         """Collect parameters that this dependency needs to construct itself.
 
         Generally, this means introspecting into our own callable (self.call).
         """
-        assert self.call is not None, "Cannot gather parameters without a bound call"
-        return get_parameters(self.call)
+        return get_parameters(call)
 
     def register_parameter(
         self: Dependant[T], param: inspect.Parameter
     ) -> Dependant[T]:
-        """Called by the parent so that us / this / the child can register the parameter it is attached to.
-
-        This is where you would hook to get information from this Dependant's parameter.
-        """
+        """Called by the parent so that us / this / the child can register the parameter it is attached to."""
         if self.call is None:
             if get_origin(param.annotation) is Annotated:
-                annotation = next(iter(get_args(param.annotation)))
-            else:
-                annotation = param.annotation
-            param = param.replace(annotation=annotation)
-            self.call = infer_call_from_annotation(param)
+                param = param.replace(annotation=next(iter(get_args(param.annotation))))
+            if param.annotation is not param.empty:
+                self.call = infer_call_from_annotation(param)
         return self
 
     @staticmethod
@@ -198,11 +194,10 @@ class Dependant(DependantBase[DependencyType]):
         """
         if self.wire is False:
             return []
-        assert (
-            self.call is not None
-        ), "Container should have assigned call; this is a bug!"
         res: List[DependencyParameter] = []
-        for param in self.gather_parameters().values():
+        if self.call is None:
+            return res
+        for param in self.gather_parameters(self.call).values():
             sub_dependant: DependantBase[Any]
             if param.name in self.overrides:
                 sub_dependant = self.overrides[param.name]
@@ -220,6 +215,12 @@ class Dependant(DependantBase[DependencyType]):
                     sub_dependant = maybe_sub_dependant
             param = param.replace(annotation=param.annotation)
             sub_dependant = sub_dependant.register_parameter(param)
+            if param.default is param.empty and sub_dependant.call is None:
+                raise WiringError(
+                    f"The parameter {param.name} to {self.call} has no dependency marker, no type annotation and no default value."
+                    " This will produce a TypeError when this function is called."
+                    " You must either provide a dependency marker, a type annotation or a default value."
+                )
             res.append(DependencyParameter(dependency=sub_dependant, parameter=param))
         return res
 
@@ -233,23 +234,15 @@ class Dependant(DependantBase[DependencyType]):
         >>>     ...
         >>> def foo_factory(foo: Foo) -> Foo:
         >>>     return foo
-        >>> def parent(foo: Dependency(foo_factory)):
+        >>> def parent(foo: Depends(foo_factory)):
         >>>    ...
 
-        In this scenario, `Dependency(foo_factory)` will call `create_sub_dependant(Foo)`.
+        In this scenario, `Depends(foo_factory)` will call `Depends(foo_factory).create_sub_dependant(Foo)`.
 
-        It is recommended to transfer `scope` and possibly `share` to sub-dependencies created in this manner.
+        Usually you'll transfer `scope` and possibly `share` to sub-dependencies created in this manner.
         """
-        if param.annotation is inspect.Parameter.empty:
-            raise WiringError(
-                "Cannot wire a parameter with no default and no type annotation"
-            )
-        if get_origin(param.annotation) is Annotated:
-            annotation = next(iter(get_args(param.annotation)))
-        else:
-            annotation = param.annotation
         return Dependant[Any](
-            call=annotation,
+            call=None,
             scope=self.scope,
             share=self.share,
             autowire=self.autowire,
