@@ -340,15 +340,13 @@ class BaseContainer(_ContainerCommon):
         *,
         execution_scope: Scope = None,
         executor: Optional[Union[AsyncExecutor, SyncExecutor]] = None,
-        _state: Optional[ContainerState] = None,
-        _binds: Optional[Dict[DependencyProvider, DependantBase[Any]]] = None,
     ) -> None:
         super().__init__(
             executor=executor or DefaultExecutor(),
             execution_scope=execution_scope,
-            binds=_binds,
+            binds={},
         )
-        self.__state = _state or ContainerState.initialize()
+        self.__state = ContainerState.initialize()
 
     @property
     def binds(self) -> Mapping[DependencyProvider, DependantBase[Any]]:
@@ -363,13 +361,14 @@ class BaseContainer(_ContainerCommon):
         return self.__state
 
     def copy(self: _BaseContainerType) -> _BaseContainerType:
-        new = self.__class__(
-            execution_scope=self._execution_scope,
-            executor=self._executor,
-            _state=self.__state.copy(),  # cached values and scopes are not shared
-            _binds=self._binds,  # binds are shared
-        )
-        return new
+        new = object.__new__(self.__class__)
+        new._execution_scope = self._execution_scope
+        new._executor = self._executor
+        # binds are shared
+        new._binds = self._binds
+        # cached values and scopes are not shared
+        new.__state = self.__state.copy()
+        return new  # type: ignore[no-any-return]
 
     def enter_scope(
         self: _BaseContainerType, scope: Scope
@@ -435,19 +434,14 @@ class Container(_ContainerCommon):
         *,
         execution_scope: Scope = None,
         executor: Optional[Union[AsyncExecutor, SyncExecutor]] = None,
-        _context: Optional[contextvars.ContextVar[ContainerState]] = None,
-        _binds: Optional[Dict[DependencyProvider, DependantBase[Any]]] = None,
     ) -> None:
         super().__init__(
             executor=executor or DefaultExecutor(),
             execution_scope=execution_scope,
-            binds=_binds,
+            binds={},
         )
-        if _context is None:
-            self._context = contextvars.ContextVar(f"{self}._context")
-            self._context.set(ContainerState.initialize())
-        else:
-            self._context = _context
+        self._context = contextvars.ContextVar(f"{self}._context")
+        self._context.set(ContainerState.initialize())
 
     @property
     def _state(self) -> ContainerState:
@@ -458,13 +452,12 @@ class Container(_ContainerCommon):
         return self._state.stacks.keys()
 
     def copy(self: _ContainerType) -> _ContainerType:
-        new = type(self)(
-            execution_scope=self._execution_scope,
-            executor=self._executor,
-            _binds=self._binds,
-            _context=self._context,
-        )
-        return new
+        new = object.__new__(self.__class__)
+        new._execution_scope = self._execution_scope
+        new._executor = self._executor
+        new._binds = self._binds
+        new._context = self._context
+        return new  # type: ignore[no-any-return]
 
     def enter_scope(
         self: _ContainerType, scope: Scope
