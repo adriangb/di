@@ -30,7 +30,6 @@ class ExecutionState:
         "stacks",
         "results",
         "toplogical_sorter",
-        "lock",
     )
 
     def __init__(
