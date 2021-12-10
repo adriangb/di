@@ -22,7 +22,7 @@ class DuplicateScopeError(DependencyInjectionException):
     pass
 
 
-class CircularDependencyError(DependencyInjectionException):
+class DependencyCycleError(DependencyInjectionException):
     """Raised when a dependency cycle is detected"""
 
     pass
