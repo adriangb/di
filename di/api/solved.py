@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import typing
-from typing import Any, Generic, Iterable, List, Mapping
+from typing import Any, Generic, Iterable, List, Mapping, TypeVar
 
 from di.api.dependencies import DependantBase, DependencyParameter
-from di.api.providers import DependencyType
 
 Dependency = Any
+
+DependencyType = TypeVar("DependencyType")
 
 
 class SolvedDependant(Generic[DependencyType]):

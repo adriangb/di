@@ -1,17 +1,17 @@
 from typing import Any, AsyncGenerator, Callable, Coroutine, Generator, TypeVar, Union
 
-DependencyType = TypeVar("DependencyType", covariant=True)
+T = TypeVar("T")
 
-CallableProvider = Callable[..., DependencyType]
-CoroutineProvider = Callable[..., Coroutine[Any, Any, DependencyType]]
-GeneratorProvider = Callable[..., Generator[DependencyType, None, None]]
-AsyncGeneratorProvider = Callable[..., AsyncGenerator[DependencyType, None]]
+CallableProvider = Callable[..., T]
+CoroutineProvider = Callable[..., Coroutine[Any, Any, T]]
+GeneratorProvider = Callable[..., Generator[T, None, None]]
+AsyncGeneratorProvider = Callable[..., AsyncGenerator[T, None]]
 
 DependencyProviderType = Union[
-    CallableProvider[DependencyType],
-    CoroutineProvider[DependencyType],
-    GeneratorProvider[DependencyType],
-    AsyncGeneratorProvider[DependencyType],
+    CallableProvider[T],
+    CoroutineProvider[T],
+    GeneratorProvider[T],
+    AsyncGeneratorProvider[T],
 ]
 
 

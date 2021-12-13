@@ -7,12 +7,14 @@ else:
     from typing import Protocol
 
 from di._utils.types import FusedContextManager
-from di.api.dependencies import DependantBase, DependencyType
+from di.api.dependencies import DependantBase
 from di.api.providers import DependencyProvider, DependencyProviderType
 from di.api.scopes import Scope
 from di.api.solved import SolvedDependant
 
 ContainerType = TypeVar("ContainerType")
+
+DependencyType = TypeVar("DependencyType")
 
 
 class ContainerProtocol(Protocol):

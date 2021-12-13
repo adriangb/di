@@ -1,18 +1,19 @@
 """Convenience functions, mainly for the purpose of providing proper type annotations for default arguments.
 """
 
-from typing import Optional, overload
+from typing import Optional, TypeVar, overload
 
 from di.api.providers import (
     AsyncGeneratorProvider,
     CallableProvider,
     CoroutineProvider,
     DependencyProviderType,
-    DependencyType,
     GeneratorProvider,
 )
 from di.api.scopes import Scope
 from di.dependant import Dependant
+
+DependencyType = TypeVar("DependencyType")
 
 
 @overload

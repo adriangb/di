@@ -3,7 +3,18 @@ from __future__ import annotations
 import inspect
 import sys
 from itertools import chain
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Type, cast, overload
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Type,
+    TypeVar,
+    cast,
+    overload,
+)
 
 if sys.version_info < (3, 8):
     from typing_extensions import Protocol
@@ -16,14 +27,13 @@ else:
     from typing import Annotated, get_args, get_origin
 
 from di._utils.inspect import get_parameters, infer_call_from_annotation
-from di.api.dependencies import DependantBase, DependencyParameter, T
+from di.api.dependencies import DependantBase, DependencyParameter
 from di.api.providers import (
     AsyncGeneratorProvider,
     CallableProvider,
     CoroutineProvider,
     DependencyProvider,
     DependencyProviderType,
-    DependencyType,
     GeneratorProvider,
 )
 from di.api.scopes import Scope
@@ -34,8 +44,10 @@ _VARIABLE_PARAMETER_KINDS = (
     inspect.Parameter.VAR_KEYWORD,
 )
 
+T = TypeVar("T")
 
-class Dependant(DependantBase[DependencyType]):
+
+class Dependant(DependantBase[T]):
     wire: bool
     autowire: bool
     sync_to_thread: bool
@@ -44,7 +56,7 @@ class Dependant(DependantBase[DependencyType]):
     @overload
     def __init__(
         self,
-        call: Optional[AsyncGeneratorProvider[DependencyType]] = None,
+        call: Optional[AsyncGeneratorProvider[T]] = None,
         *,
         scope: Optional[Scope] = None,
         share: bool = True,
@@ -58,7 +70,7 @@ class Dependant(DependantBase[DependencyType]):
     @overload
     def __init__(
         self,
-        call: Optional[CoroutineProvider[DependencyType]] = None,
+        call: Optional[CoroutineProvider[T]] = None,
         *,
         scope: Optional[Scope] = None,
         share: bool = True,
@@ -72,7 +84,7 @@ class Dependant(DependantBase[DependencyType]):
     @overload
     def __init__(
         self,
-        call: Optional[GeneratorProvider[DependencyType]] = None,
+        call: Optional[GeneratorProvider[T]] = None,
         *,
         scope: Optional[Scope] = None,
         share: bool = True,
@@ -86,7 +98,7 @@ class Dependant(DependantBase[DependencyType]):
     @overload
     def __init__(
         self,
-        call: Optional[CallableProvider[DependencyType]] = None,
+        call: Optional[CallableProvider[T]] = None,
         *,
         scope: Optional[Scope] = None,
         share: bool = True,
@@ -99,7 +111,7 @@ class Dependant(DependantBase[DependencyType]):
 
     def __init__(
         self,
-        call: Optional[DependencyProviderType[DependencyType]] = None,
+        call: Optional[DependencyProviderType[T]] = None,
         *,
         scope: Scope = None,
         share: bool = True,
@@ -249,7 +261,7 @@ class Dependant(DependantBase[DependencyType]):
         )
 
 
-class JoinedDependant(DependantBase[DependencyType]):
+class JoinedDependant(DependantBase[T]):
     """A Dependant that aggregates other dependants without directly depending on them"""
 
     __slots__ = ("dependant", "siblings", "_dependencies")
@@ -258,7 +270,7 @@ class JoinedDependant(DependantBase[DependencyType]):
 
     def __init__(
         self,
-        dependant: DependantBase[DependencyType],
+        dependant: DependantBase[T],
         *,
         siblings: Iterable[DependantBase[Any]],
     ) -> None:
@@ -288,14 +300,12 @@ class JoinedDependant(DependantBase[DependencyType]):
             return False
         return (self.dependant, *self.siblings) == (o.dependant, *o.siblings)
 
-    def register_parameter(
-        self, param: inspect.Parameter
-    ) -> DependantBase[DependencyType]:
+    def register_parameter(self, param: inspect.Parameter) -> DependantBase[T]:
         self.dependant = self.dependant.register_parameter(param)
         return self
 
 
-class UniqueDependant(Dependant[DependencyType]):
+class UniqueDependant(Dependant[T]):
     """A Dependant that can be cached/shared but is never substituted with another Dependant in the DAG"""
 
     # By overriding __eq__, __hash__ gets set to None
@@ -316,7 +326,7 @@ class CallableClass(Protocol[T]):
 def CallableClassDependant(
     call: Type[CallableClass[T]],
     *,
-    cls_provider: Optional[DependencyProviderType[CallableClass[Any]]] = None,
+    cls_provider: Optional[DependencyProviderType[CallableClass[T]]] = None,
     instance_scope: Scope = None,
     scope: Scope = None,
     share: bool = True,
@@ -330,9 +340,8 @@ def CallableClassDependant(
     """
     if not (inspect.isclass(call) and hasattr(call, "__call__")):
         raise TypeError("call must be a callable class")
-    cls_provider = cls_provider or call
     self = UniqueDependant(
-        cls_provider,
+        cls_provider or call,
         scope=instance_scope,
         share=True,
         wire=wire,

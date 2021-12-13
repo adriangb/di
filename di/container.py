@@ -33,7 +33,7 @@ from di._utils.topsort import topsort
 from di._utils.types import FusedContextManager
 from di.api.dependencies import DependantBase, DependencyParameter
 from di.api.executor import AsyncExecutor, SyncExecutor
-from di.api.providers import DependencyProvider, DependencyProviderType, DependencyType
+from di.api.providers import DependencyProvider, DependencyProviderType
 from di.api.scopes import Scope
 from di.api.solved import SolvedDependant
 from di.exceptions import SolvingError
@@ -45,6 +45,9 @@ _DependantTaskDag = Dict[_Task, Set[_Task]]
 _DependantQueue = Deque[DependantBase[Any]]
 _ExecutionCM = FusedContextManager[None]
 _nullcontext = nullcontext(None)
+
+
+DependencyType = TypeVar("DependencyType")
 
 
 __all__ = ("BaseContainer", "Container")
