@@ -8,6 +8,7 @@ else:
 
 from di._utils.types import FusedContextManager
 from di.api.dependencies import DependantBase
+from di.api.executor import AsyncExecutor, SyncExecutor
 from di.api.providers import DependencyProvider, DependencyProviderType
 from di.api.scopes import Scope
 from di.api.solved import SolvedDependant
@@ -57,12 +58,13 @@ class ContainerProtocol(Protocol):
         self,
         solved: SolvedDependant[DependencyType],
         *,
+        executor: Optional[SyncExecutor] = None,
         values: Optional[Mapping[DependencyProvider, Any]] = None,
     ) -> DependencyType:
         """Execute an already solved dependency.
 
-        This method is synchronous and uses a synchronous executor,
-        but the executor may still be able to execute async dependencies.
+        This method may or may not be able to handle async dependencies,
+        this is up to the executor passed in.
         """
         ...
 
@@ -70,7 +72,11 @@ class ContainerProtocol(Protocol):
         self,
         solved: SolvedDependant[DependencyType],
         *,
+        executor: Optional[AsyncExecutor] = None,
         values: Optional[Mapping[DependencyProvider, Any]] = None,
     ) -> DependencyType:
-        """Execute an already solved dependency."""
+        """Execute an already solved dependency.
+
+        This method can always handle sync and async dependencies.
+        """
         ...
