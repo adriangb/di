@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import inspect
 import sys
-from itertools import chain
 from typing import (
     Any,
     Dict,
@@ -284,12 +283,10 @@ class JoinedDependant(DependantBase[T]):
     def get_dependencies(self) -> List[DependencyParameter]:
         """Get the dependencies of our main dependant and all siblings"""
         if self._dependencies is None:
-            self._dependencies = list(
-                chain(
-                    self.dependant.get_dependencies(),
-                    (DependencyParameter(dep, None) for dep in self.siblings),
-                )
-            )
+            self._dependencies = [
+                *self.dependant.get_dependencies(),
+                *(DependencyParameter(dep, None) for dep in self.siblings),
+            ]
         return self._dependencies
 
     def __hash__(self) -> int:
