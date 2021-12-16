@@ -1,84 +1,59 @@
-"""Profile solving a DAG
+"""Run this file like python benchmarks/solve.py
 
-Run this file, then run:
-snakeviz bench.prof
+It will print out results to the console and open web browser windows.
 """
-
-import cProfile
-import pstats
-import timeit
-
 import anyio
+from pyinstrument.profiler import Profiler
 
-from benchmarks.utils import generate_dag
+from benchmarks.utils import GraphSize, SleepTimes, generate_dag
 from di import Container, Dependant, Depends
 from di.executors import ConcurrentAsyncExecutor, SimpleSyncExecutor
 
+INTERVAL = 10e-6  # 10 us
 
-async def async_concurrent():
+
+async def async_bench(sleep: SleepTimes, graph: GraphSize, iters: int) -> None:
     container = Container(executor=ConcurrentAsyncExecutor())
     solved = container.solve(
-        Dependant(generate_dag(Depends, 4, 3, 3, sync=True, sleep=(0, 1e-3)))
+        Dependant(generate_dag(Depends, graph, sync=False, sleep=sleep))
     )
-    profiler = cProfile.Profile()
-    profiler.enable()
+    p = Profiler()
     await container.execute_async(solved)
-    profiler.disable()
-    stats = pstats.Stats(profiler)
-    filename = "async_concurrent.prof"
-    stats.dump_stats(filename=filename)
-    print(f"Dumped cProfile stats to {filename}")
-    start = timeit.default_timer()
-    iters = 200
+    p.start()
     for _ in range(iters):
         await container.execute_async(solved)
-    elapsed = timeit.default_timer() - start
-    print(f"{elapsed/iters:.2e} sec/iter")
+    p.stop()
+    p.print()
+    p.open_in_browser()
 
 
-def sync_sequential_large():
+def sync_bench(sleep: SleepTimes, graph: GraphSize, iters: int) -> None:
     container = Container(executor=SimpleSyncExecutor())
     solved = container.solve(
-        Dependant(generate_dag(Depends, 4, 3, 3, sync=True, sleep=(0, 1e-3)))
+        Dependant(generate_dag(Depends, graph, sync=True, sleep=sleep))
     )
-    profiler = cProfile.Profile()
-    profiler.enable()
+    p = Profiler()
     container.execute_sync(solved)
-    profiler.disable()
-    stats = pstats.Stats(profiler)
-    filename = "sync_sequential_large.prof"
-    stats.dump_stats(filename=filename)
-    print(f"Dumped cProfile stats to {filename}")
-    start = timeit.default_timer()
-    iters = 200
+    p.start()
     for _ in range(iters):
         container.execute_sync(solved)
-    elapsed = timeit.default_timer() - start
-    print(f"{elapsed/iters:.2e} sec/iter")
+    p.stop()
+    p.print()
+    p.open_in_browser()
 
 
-def sync_sequential_small():
-    container = Container(executor=SimpleSyncExecutor())
-    solved = container.solve(
-        Dependant(generate_dag(Depends, 1, 1, 1, sync=True, sleep=(0, 1e-3)))
-    )
-    profiler = cProfile.Profile()
-    profiler.enable()
-    container.execute_sync(solved)
-    profiler.disable()
-    stats = pstats.Stats(profiler)
-    filename = "sync_sequential_small.prof"
-    stats.dump_stats(filename=filename)
-    print(f"Dumped cProfile stats to {filename}")
-    start = timeit.default_timer()
-    iters = 200
-    for _ in range(iters):
-        container.execute_sync(solved)
-    elapsed = timeit.default_timer() - start
-    print(f"{elapsed/iters:.2e} sec/iter")
+LARGE_GRAPH = GraphSize(25, 5, 5)
+SMALL_GRAPH = GraphSize(1, 1, 1)
+FAST_DEPS = SleepTimes(0, 0)
+SLOW_DEPS = SleepTimes(1e-3, 1e-3)
 
 
 if __name__ == "__main__":
-    anyio.run(async_concurrent)
-    sync_sequential_large()
-    sync_sequential_small()
+    anyio.run(async_bench, FAST_DEPS, SMALL_GRAPH, 1_000)
+    anyio.run(async_bench, FAST_DEPS, LARGE_GRAPH, 1_000)
+    anyio.run(async_bench, SLOW_DEPS, SMALL_GRAPH, 1_000)
+    anyio.run(async_bench, SLOW_DEPS, LARGE_GRAPH, 100)
+    sync_bench(FAST_DEPS, SMALL_GRAPH, iters=1_000)
+    sync_bench(FAST_DEPS, LARGE_GRAPH, iters=1_000)
+    sync_bench(SLOW_DEPS, SMALL_GRAPH, iters=1_000)
+    sync_bench(SLOW_DEPS, LARGE_GRAPH, iters=10)

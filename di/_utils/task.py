@@ -104,7 +104,7 @@ class Task:
     ) -> Tuple[Iterable[Any], Mapping[str, Any]]:
         """Gather all parameters (aka *args and **kwargs) needed for computation"""
         return (
-            (results[t] for t in self.positional_parameters),
+            [results[t] for t in self.positional_parameters],
             {k: results[t] for k, t in self.keyword_parameters},
         )
 
