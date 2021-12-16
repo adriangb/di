@@ -1,5 +1,5 @@
 import sys
-from typing import Callable, List
+from typing import Any, Callable, List, Mapping
 
 from di.dependant import JoinedDependant
 
@@ -11,7 +11,8 @@ else:
 import pytest
 
 from di import Container, Dependant, Depends
-from di.api.dependencies import DependencyParameter
+from di.api.dependencies import DependantBase, DependencyParameter
+from di.api.providers import DependencyProvider
 from di.exceptions import ScopeViolationError, SolvingError, WiringError
 
 
@@ -162,7 +163,7 @@ def test_non_parameter_dependency():
         called: bool = False
 
         def gather_dependencies(
-            self,
+            self, binds: Mapping[DependencyProvider, DependantBase[Any]]
         ) -> List[DependencyParameter]:
             return [
                 DependencyParameter(Dependant(call=lambda: calls.append(True)), None)
@@ -176,9 +177,8 @@ def test_non_parameter_dependency():
 
 
 class CannotBeWired:
-    # cannot be autowired because of *args, **kwargs
-    def __init__(self, *args, **kwargs) -> None:
-        ...
+    def __init__(self, arg) -> None:
+        assert arg == 1  # a sentinal value to make sure a bug didn't inject something
 
 
 def test_no_autowire() -> None:
@@ -188,6 +188,8 @@ def test_no_autowire() -> None:
         ...
 
     container = Container()
+    with pytest.raises(WiringError):
+        container.solve(Dependant(collect))
     container.solve(Dependant(collect, autowire=False))
 
 
@@ -195,4 +197,22 @@ def test_no_wire() -> None:
     """Specifying wire=False skips wiring on the dependency itself"""
 
     container = Container()
+    with pytest.raises(WiringError):
+        container.solve(Dependant(CannotBeWired))
     container.solve(Dependant(CannotBeWired, wire=False))
+
+
+def test_wiring_from_binds() -> None:
+    """Unwirable dependencies will be wired from binds if a bind exists"""
+
+    class CanBeWired(CannotBeWired):
+        def __init__(self) -> None:
+            super().__init__(1)
+
+    container = Container()
+    # container.bind(Dependant(CanBeWired), CannotBeWired)
+    with pytest.raises(WiringError):
+        container.solve(Dependant(CannotBeWired))
+    container.bind(Dependant(CanBeWired), CannotBeWired)  # type: ignore[arg-type]
+    c = container.execute_sync(container.solve(Dependant(CannotBeWired)))
+    assert isinstance(c, CanBeWired)

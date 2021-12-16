@@ -142,22 +142,10 @@ class Dependant(DependantBase[T]):
         """
         if type(self) != type(o):
             return False
-        o = cast(Dependant[Any], o)
+        o = cast(Dependant[T], o)
         if self.share is False or o.share is False:
             return False
-        return self.call is o.call
-
-    def get_dependencies(
-        self,
-    ) -> List[DependencyParameter]:
-        """Collect all of the sub dependencies for this dependant
-
-        For the Dependant implementation, this serves as a cache layer on
-        top of gather_dependencies.
-        """
-        if self.dependencies is None:
-            self.dependencies = self.gather_dependencies()
-        return self.dependencies
+        return self.call is o.call and self.overrides == o.overrides
 
     @staticmethod
     def gather_parameters(call: DependencyProvider) -> Dict[str, inspect.Parameter]:
@@ -195,8 +183,22 @@ class Dependant(DependantBase[T]):
                     return arg
         return None
 
+    def get_dependencies(
+        self,
+        binds: Mapping[DependencyProvider, DependantBase[Any]],
+    ) -> List[DependencyParameter]:
+        """Collect all of the sub dependencies for this dependant
+
+        For the Dependant implementation, this serves as a cache layer on
+        top of gather_dependencies.
+        """
+        if self.dependencies is None:
+            self.dependencies = self.gather_dependencies(binds)
+        return self.dependencies
+
     def gather_dependencies(
         self,
+        binds: Mapping[DependencyProvider, DependantBase[Any]],
     ) -> List[DependencyParameter]:
         """Collect this dependencies sub dependencies.
 
@@ -218,13 +220,15 @@ class Dependant(DependantBase[T]):
                 maybe_sub_dependant = self.get_sub_dependant_from_paramter(param)
                 if maybe_sub_dependant is None:
                     if param.default is param.empty and self.autowire:
-                        sub_dependant = self.create_sub_dependant(param)
+                        if param.annotation in binds:
+                            sub_dependant = binds[param.annotation]
+                        else:
+                            sub_dependant = self.create_sub_dependant(param)
                     else:
                         # use the default value or fail at runtime
                         continue  # pragma: no cover
                 else:
                     sub_dependant = maybe_sub_dependant
-            param = param.replace(annotation=param.annotation)
             sub_dependant = sub_dependant.register_parameter(param)
             if param.default is param.empty and sub_dependant.call is None:
                 raise WiringError(
@@ -245,12 +249,14 @@ class Dependant(DependantBase[T]):
         >>>     ...
         >>> def foo_factory(foo: Foo) -> Foo:
         >>>     return foo
-        >>> def parent(foo: Depends(foo_factory)):
+        >>> def parent(foo: Annotated[..., Depends(foo_factory)]):
         >>>    ...
 
-        In this scenario, `Depends(foo_factory)` will call `Depends(foo_factory).create_sub_dependant(Foo)`.
+        In this scenario, `Depends(foo_factory)` will call
+        `Depends(foo_factory).create_sub_dependant(Parameter(Foo))`.
 
-        Usually you'll transfer `scope` and possibly `share` to sub-dependencies created in this manner.
+        Usually you'll transfer `scope` and possibly `share`
+        to sub-dependencies created in this manner.
         """
         return Dependant[Any](
             call=None,
@@ -280,11 +286,13 @@ class JoinedDependant(DependantBase[T]):
         self._dependencies = None
         self.share = dependant.share
 
-    def get_dependencies(self) -> List[DependencyParameter]:
+    def get_dependencies(
+        self, binds: Mapping[DependencyProvider, DependantBase[Any]]
+    ) -> List[DependencyParameter]:
         """Get the dependencies of our main dependant and all siblings"""
         if self._dependencies is None:
             self._dependencies = [
-                *self.dependant.get_dependencies(),
+                *self.dependant.get_dependencies(binds),
                 *(DependencyParameter(dep, None) for dep in self.siblings),
             ]
         return self._dependencies
@@ -302,18 +310,6 @@ class JoinedDependant(DependantBase[T]):
         return self
 
 
-class UniqueDependant(Dependant[T]):
-    """A Dependant that can be cached/shared but is never substituted with another Dependant in the DAG"""
-
-    # By overriding __eq__, __hash__ gets set to None
-    # see https://docs.python.org/3/reference/datamodel.html#object.__hash__ a couple paragraphs down
-    def __hash__(self) -> int:
-        return super().__hash__()
-
-    def __eq__(self, o: object) -> bool:
-        return o is self
-
-
 class CallableClass(Protocol[T]):
     """A callable class that has a __call__ that is valid as dependency provider"""
 
@@ -323,7 +319,6 @@ class CallableClass(Protocol[T]):
 def CallableClassDependant(
     call: Type[CallableClass[T]],
     *,
-    cls_provider: Optional[DependencyProviderType[CallableClass[T]]] = None,
     instance_scope: Scope = None,
     scope: Scope = None,
     share: bool = True,
@@ -337,8 +332,8 @@ def CallableClassDependant(
     """
     if not (inspect.isclass(call) and hasattr(call, "__call__")):
         raise TypeError("call must be a callable class")
-    self = UniqueDependant(
-        cls_provider or call,
+    instance = Dependant[CallableClass[T]](
+        call,
         scope=instance_scope,
         share=True,
         wire=wire,
@@ -350,5 +345,5 @@ def CallableClassDependant(
         share=share,
         wire=wire,
         autowire=autowire,
-        overrides={"self": self},
+        overrides={"self": instance},
     )

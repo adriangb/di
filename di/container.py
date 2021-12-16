@@ -138,7 +138,7 @@ class _ContainerCommon:
         ) -> List[DependencyParameter]:
             # get parameters and swap them out w/ binds when they
             # exist as a bound value
-            params = dep.get_dependencies().copy()
+            params = dep.get_dependencies(self._binds).copy()
             for idx, param in enumerate(params):
                 assert param.dependency.call is not None
                 if param.dependency.call in self._binds:

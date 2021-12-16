@@ -1,7 +1,6 @@
 import pytest
 
 from di import Container
-from di.api.providers import DependencyProviderType
 from di.dependant import CallableClassDependant
 
 
@@ -45,25 +44,6 @@ class InitFailsCls:
 
     def __call__(self) -> None:
         assert self.x == 2
-
-
-async def pointless_async_provider() -> InitFailsCls:
-    return InitFailsCls(2)
-
-
-@pytest.mark.parametrize(
-    "cls_provider", [lambda: InitFailsCls(2), pointless_async_provider]
-)
-@pytest.mark.anyio
-async def test_cls_provider(cls_provider: DependencyProviderType[InitFailsCls]):
-    """An alternative constructor can be provided to allow composition instead of having to
-    inherit and override the class constructor.
-    """
-    container = Container()
-    dep = CallableClassDependant(InitFailsCls, cls_provider=cls_provider)  # type: ignore  # mypy has trouble with this, Pyalnce works fine
-    solved = container.solve(dep)
-
-    await container.execute_async(solved)
 
 
 def test_not_a_class():
