@@ -9,7 +9,7 @@ Key features:
 - **Correct**: tested with MyPy: `value: int = Depends(returns_str)` gives an error.
 - **Scopes**: inspired by [pytest scopes], but defined by users (no fixed "request" or "session" scopes).
 - **Flexible**: decoupled internal APIs give you the flexibility to customize wiring and execution.
-- **Performant**: `di` can execute dependencies in parallel, move sync dependencies to threads and cache results.
+- **Performant**: `di` can execute dependencies in parallel, move sync dependencies to threads and cache results. Performance critical parts are written in 🦀.
 
 ## Installation
 
