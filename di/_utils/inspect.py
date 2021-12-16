@@ -77,7 +77,7 @@ def get_annotations(call: Callable[..., Any]) -> Dict[str, Any]:
 @lru_cache(maxsize=2 ** 10)
 def get_parameters(call: Callable[..., Any]) -> Dict[str, inspect.Parameter]:
     params: Mapping[str, inspect.Parameter]
-    if inspect.isclass(call) and call.__new__ is not object.__new__:
+    if inspect.isclass(call) and (call.__new__ is not object.__new__):  # type: ignore[comparison-overlap]
         # classes overriding __new__, including some generic metaclasses, result in __new__ getting read
         # instead of __init__
         params = inspect.signature(call.__init__).parameters  # type: ignore[misc] # accessing __init__ directly
@@ -85,9 +85,6 @@ def get_parameters(call: Callable[..., Any]) -> Dict[str, inspect.Parameter]:
         params.pop(next(iter(params.keys())))  # first parameter to __init__ is self
     else:
         params = inspect.signature(call).parameters
-    # We used to deferr calling get_annotations until we encountered a possible forward ref
-    # But we switched to always calling it, primarily because of https://github.com/samuelcolvin/pydantic/pull/3413
-    # We could switch this back in the future to avoid extra computation
     annotations = get_annotations(call)
     processed_params: Dict[str, inspect.Parameter] = {}
     for param_name, param in params.items():

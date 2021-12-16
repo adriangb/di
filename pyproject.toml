@@ -28,9 +28,9 @@ graphlib2 = ">=0.2.13"
 
 [tool.poetry.group.lint.dependencies]
 black = ">=21.12b0,<22"
-flake8 = "~3"
-isort = "~5"
-mypy = ">=v0.910"
+flake8 = "~3.9"
+isort = "~5.10"
+mypy = "v0.910"
 pre-commit = "~2"
 
 [tool.poetry.group.test.dependencies]
