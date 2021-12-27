@@ -46,7 +46,7 @@ coverage = {extras = ["toml"], version = "^6.0"}
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "~1"
-mkdocs-material = "~8"
+mkdocs-material = "8.1.2"
 mike = "~1"
 
 [tool.poetry.group.bench.dependencies]
