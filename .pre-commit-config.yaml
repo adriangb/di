@@ -9,8 +9,8 @@ repos:
     - id: lockfile
       name: check poetry.lock
       language: system
-      entry: poetry lock --check
-      files: ^pyproject.toml$
+      entry: poetry lock --no-update
+      files: ^pyproject.toml|poetry.lock$
       pass_filenames: false
     - id: isort
       name: isort

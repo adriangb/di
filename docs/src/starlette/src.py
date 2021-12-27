@@ -40,7 +40,7 @@ class App(Starlette):
         self.container.bind(Dependant(Request, wire=False), Request)
 
         @contextlib.asynccontextmanager
-        async def lifespan(app: App):
+        async def lifespan(app: Starlette):
             async with self.container.enter_scope("app") as container:
                 self.container = container
                 yield
