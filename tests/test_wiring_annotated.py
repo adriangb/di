@@ -24,5 +24,8 @@ def test_wiring_based_from_annotation() -> None:
         pass
 
     dep = Dependant(f)
-    subdeps = dep.get_dependencies({})
+    subdeps = dep.get_dependencies()
+    for subdep in subdeps:
+        if subdep.parameter:
+            subdep.dependency.register_parameter(subdep.parameter)
     assert [d.dependency.call for d in subdeps] == [g, G, g]

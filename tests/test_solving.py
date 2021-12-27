@@ -1,5 +1,5 @@
 import sys
-from typing import Any, Callable, List, Mapping
+from typing import Callable, List
 
 from di.dependant import JoinedDependant
 
@@ -11,8 +11,7 @@ else:
 import pytest
 
 from di import Container, Dependant, Depends
-from di.api.dependencies import DependantBase, DependencyParameter
-from di.api.providers import DependencyProvider
+from di.api.dependencies import DependencyParameter
 from di.exceptions import ScopeViolationError, SolvingError, WiringError
 
 
@@ -166,9 +165,7 @@ def test_non_parameter_dependency():
     class CustomDependant(Dependant[None]):
         called: bool = False
 
-        def get_dependencies(
-            self, binds: Mapping[DependencyProvider, DependantBase[Any]]
-        ) -> List[DependencyParameter]:
+        def get_dependencies(self) -> List[DependencyParameter]:
             return [
                 DependencyParameter(
                     dependency=Dependant(should_be_called), parameter=None

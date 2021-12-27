@@ -2,18 +2,7 @@ from __future__ import annotations
 
 import inspect
 import sys
-from typing import (
-    Any,
-    Dict,
-    Iterable,
-    List,
-    Mapping,
-    Optional,
-    Type,
-    TypeVar,
-    cast,
-    overload,
-)
+from typing import Any, Iterable, List, Mapping, Optional, Type, TypeVar, cast, overload
 
 if sys.version_info < (3, 8):
     from typing_extensions import Protocol
@@ -31,12 +20,11 @@ from di.api.providers import (
     AsyncGeneratorProvider,
     CallableProvider,
     CoroutineProvider,
-    DependencyProvider,
     DependencyProviderType,
     GeneratorProvider,
 )
 from di.api.scopes import Scope
-from di.exceptions import WiringError
+from di.typing import get_marker_from_parameter
 
 _VARIABLE_PARAMETER_KINDS = (
     inspect.Parameter.VAR_POSITIONAL,
@@ -137,18 +125,16 @@ class Dependant(DependantBase[T]):
             return False
         return self.call is o.call and self.overrides == o.overrides
 
-    @staticmethod
-    def gather_parameters(call: DependencyProvider) -> Dict[str, inspect.Parameter]:
-        """Collect parameters that this dependency needs to construct itself.
-
-        Generally, this means introspecting into our own callable (self.call).
-        """
-        return get_parameters(call)
-
     def register_parameter(
-        self: Dependant[T], param: inspect.Parameter
-    ) -> Dependant[T]:
-        """Called by the parent so that us / this / the child can register the parameter it is attached to."""
+        self: DependantBase[T], param: inspect.Parameter
+    ) -> DependantBase[T]:
+        """Hook to register the parameter this Dependant corresponds to.
+
+        This can be used to inferr self.call from a type annotation (autowiring),
+        or to just register the type annotation.
+
+        This method can return the same or a new instance of a Dependant to avoid modifying itself.
+        """
         if self.call is None:
             if get_origin(param.annotation) is Annotated:
                 param = param.replace(annotation=next(iter(get_args(param.annotation))))
@@ -156,57 +142,23 @@ class Dependant(DependantBase[T]):
                 self.call = infer_call_from_annotation(param)
         return self
 
-    @staticmethod
-    def get_sub_dependant_from_paramter(
-        param: inspect.Parameter,
-    ) -> Optional[DependantBase[Any]]:
-        """Infer a sub-dependant from a parameter of this Dependant's .call
-
-        By default, we look for Depends(...) markers (which are instances of DependantBase)
-        in the default values and PEP 593 typing annotations.
-        """
-        if isinstance(param.default, DependantBase):
-            return param.default
-        if get_origin(param.annotation) is Annotated:
-            for arg in get_args(param.annotation):
-                if isinstance(arg, DependantBase):
-                    return arg
-        return None
-
-    def get_dependencies(
-        self,
-        binds: Mapping[DependencyProvider, DependantBase[Any]],
-    ) -> List[DependencyParameter]:
+    def get_dependencies(self) -> List[DependencyParameter]:
         """Collect all of our sub-dependencies as parameters"""
         if self.wire is False or self.call is None:
             return []
         res: List[DependencyParameter] = []
-        for param in self.gather_parameters(self.call).values():
+        for param in get_parameters(self.call).values():
             sub_dependant: DependantBase[Any]
             if param.name in self.overrides:
                 sub_dependant = self.overrides[param.name]
             elif param.kind in _VARIABLE_PARAMETER_KINDS:
                 continue
             else:
-                maybe_sub_dependant = self.get_sub_dependant_from_paramter(param)
+                maybe_sub_dependant = get_marker_from_parameter(param)
                 if maybe_sub_dependant is None:
-                    if param.default is param.empty:
-                        if param.annotation in binds:
-                            sub_dependant = binds[param.annotation]
-                        else:
-                            sub_dependant = self.create_sub_dependant(param)
-                    else:
-                        # use the default value or fail at runtime
-                        continue  # pragma: no cover
+                    sub_dependant = self.create_sub_dependant(param)
                 else:
                     sub_dependant = maybe_sub_dependant
-            sub_dependant = sub_dependant.register_parameter(param)
-            if param.default is param.empty and sub_dependant.call is None:
-                raise WiringError(
-                    f"The parameter {param.name} to {self.call} has no dependency marker, no type annotation and no default value."
-                    " This will produce a TypeError when this function is called."
-                    " You must either provide a dependency marker, a type annotation or a default value."
-                )
             res.append(DependencyParameter(dependency=sub_dependant, parameter=param))
         return res
 
@@ -239,9 +191,7 @@ class Dependant(DependantBase[T]):
 class JoinedDependant(DependantBase[T]):
     """A Dependant that aggregates other dependants without directly depending on them"""
 
-    __slots__ = ("dependant", "siblings", "_dependencies")
-
-    _dependencies: Optional[List[DependencyParameter]]
+    __slots__ = ("dependant", "siblings")
 
     def __init__(
         self,
@@ -253,19 +203,14 @@ class JoinedDependant(DependantBase[T]):
         self.dependant = dependant
         self.siblings = siblings
         self.scope = dependant.scope
-        self._dependencies = None
         self.share = dependant.share
 
-    def get_dependencies(
-        self, binds: Mapping[DependencyProvider, DependantBase[Any]]
-    ) -> List[DependencyParameter]:
+    def get_dependencies(self) -> List[DependencyParameter]:
         """Get the dependencies of our main dependant and all siblings"""
-        if self._dependencies is None:
-            self._dependencies = [
-                *self.dependant.get_dependencies(binds),
-                *(DependencyParameter(dep, None) for dep in self.siblings),
-            ]
-        return self._dependencies
+        return [
+            *self.dependant.get_dependencies(),
+            *(DependencyParameter(dep, None) for dep in self.siblings),
+        ]
 
     def __hash__(self) -> int:
         return hash((self.dependant, *self.siblings))

@@ -32,8 +32,10 @@ class App(TextualApp):
         event: Event | None = None,
         message: Message | None = None,
     ) -> None:
-        with self.container.bind(Dependant(lambda: event), type(event)):
-            with self.container.bind(Dependant(lambda: message), type(message)):
+        with self.container.bind(Dependant(lambda: event, wire=False), type(event)):
+            with self.container.bind(
+                Dependant(lambda: message, wire=False), type(message)
+            ):
                 await self.container.execute_async(
                     self.container.solve(Dependant(callback))
                 )

@@ -36,7 +36,7 @@ from di.api.executor import AsyncExecutor, SyncExecutor
 from di.api.providers import DependencyProvider, DependencyProviderType
 from di.api.scopes import Scope
 from di.api.solved import SolvedDependant
-from di.exceptions import SolvingError
+from di.exceptions import SolvingError, WiringError
 from di.executors import DefaultExecutor
 
 _Task = Union[AsyncTask, SyncTask]
@@ -138,14 +138,29 @@ class _ContainerCommon:
         ) -> List[DependencyParameter]:
             # get parameters and swap them out w/ binds when they
             # exist as a bound value
-            params = dep.get_dependencies(self._binds).copy()
+            params = dep.get_dependencies().copy()
             for idx, param in enumerate(params):
-                assert param.dependency.call is not None
-                if param.dependency.call in self._binds:
+                if param.parameter is not None:
+                    param.dependency.register_parameter(param.parameter)
+                if (
+                    param.dependency.call is not None
+                    and param.dependency.call in self._binds
+                ):
                     params[idx] = DependencyParameter(
                         dependency=self._binds[param.dependency.call],
                         parameter=param.parameter,
                     )
+                if param.parameter is not None:
+                    if (
+                        param.dependency.call is None
+                        and param.parameter.default is param.parameter.empty
+                    ):
+                        raise WiringError(
+                            f"The parameter {param.parameter.name} to {dep.call} has no dependency marker,"
+                            " no type annotation and no default value."
+                            " This will produce a TypeError when this function is called."
+                            " You must either provide a dependency marker, a type annotation or a default value."
+                        )
             return params
 
         def check_equivalent(dep: DependantBase[Any]) -> None:
@@ -177,21 +192,37 @@ class _ContainerCommon:
                     dep_dag[dep].append(predecessor_dep)
                     if predecessor_dep not in dep_registry:
                         q.append(predecessor_dep)
-
+        # Filter out any dependencies that do not have a call
+        # These do not become tasks since they don't need to be computed
+        computable_param_graph = {
+            dep: [
+                param for param in param_graph[dep] if param.dependency.call is not None
+            ]
+            for dep in param_graph
+            if dep.call is not None
+        }
         # Order the Dependant's topologically so that we can create Tasks
         # with references to all of their children
-        dep_topsort = topsort(dep_dag)
+        dep_topsort = topsort(
+            {
+                dep: [p.dependency for p in computable_param_graph[dep]]
+                for dep in computable_param_graph
+            }
+        )
         # Create a seperate TopologicalSorter to hold the Tasks
         ts: TopologicalSorter[_Task] = TopologicalSorter()
         tasks = self._build_tasks(
-            param_graph, (node for nodes in dep_topsort for node in nodes), ts
+            computable_param_graph,
+            (node for nodes in dep_topsort for node in nodes),
+            ts,
         )
-        for dep, predecessors in dep_dag.items():
-            ts.add(tasks[dep], *(tasks[p] for p in predecessors))
         ts.prepare()
         task_dependency_dag: _DependantTaskDag = {
-            tasks[dep]: {tasks[predecessor_dep] for predecessor_dep in predecessor_deps}
-            for dep, predecessor_deps in dep_dag.items()
+            tasks[dep]: {
+                tasks[predecessor_dep.dependency]
+                for predecessor_dep in predecessor_deps
+            }
+            for dep, predecessor_deps in computable_param_graph.items()
         }
         call_map: Dict[DependencyProvider, Set[_Task]] = {}
         for t in task_dependency_dag:
@@ -203,10 +234,12 @@ class _ContainerCommon:
             topological_sorter=ts,
             cacheable_tasks={
                 tasks[d]
-                for d in dep_dag
+                for d in computable_param_graph
                 if d.scope != self._execution_scope and d.share
             },
-            cached_tasks=tuple({(tasks[d], d.scope) for d in dep_dag if d.share}),
+            cached_tasks=tuple(
+                {(tasks[d], d.scope) for d in computable_param_graph if d.share}
+            ),
             validated_scopes=set(),
             call_map={k: tuple(v) for k, v in call_map.items()},
         )
@@ -232,10 +265,8 @@ class _ContainerCommon:
             positional: List[_Task] = []
             keyword: Dict[str, _Task] = {}
             for param in dag[dep]:
-                if param.parameter is not None and param.dependency.call is not None:
+                if param.parameter is not None:
                     task = tasks[param.dependency]
-                    # prefer positional arguments since those can be unpacked from a generator
-                    # saving generation of an intermediate dict
                     if param.parameter.kind is param.parameter.KEYWORD_ONLY:
                         keyword[param.parameter.name] = task
                     else:

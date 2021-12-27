@@ -14,7 +14,7 @@ class Config:
 
 
 async def get_readme(
-    config: Config, client: AsyncClient = Depends(scope="app")
+    config: Config, client: AsyncClient = Depends(scope="app", wire=False)
 ) -> Markdown:
     # URL could be loaded from config
     response = await client.get(config.url)

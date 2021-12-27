@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import abc
 import inspect
-from typing import Any, Generic, List, Mapping, NamedTuple, Optional, TypeVar
+from typing import Any, Generic, List, NamedTuple, Optional, TypeVar
 
-from di.api.providers import DependencyProvider, DependencyProviderType
+from di.api.providers import DependencyProviderType
 from di.api.scopes import Scope
 
 DependencyType = TypeVar("DependencyType")
@@ -47,9 +47,7 @@ class DependantBase(Generic[DependencyType], metaclass=abc.ABCMeta):
         pass  # pragma: no cover
 
     @abc.abstractmethod
-    def get_dependencies(
-        self, binds: Mapping[DependencyProvider, DependantBase[Any]]
-    ) -> List[DependencyParameter]:
+    def get_dependencies(self) -> List[DependencyParameter]:
         """Collect all of the sub dependencies for this dependant"""
         pass  # pragma: no cover
 
