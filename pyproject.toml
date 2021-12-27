@@ -30,7 +30,7 @@ graphlib2 = ">=0.2.13"
 black = ">=21.12b0,<22"
 flake8 = "~3.9"
 isort = "~5.10"
-mypy = "v0.910"
+mypy = "v0.930"
 pre-commit = "~2"
 
 [tool.poetry.group.test.dependencies]
