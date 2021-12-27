@@ -60,9 +60,8 @@ class DependantBase(Generic[DependencyType], metaclass=abc.ABCMeta):
         """Called by the parent so that us / this / the child can register
         the parameter it is attached to.
 
-        If this is an autowired Dependant, this can be used to register self.call.
-
-        This can also be used for recording type annotations or parameter names.
+        This is used to register self.call,
+        but can also be used for recording type annotations or parameter names.
 
         This method may return the same instance or another DependantBase altogether.
         """

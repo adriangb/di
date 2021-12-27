@@ -23,7 +23,6 @@ def Depends(
     scope: Scope = None,
     share: bool = True,
     wire: bool = True,
-    autowire: bool = True,
     sync_to_thread: bool = False,
 ) -> DependencyType:
     ...
@@ -36,7 +35,6 @@ def Depends(
     scope: Scope = None,
     share: bool = True,
     wire: bool = True,
-    autowire: bool = True,
     sync_to_thread: bool = False,
 ) -> DependencyType:
     ...
@@ -49,7 +47,6 @@ def Depends(
     scope: Scope = None,
     share: bool = True,
     wire: bool = True,
-    autowire: bool = True,
     sync_to_thread: bool = False,
 ) -> DependencyType:
     ...
@@ -62,7 +59,6 @@ def Depends(
     scope: Scope = None,
     share: bool = True,
     wire: bool = True,
-    autowire: bool = True,
     sync_to_thread: bool = False,
 ) -> DependencyType:
     ...
@@ -74,7 +70,6 @@ def Depends(
     scope: Scope = None,
     share: bool = True,
     wire: bool = True,
-    autowire: bool = True,
     sync_to_thread: bool = False,
 ) -> DependencyType:
     return Dependant(  # type: ignore[return-value]
@@ -82,6 +77,5 @@ def Depends(
         scope=scope,
         share=share,
         wire=wire,
-        autowire=autowire,
         sync_to_thread=sync_to_thread,
     )

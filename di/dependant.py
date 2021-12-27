@@ -47,10 +47,7 @@ T = TypeVar("T")
 
 
 class Dependant(DependantBase[T]):
-    wire: bool
-    autowire: bool
-    sync_to_thread: bool
-    __slots__ = ("wire", "autowire", "sync_to_thread", "dependencies", "overrides")
+    __slots__ = ("wire", "sync_to_thread", "overrides")
 
     @overload
     def __init__(
@@ -60,7 +57,6 @@ class Dependant(DependantBase[T]):
         scope: Optional[Scope] = None,
         share: bool = True,
         wire: bool = True,
-        autowire: bool = True,
         overrides: Optional[Mapping[str, DependantBase[Any]]] = None,
         sync_to_thread: bool = False,
     ) -> None:
@@ -74,7 +70,6 @@ class Dependant(DependantBase[T]):
         scope: Optional[Scope] = None,
         share: bool = True,
         wire: bool = True,
-        autowire: bool = True,
         overrides: Optional[Mapping[str, DependantBase[Any]]] = None,
         sync_to_thread: bool = False,
     ) -> None:
@@ -88,7 +83,6 @@ class Dependant(DependantBase[T]):
         scope: Optional[Scope] = None,
         share: bool = True,
         wire: bool = True,
-        autowire: bool = True,
         overrides: Optional[Mapping[str, DependantBase[Any]]] = None,
         sync_to_thread: bool = False,
     ) -> None:
@@ -102,7 +96,6 @@ class Dependant(DependantBase[T]):
         scope: Optional[Scope] = None,
         share: bool = True,
         wire: bool = True,
-        autowire: bool = True,
         overrides: Optional[Mapping[str, DependantBase[Any]]] = None,
         sync_to_thread: bool = False,
     ) -> None:
@@ -115,15 +108,12 @@ class Dependant(DependantBase[T]):
         scope: Scope = None,
         share: bool = True,
         wire: bool = True,
-        autowire: bool = True,
         overrides: Optional[Mapping[str, DependantBase[Any]]] = None,
         sync_to_thread: bool = False,
     ) -> None:
         self.call = call
         self.scope = scope
-        self.dependencies: Optional[List[DependencyParameter]] = None
         self.share = share
-        self.autowire = autowire
         self.wire = wire
         self.overrides = overrides or {}
         self.sync_to_thread = sync_to_thread
@@ -187,39 +177,20 @@ class Dependant(DependantBase[T]):
         self,
         binds: Mapping[DependencyProvider, DependantBase[Any]],
     ) -> List[DependencyParameter]:
-        """Collect all of the sub dependencies for this dependant
-
-        For the Dependant implementation, this serves as a cache layer on
-        top of gather_dependencies.
-        """
-        if self.dependencies is None:
-            self.dependencies = self.gather_dependencies(binds)
-        return self.dependencies
-
-    def gather_dependencies(
-        self,
-        binds: Mapping[DependencyProvider, DependantBase[Any]],
-    ) -> List[DependencyParameter]:
-        """Collect this dependencies sub dependencies.
-
-        The returned dict corresponds to keyword arguments that will be passed
-        to this dependencies `call` after all sub-dependencies are themselves resolved.
-        """
-        if self.wire is False:
+        """Collect all of our sub-dependencies as parameters"""
+        if self.wire is False or self.call is None:
             return []
         res: List[DependencyParameter] = []
-        if self.call is None:
-            return res
         for param in self.gather_parameters(self.call).values():
             sub_dependant: DependantBase[Any]
             if param.name in self.overrides:
                 sub_dependant = self.overrides[param.name]
-            elif param.kind in _VARIABLE_PARAMETER_KINDS and self.autowire:
+            elif param.kind in _VARIABLE_PARAMETER_KINDS:
                 continue
             else:
                 maybe_sub_dependant = self.get_sub_dependant_from_paramter(param)
                 if maybe_sub_dependant is None:
-                    if param.default is param.empty and self.autowire:
+                    if param.default is param.empty:
                         if param.annotation in binds:
                             sub_dependant = binds[param.annotation]
                         else:
@@ -262,7 +233,6 @@ class Dependant(DependantBase[T]):
             call=None,
             scope=self.scope,
             share=self.share,
-            autowire=self.autowire,
         )
 
 
@@ -323,7 +293,6 @@ def CallableClassDependant(
     scope: Scope = None,
     share: bool = True,
     wire: bool = True,
-    autowire: bool = True,
 ) -> Dependant[T]:
     """Create a Dependant that will create and call a callable class
 
@@ -337,13 +306,11 @@ def CallableClassDependant(
         scope=instance_scope,
         share=True,
         wire=wire,
-        autowire=autowire,
     )
     return Dependant[T](
         call=call.__call__,
         scope=scope,
         share=share,
         wire=wire,
-        autowire=autowire,
         overrides={"self": instance},
     )

@@ -157,40 +157,38 @@ def test_siblings() -> None:
 def test_non_parameter_dependency():
     """Dependencies can be declared as not call parameters but rather just computationally required"""
 
-    calls: List[bool] = []
+    calls: int = 0
+
+    def should_be_called() -> None:
+        nonlocal calls
+        calls += 1
 
     class CustomDependant(Dependant[None]):
         called: bool = False
 
-        def gather_dependencies(
+        def get_dependencies(
             self, binds: Mapping[DependencyProvider, DependantBase[Any]]
         ) -> List[DependencyParameter]:
             return [
-                DependencyParameter(Dependant(call=lambda: calls.append(True)), None)
+                DependencyParameter(
+                    dependency=Dependant(should_be_called), parameter=None
+                )
             ]
 
     container = Container()
 
-    dep = CustomDependant(lambda: None)
-    container.execute_sync(container.solve(dep))
-    assert calls == [True]
+    def takes_no_parameters() -> None:
+        pass
+
+    # should_be_called is called, but it's return value is not passed into
+    # takes_no_parameters since the DependencyParameter has parameter=None
+    container.execute_sync(container.solve(CustomDependant(takes_no_parameters)))
+    assert calls == 1
 
 
 class CannotBeWired:
     def __init__(self, arg) -> None:
         assert arg == 1  # a sentinal value to make sure a bug didn't inject something
-
-
-def test_no_autowire() -> None:
-    """Specifying autowire=False skips autowiring non explicit sub dependencies"""
-
-    def collect(bad: CannotBeWired) -> None:
-        ...
-
-    container = Container()
-    with pytest.raises(WiringError):
-        container.solve(Dependant(collect))
-    container.solve(Dependant(collect, autowire=False))
 
 
 def test_no_wire() -> None:

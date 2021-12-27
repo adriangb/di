@@ -37,7 +37,7 @@ class WiredGetRoute(Route):
 class App(Starlette):
     def __init__(self) -> None:
         self.container = BaseContainer()
-        self.container.bind(Dependant(Request, autowire=False), Request)
+        self.container.bind(Dependant(Request, wire=False), Request)
 
         @contextlib.asynccontextmanager
         async def lifespan(app: App):
