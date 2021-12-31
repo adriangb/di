@@ -51,7 +51,7 @@ For a more comprehensive overview of Python projectes related to dependency inje
 
 ## Project Aims
 
-This project aims to be a general dependency injection system, with a focus on providing the underlaying dependency injection functionality for other libaries.
+This project aims to be a general dependency injection system, with a focus on providing the underlying dependency injection functionality for other libaries.
 
 In other words, while you could use this as your a standalone dependency injection framework, you may find it to be a bit terse and verbose. There are also much more mature standalone dependency injection frameworks; I would recommend at least looking into [python-dependency-injector] since it is currently the most popular / widely used of the bunch.
 
