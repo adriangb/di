@@ -6,13 +6,13 @@ The fundamental design principle of `di` is to split up the complexity of depend
 - Solving: when we build an execution plan, taking into account cached values, binds, etc.
 - Execution: when we execute dependencies, possibly doing IO, parallelization, etc.
 
-We map these responsibilities to well defined classes/interfaces:
+We map these responsibilities to well-defined classes/interfaces:
 
 - Wiring: this is handled by [Dependant]
 - Solving: this is handled by [Container]
 - Execution: this is handled by [Executor]s
 
-There are also some ancilliary support classes:
+There are also some auxiliary support classes:
 
 - [SolvedDependant] holds the result of a call to `Container.solve` that can be passed to `Container.execute_sync` or `Container.exeucte_async`.
 

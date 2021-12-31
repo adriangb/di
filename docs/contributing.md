@@ -82,12 +82,12 @@ $ make docs-serve
 
 </div>
 
-All of the code fragments in the docs are stored as `.py` files in `docs/src`.
+All the code fragments in the docs are stored as `.py` files in `docs/src`.
 These code fragments are tested as part of unit tests to ensure that the documentation stays up to date with the API.
 
 ## Releases
 
-This project uses continious integration and continious delivery on a trunk based workflow.
+This project uses continuous integration and continuous delivery on a trunk based workflow.
 Every merge into `main` should be fully functional code in a releasable state.
 As part of your pull request, you should propose what type of change is being made and determine the right version bump appropriately.
 While [conventional commits] are appreciated as a means of communication, especially for the merge commit, they are not *required* or enforced.

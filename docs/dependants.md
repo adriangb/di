@@ -25,7 +25,7 @@ Another good example of the customizability provided by `DependantBase` is the i
 ```
 
 Here `B` is executed even though `A` does not depend on it.
-This is because `JoinedDependant` leverages the `DependantBase` interface to tell `di` that `B` is a dependency of `A` even if `B` is not a parameter or otherwise releated to `A`.
+This is because `JoinedDependant` leverages the `DependantBase` interface to tell `di` that `B` is a dependency of `A` even if `B` is not a parameter or otherwise related to `A`.
 
 [Solving docs]: solving.md
 [JointDependant]: https://github.com/adriangb/di/blob/b7398fbdf30213c1acb94b423bb4f2e2badd0fdd/di/dependant.py#L194-L218
