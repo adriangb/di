@@ -18,6 +18,7 @@
 !/benchmarks
 !/mutmut_config.py
 !/mutmut.sh
+!/CODE_OF_CONDUCT.md
 
 **/__pycache__
 **/.DS_Store
