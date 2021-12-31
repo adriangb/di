@@ -6,7 +6,7 @@ There are generally two types of wiring that a DI container can do:
 - Autowiring: where the container inspects the dependencies and automatically deduces their sub-dependencies.
 - Manual wiring: where the user needs to register each sub-dependency with the container.
 
-Autowiring is generally preferrable: it reduces boilerplate and decouples your application from the Container's API.
+Autowiring is generally preferable: it reduces boilerplate and decouples your application from the Container's API.
 But autowiring is not always possible: sometimes the value is produced by a function (`value: int = some_function()`) or the type to inject is not the type in the annotation (when using interfaces / protocols).
 
 ## Autowiring in `di`
@@ -41,7 +41,7 @@ In these scenarios, some manual input from the user is required.
 There are two important concepts in `di` to handle this input:
 
 - Binds: are used to swap out one dependency for another, which can be used to swap out an interface / protocol / ABC for a concrete implementation.
-- Markers: usually `Depends(...)` which tell `di` how to construct the dependency (e.g. calling a function) as well as carrying other meteadata (like the scope, which you will see more about later on).
+- Markers: usually `Depends(...)` which tell `di` how to construct the dependency (e.g. calling a function) as well as carrying other metadata (like the scope, which you will see more about later on).
 
 Here is an example that makes use of both:
 
