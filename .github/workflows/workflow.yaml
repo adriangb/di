@@ -80,7 +80,9 @@ jobs:
           VERSION_BUMPED=false; [ "$CURRENT_VERSION" != "$PREVIOUS_VERSION" ] && VERSION_BUMPED=true
           echo "VERSION_BUMPED=$VERSION_BUMPED" >> $GITHUB_ENV
   version-bump:
-    if: github.ref != 'refs/heads/main'  # only for PRs
+    runs-on: ubuntu-latest
+    # only for PRs
+    if: github.ref != 'refs/heads/main'
     steps:
       - name: Check for source code changes
         uses: dorny/paths-filter@v2
