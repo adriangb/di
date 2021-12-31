@@ -59,7 +59,7 @@ In other words, while you could use this as your a standalone dependency injecti
 
 With this background in place, let's dive into a more in-depth example.
 
-In this example, we'll look at what it would take for a web framework to provide dependecy injection to it's users via `di`.
+In this example, we'll look at what it would take for a web framework to provide dependency injection to it's users via `di`.
 
 Let's start by looking at the User's code.
 
