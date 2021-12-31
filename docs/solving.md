@@ -18,8 +18,8 @@ During solving, several things are checked:
 1. Any dependencies that can't be fully autowirired have binds.
 2. The same dependency is not used twice with different scopes.
 
-However, other things are not checked and are deffered to execution time. Namely, *scopes are not validated during solving*.
-This means that you can solve a DAG including `"request"` scoped depdendencies before entering the `"request"` scope.
+However, other things are not checked and are deferred to execution time. Namely, *scopes are not validated during solving*.
+This means that you can solve a DAG including `"request"` scoped dependencies before entering the `"request"` scope.
 But it also means that any errors (like a missing scope) won't be caught until runtime.
 
 ## SolvedDependant
