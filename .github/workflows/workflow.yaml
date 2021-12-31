@@ -105,11 +105,20 @@ jobs:
     needs: ["test", "lint"]
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 # fetch all commits/branches
       - name: Set up Python
         uses: actions/setup-python@v2
       - name: Install and configure Poetry
         uses: snok/install-poetry@v1.3.0
+      - name: Check version bump
+        run: |
+          NEW_VERSION=$(poetry version -s)
+          OLD_VERSION=$(git describe --tags --abbrev=0)
+          VERSION_BUMPED=false; [ "$NEW_VERSION" != "$OLD_VERSION" ] && VERSION_BUMPED=true
+          echo "VERSION_BUMPED=$VERSION_BUMPED" >> $GITHUB_ENV
       - name: Release on PyPi
+        if: env.VERSION_BUMPED == 'true'
         run: |
           PACKAGE_VERSION=$(poetry version -s)
           echo "package_version=$PACKAGE_VERSION" >> $GITHUB_ENV
@@ -117,6 +126,7 @@ jobs:
           poetry config pypi-token.pypi "${{ secrets.PYPI_TOKEN }}"
           poetry publish --build
       - name: 🚀 Create GitHub Release 😺
+        if: env.VERSION_BUMPED == 'true'
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
