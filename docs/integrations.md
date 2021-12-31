@@ -4,7 +4,7 @@ We do not provide any fully supported 3rd party integrations as of this moment.
 However, `di` is designed to easily be integrated into existing frameworks.
 
 Below are some samples that show how `di` might be used by web frameworks and other applications.
-These example are only for demonstration, and are missing critical features that would be required for a full fledged integration.
+These examples are only for demonstration, and are missing critical features that would be required for a full fledged integration.
 
 The integrations will be shown from a users perspective, but you can see the source code for the framework side in [docs/src/].
 
