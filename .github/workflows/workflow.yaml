@@ -9,10 +9,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-defaults:
-  run:
-    shell: bash
-
 jobs:
   lint:
     name: Run Linters
@@ -35,6 +31,9 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["3.7", "3.8", "3.9", "3.10"]
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
@@ -55,9 +54,13 @@ jobs:
           name: di
           env_vars: OS,PYTHON
           fail_ci_if_error: true
-  check-versions:
-    name: Check Versions
+  version-check:
+    name: Check Version Bump
+    if: github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v2
         with:
@@ -66,35 +69,15 @@ jobs:
         with:
           ref: main
           path: main
-          fetch-depth: 0
       - name: Install and configure Poetry
         uses: snok/install-poetry@v1.3.0
-      - name: Check versions
+      - name: Check version bump
         run: |
           cd $GITHUB_WORKSPACE/current
-          CURRENT_VERSION=$(poetry version -s)
-          echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
+          NEW_VERSION=$(poetry version -s)
           cd $GITHUB_WORKSPACE/main
-          PREVIOUS_VERSION=$(git describe --tags --abbrev=0)
-          echo "PREVIOUS_VERSION=$PREVIOUS_VERSION" >> $GITHUB_ENV
-          VERSION_BUMPED=false; [ "$CURRENT_VERSION" != "$PREVIOUS_VERSION" ] && VERSION_BUMPED=true
-          echo "VERSION_BUMPED=$VERSION_BUMPED" >> $GITHUB_ENV
-  version-bump:
-    runs-on: ubuntu-latest
-    # only for PRs
-    if: github.ref != 'refs/heads/main'
-    steps:
-      - name: Check for source code changes
-        uses: dorny/paths-filter@v2
-        id: changes
-        with:
-          filters: |
-            src:
-              - '*.py'
-      - name: Enforce version bump
-        if: steps.changes.outputs.src == 'true'
-        run: |
-          python -c "from packaging import version;assert version.parse(\"${NEW_VERSION}\") > version.parse(\"${OLD_VERSION}\"), \"❌ Bad version bump detected: you must bump the version in pyproject.toml if making source code changes\""
+          OLD_VERSION=$(poetry version -s)
+          python -c "from packaging import version;assert version.parse(\"${NEW_VERSION}\") > version.parse(\"${OLD_VERSION}\"), \"❌ Bad version bump detected: you must bump the version in pyproject.toml\""
           python -c "print(\"✅ Version will be bumped from ${OLD_VERSION} to ${NEW_VERSION}\")"
   docs:
     if: github.ref == 'refs/heads/main'
@@ -116,24 +99,16 @@ jobs:
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           make docs-deploy
   pypi:
-    if: ${{ env.VERSION_BUMPED }} == 'true' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
     name: 🚀 PyPi Release 📦
     runs-on: ubuntu-latest
     needs: ["test", "lint"]
     steps:
       - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0 # fetch all commits/branches
       - name: Set up Python
         uses: actions/setup-python@v2
       - name: Install and configure Poetry
         uses: snok/install-poetry@v1.3.0
-      - name: Check version bump
-        run: |
-          NEW_VERSION=$(poetry version -s)
-          OLD_VERSION=$(git describe --tags --abbrev=0)
-          VERSION_BUMPED=false; [ "$NEW_VERSION" != "$OLD_VERSION" ] && VERSION_BUMPED=true
-          echo "VERSION_BUMPED=$VERSION_BUMPED" >> $GITHUB_ENV
       - name: Release on PyPi
         run: |
           PACKAGE_VERSION=$(poetry version -s)
