@@ -62,6 +62,7 @@ There are advantages and disadvantages to each method:
 - Compatible with other uses of default values, like dataclass' `field` or Pydantic's `Field`.
 - Non-invasive modification of signatures: adding `Depends(...)` in `Annotated` should be ignored by anything except `di`.
 - Functions/classes can be called as normal outside of `di` and the default values (when present) will be used.
+- Multiple markers can be used. For example, something like `Annotated[T, SyncToThread(), Depends()]` is possible, or even `Annotated[Annotated[T, Depends()], SyncToThread()]` (which is equivalent). With the aliases `Provide = Annotated[T, Depends()]` and `InThread = Annotated[T, SyncToThread()]` one can write `Provide[InThread[SomeClass]]`.
 
 #### Cons of Annotated
 
