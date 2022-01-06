@@ -1,6 +1,6 @@
 import inspect
 import sys
-from typing import Any, Optional, cast
+from typing import Any, Generator, cast
 
 if sys.version_info < (3, 9):
     from typing_extensions import Annotated, get_args, get_origin
@@ -10,19 +10,29 @@ else:
 from di._utils.inspect import get_parameters
 from di.api.dependencies import DependantBase
 
-__all__ = ("get_parameters", "get_marker_from_parameter")
+__all__ = ("get_parameters", "get_markers_from_parameter")
 
 
-def get_marker_from_parameter(param: inspect.Parameter) -> Optional[DependantBase[Any]]:
+def get_markers_from_parameter(
+    param: inspect.Parameter,
+) -> Generator[DependantBase[Any], None, None]:
     """Infer a sub-dependant from a parameter of this Dependant's .call
 
     By default, we look for Depends(...) markers (which are instances of DependantBase)
     in the default values and PEP 593 typing annotations.
+
+    In the case of multiple markers in PEP 593 Annotated or nested use of Annotated
+    (which are equivalent and get flattened by Annoated itself) we return markers from
+    right to left or outer to inner.
     """
     if isinstance(param.default, DependantBase):
-        return cast(DependantBase[Any], param.default)
+        yield cast(DependantBase[Any], param.default)
     if get_origin(param.annotation) is Annotated:
-        for arg in get_args(param.annotation):
+        # reverse the arguments so that in the case of
+        # Annotated[Annotated[T, InnerDependant()], OuterDependant()]
+        # we discover "outer" first
+        # This is a somewhat arbitrary choice, but it is the convention we'll go with
+        # See https://www.python.org/dev/peps/pep-0593/#id18 for more details
+        for arg in reversed(get_args(param.annotation)):
             if isinstance(arg, DependantBase):
-                return cast(DependantBase[Any], arg)
-    return None
+                yield cast(DependantBase[Any], arg)

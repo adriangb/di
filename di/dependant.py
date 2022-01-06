@@ -24,7 +24,7 @@ from di.api.providers import (
     GeneratorProvider,
 )
 from di.api.scopes import Scope
-from di.typing import get_marker_from_parameter
+from di.typing import get_markers_from_parameter
 
 _VARIABLE_PARAMETER_KINDS = (
     inspect.Parameter.VAR_POSITIONAL,
@@ -154,7 +154,7 @@ class Dependant(DependantBase[T]):
             elif param.kind in _VARIABLE_PARAMETER_KINDS:
                 continue
             else:
-                maybe_sub_dependant = get_marker_from_parameter(param)
+                maybe_sub_dependant = next(get_markers_from_parameter(param), None)
                 if maybe_sub_dependant is None:
                     sub_dependant = self.create_sub_dependant(param)
                 else:
