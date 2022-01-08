@@ -36,6 +36,7 @@ from di.api.executor import AsyncExecutor, SyncExecutor
 from di.api.providers import DependencyProvider, DependencyProviderType
 from di.api.scopes import Scope
 from di.api.solved import SolvedDependant
+from di.dependant import Dependant
 from di.exceptions import SolvingError, WiringError
 from di.executors import DefaultExecutor
 
@@ -84,10 +85,12 @@ class _ContainerCommon:
 
     def bind(
         self,
-        provider: DependantBase[DependencyType],
+        provider: Union[
+            DependantBase[DependencyType], DependencyProviderType[DependencyType]
+        ],
         dependency: DependencyProviderType[DependencyType],
     ) -> ContextManager[None]:
-        """Bind a new dependency provider for a given dependency.
+        """Replace a dependency provider with a new one.
 
         This can be used as a function (for a permanent bind, cleared when `scope` is exited)
         or as a context manager (the bind will be cleared when the context manager exits).
@@ -96,6 +99,9 @@ class _ContainerCommon:
         the scope or any other data from the dependency they are replacing.
         """
         previous_provider = self.binds.get(dependency, None)
+
+        if not isinstance(provider, DependantBase):
+            provider = Dependant(provider)
 
         self._binds[dependency] = provider
 

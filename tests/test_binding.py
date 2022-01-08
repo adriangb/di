@@ -20,10 +20,10 @@ def test_bind():
         with container.enter_scope("request"):
             request = Request(1)  # build a request
             # bind the request
-            with container.bind(Dependant(lambda: request), Request):
+            with container.bind(lambda: request, Request):
                 r = container.execute_sync(container.solve(Dependant(endpoint)))
                 assert r == 1  # bound value
-                with container.bind(Dependant(lambda: Request(2)), Request):
+                with container.bind(lambda: Request(2), Request):
                     r = container.execute_sync(container.solve(Dependant(endpoint)))
                     assert r == 2
                 r = container.execute_sync(container.solve(Dependant(endpoint)))
@@ -61,7 +61,7 @@ def test_bind_transitive_dependency_results_skips_subdpendencies():
         def not_error() -> None:
             ...
 
-        with container.bind(Dependant(not_error), transitive):
+        with container.bind(not_error, transitive):
             container.execute_sync(container.solve(Dependant(dep)))
         # and this reverts when the bind exits
         with pytest.raises(ValueError):
@@ -86,7 +86,7 @@ def test_bind_with_dependencies():
     container = Container()
     with container.enter_scope("something"):
         assert (container.execute_sync(container.solve(Dependant(return_four)))) == 4
-        with container.bind(Dependant(return_three), return_two):
+        with container.bind(return_three, return_two):
             assert (
                 container.execute_sync(container.solve(Dependant(return_four)))
             ) == 5

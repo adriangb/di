@@ -80,7 +80,7 @@ def test_valid_non_callable_annotation(
     """No type annotations are required if default values are provided"""
 
     container = Container()
-    container.bind(Dependant(lambda: 1), annotation)
+    container.bind(lambda: 1, annotation)
     res = container.execute_sync(container.solve(Dependant(function)))
     assert res == 1
 
@@ -205,9 +205,9 @@ def test_wiring_from_binds() -> None:
             super().__init__(1)
 
     container = Container()
-    # container.bind(Dependant(CanBeWired), CannotBeWired)
+    # container.bind(CanBeWired, CannotBeWired)
     with pytest.raises(WiringError):
         container.solve(Dependant(CannotBeWired))
-    container.bind(Dependant(CanBeWired), CannotBeWired)  # type: ignore[arg-type]
+    container.bind(CanBeWired, CannotBeWired)
     c = container.execute_sync(container.solve(Dependant(CannotBeWired)))
     assert isinstance(c, CanBeWired)

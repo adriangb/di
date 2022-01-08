@@ -1,6 +1,5 @@
 import sys
 from dataclasses import dataclass
-from typing import List
 
 if sys.version_info < (3, 8):
     from typing_extensions import Protocol
@@ -27,18 +26,18 @@ class DBConfig:
 class Postgres(DBProtocol):
     def __init__(self, config: DBConfig) -> None:
         self.host = config.host
-        self.log: List[str] = []
 
     async def execute(self, sql: str) -> None:
-        self.log.append(sql)
+        print(sql)
 
 
 async def framework() -> None:
     container = Container()
-    container.bind(Dependant(Postgres, scope="app"), DBProtocol)  # type: ignore
+    container.bind(Postgres, DBProtocol)
     solved = container.solve(Dependant(controller))
-    async with container.enter_scope("app"):
-        await container.execute_async(solved)
-        db = await container.execute_async(container.solve(Dependant(DBProtocol)))
-        assert isinstance(db, Postgres)
-        assert db.log == ["SELECT *"]
+    # this next line would fail without the bind
+    await container.execute_async(solved)
+    # and we can double check that the bind worked
+    # by requesting the instance directly
+    db = await container.execute_async(container.solve(Dependant(DBProtocol)))
+    assert isinstance(db, Postgres)
