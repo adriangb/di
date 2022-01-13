@@ -147,15 +147,17 @@ class _ContainerCommon:
             params = dep.get_dependencies().copy()
             for idx, param in enumerate(params):
                 if param.parameter is not None:
-                    param.dependency.register_parameter(param.parameter)
+                    param = param._replace(
+                        dependency=param.dependency.register_parameter(param.parameter)
+                    )
                 if (
                     param.dependency.call is not None
                     and param.dependency.call in self._binds
                 ):
-                    params[idx] = DependencyParameter(
-                        dependency=self._binds[param.dependency.call],
-                        parameter=param.parameter,
+                    param = param._replace(
+                        dependency=self._binds[param.dependency.call]
                     )
+                params[idx] = param
                 if param.parameter is not None:
                     if (
                         param.dependency.call is None
