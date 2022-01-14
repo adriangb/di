@@ -94,7 +94,7 @@ def test_dissalow_depending_on_inner_scope():
     def B(a: None = Depends(A, scope="inner")):
         ...
 
-    container = Container()
+    container = Container(scopes=("outer", "inner"))
     with container.enter_scope("outer"):
         with container.enter_scope("inner"):
             match = r"scope \(inner\) is narrower than .+'s scope \(outer\)"

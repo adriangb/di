@@ -15,7 +15,7 @@ def controller(conn: DBConnection = Depends(scope="app")) -> None:
 
 
 def framework() -> None:
-    container = Container()
+    container = Container(scopes=("app", "request"))
     with container.enter_scope("app"):
         with container.enter_scope("request"):
             request = Request()

@@ -13,7 +13,7 @@ def endpoint(r: Request) -> int:
 
 
 def test_bind():
-    container = Container()
+    container = Container(scopes=("app", "request", None))
     with container.enter_scope("app"):
         r = container.execute_sync(container.solve(Dependant(endpoint)))
         assert r == 0  # just the default value
@@ -49,7 +49,7 @@ def test_bind_transitive_dependency_results_skips_subdpendencies():
     """If we bind a transitive dependency none of it's sub-dependencies should be executed
     since they are no longer required.
     """
-    container = Container()
+    container = Container(scopes=("something", None))
     with container.enter_scope("something") as container:
         # we get an error from raises_exception
         with pytest.raises(ValueError):
@@ -83,8 +83,8 @@ def test_bind_with_dependencies():
     def return_four(two: int = Depends(return_two)) -> int:
         return two + 2
 
-    container = Container()
-    with container.enter_scope("something"):
+    container = Container(scopes=("request", None))
+    with container.enter_scope("request"):
         assert (container.execute_sync(container.solve(Dependant(return_four)))) == 4
         with container.bind(Dependant(return_three), return_two):
             assert (

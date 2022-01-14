@@ -31,7 +31,6 @@ nav:
   - Dependants: dependants.md
   - Sharing: sharing.md
   - Solving: solving.md
-  - Integrations: integrations.md
   - Contributing: contributing.md
 
 markdown_extensions:

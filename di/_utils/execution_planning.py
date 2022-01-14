@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from contextlib import AsyncExitStack, ExitStack
 from typing import (
-    AbstractSet,
     Any,
     Deque,
     Dict,
@@ -10,7 +9,6 @@ from typing import (
     Mapping,
     NamedTuple,
     Optional,
-    Set,
     Tuple,
     Union,
 )
@@ -18,7 +16,6 @@ from typing import (
 from graphlib2 import TopologicalSorter
 
 from di._utils.scope_map import ScopeMap
-from di._utils.scope_validation import validate_scopes
 from di._utils.task import AsyncTask, ExecutionState, SyncTask, gather_new_tasks
 from di.api.executor import State as ExecutorState
 from di.api.executor import Task as ExecutorTask
@@ -42,9 +39,6 @@ class SolvedDependantCache(NamedTuple):
 
     root_task: Task
     topological_sorter: TopologicalSorter[Task]
-    tasks_that_we_can_cache: AbstractSet[Task]
-    tasks_that_can_be_pulled_from_cache: Iterable[Tuple[Task, Scope]]
-    validated_scopes: Set[Tuple[Scope, ...]]
     callable_to_task_mapping: Mapping[DependencyProvider, Iterable[Task]]
 
 
@@ -63,11 +57,6 @@ def plan_execution(
     user_values = values or {}
 
     solved_dependency_cache: SolvedDependantCache = solved.container_cache
-
-    scopes = tuple(stacks.keys())
-    if scopes not in solved_dependency_cache.validated_scopes:
-        validate_scopes(scopes, solved.dag)
-        solved_dependency_cache.validated_scopes.add(scopes)
 
     results: Results = {}
     call_map = solved_dependency_cache.callable_to_task_mapping

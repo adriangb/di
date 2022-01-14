@@ -21,17 +21,17 @@ dep1 = Dep()
 dep2 = Dep()
 
 
-def share(v: int = Depends(dep1, scope="app")):
+def share(v: int = Depends(dep1, scope="scope")):
     return v
 
 
-def not_share(v: int = Depends(dep1, scope="app", share=False)):
+def not_share(v: int = Depends(dep1, scope="scope", share=False)):
     return v
 
 
 def test_scoped_execute():
-    container = Container()
-    with container.enter_scope("app"):
+    container = Container(scopes=("scope", None))
+    with container.enter_scope("scope"):
         dep1.value = 1
         r = container.execute_sync(container.solve(Dependant(share)))
         assert r == 1, r
@@ -43,8 +43,8 @@ def test_scoped_execute():
         # but if we execute a non-share dependency, we get the current value
         r = container.execute_sync(container.solve(Dependant(not_share)))
         assert r == 2, r
-    with container.enter_scope("app"):
-        # now that we exited and re-entered app scope the cache was cleared
+    with container.enter_scope("scope"):
+        # now that we exited and re-entered the scope the cache was cleared
         r = container.execute_sync(container.solve(Dependant(share)))
         assert r == 2, r
 
@@ -84,7 +84,7 @@ def test_nested_caching():
     def A() -> str:
         return holder[0]
 
-    DepA = Dependant(A, scope="lifespan")
+    DepA = Dependant(A, scope="app")
 
     def B(a: Annotated[str, DepA]) -> str:
         return a + holder[1]
@@ -101,8 +101,8 @@ def test_nested_caching():
 
     DepEndpoint = Dependant(endpoint, scope="request")
 
-    container = Container()
-    with container.enter_scope("lifespan"):
+    container = Container(scopes=("app", "request"))
+    with container.enter_scope("app"):
         with container.enter_scope("request"):
             res = container.execute_sync(container.solve(DepEndpoint))
             assert res == "ABC"
@@ -113,7 +113,7 @@ def test_nested_caching():
             assert (container.execute_sync(container.solve(DepB))) == "AB"
             assert (container.execute_sync(container.solve(DepA))) == "A"
         # A is still cached for B because it is lifespan scoped
-        assert (container.execute_sync(container.solve(Dependant(B)))) == "AE"
+        assert (container.execute_sync(container.solve(DepB))) == "AE"
 
 
 def test_nested_lifecycle():
@@ -138,7 +138,7 @@ def test_nested_lifecycle():
     def endpoint(c: None = Depends(C, scope="request")) -> None:
         return
 
-    container = Container()
+    container = Container(scopes=("lifespan", "request", None))
     with container.enter_scope("lifespan"):
         with container.enter_scope("request"):
             assert list(state.values()) == ["uninitialized"] * 3
@@ -152,7 +152,7 @@ def test_nested_lifecycle():
 async def test_concurrent_local_scopes():
     """We can enter the same local scope from two different concurrent tasks"""
 
-    container = Container()
+    container = Container(scopes=("request",))
 
     async def endpoint() -> None:
         async with container.enter_scope("request"):
@@ -169,7 +169,7 @@ async def test_concurrent_local_scopes():
 async def test_execution_scope_already_entered():
     """Container allows us to manually enter the default scope"""
 
-    container = Container(execution_scope=None)
+    container = Container()
 
     def dep() -> None:
         ...

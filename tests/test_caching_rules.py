@@ -37,7 +37,7 @@ def test_cache_rules_between_dep(
     def dep() -> int:
         return next(gen)
 
-    container = Container()
+    container = Container(scopes=("scope", None))
     solved = container.solve(Dependant(dep, scope=scope, share=share))
     with container.enter_scope("scope"):
         v1 = container.execute_sync(solved)
@@ -89,7 +89,7 @@ def test_cache_rules_multiple_deps(
         # we represent the result as a set to avoid accidentally depending on that detail
         return {v1, v2}
 
-    container = Container()
+    container = Container(scopes=("scope", None))
     solved = container.solve(Dependant(root_dep))
     with container.enter_scope("scope"):
         got = (container.execute_sync(solved), container.execute_sync(solved))

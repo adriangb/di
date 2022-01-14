@@ -11,15 +11,17 @@ def test_execution_scope() -> None:
     def dep() -> Generator[int, None, None]:
         yield 1
 
-    container = Container(execution_scope=1234)
+    container = Container(scopes=(123,))
 
-    res = container.execute_sync(container.solve(Dependant(dep, scope=1234)))
+    res = container.execute_sync(container.solve(Dependant(dep, scope=123)))
     assert res == 1
 
 
 @pytest.mark.parametrize("container_cls", [BaseContainer, Container])
-def test_scopes_property(container_cls: Type[ContainerProtocol]) -> None:
-    container = container_cls()
+def test_scopes_property(
+    container_cls: Union[Type[BaseContainer], Type[Container]]
+) -> None:
+    container = container_cls(scopes=("test", "another"))
     assert list(container.scopes) == []
     with container.enter_scope("test") as container:
         assert list(container.scopes) == ["test"]

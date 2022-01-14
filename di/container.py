@@ -15,6 +15,7 @@ from typing import (
     List,
     Mapping,
     Optional,
+    Sequence,
     Set,
     Type,
     TypeVar,
@@ -26,6 +27,7 @@ from graphlib2 import TopologicalSorter
 from di._utils.execution_planning import SolvedDependantCache, plan_execution
 from di._utils.inspect import is_async_gen_callable, is_coroutine_callable
 from di._utils.nullcontext import nullcontext
+from di._utils.scope_validation import validate_scopes
 from di._utils.state import ContainerState
 from di._utils.task import AsyncTask, SyncTask
 from di._utils.topsort import topsort
@@ -53,20 +55,20 @@ __all__ = ("BaseContainer", "Container")
 
 
 class _ContainerCommon:
-    __slots__ = ("_executor", "_execution_scope", "_binds")
+    __slots__ = ("_executor", "_scopes", "_binds")
 
     _executor: Union[SyncExecutor, AsyncExecutor]
-    _execution_scope: Scope
+    _scopes: Sequence[Scope]
     _binds: Dict[DependencyProvider, DependantBase[Any]]
 
     def __init__(
         self,
         executor: Union[SyncExecutor, AsyncExecutor],
-        execution_scope: Scope,
+        scopes: Iterable[Scope],
         binds: Optional[Dict[DependencyProvider, DependantBase[Any]]],
     ):
         self._executor = executor
-        self._execution_scope = execution_scope
+        self._scopes = list(scopes)
         self._binds = binds or {}
 
     @property
@@ -229,16 +231,11 @@ class _ContainerCommon:
         container_cache = SolvedDependantCache(
             root_task=tasks[dependency],
             topological_sorter=ts,
-            tasks_that_we_can_cache={
-                tasks[d]
-                for d in computable_param_graph
-                if d.scope != self._execution_scope and d.share
-            },
-            tasks_that_can_be_pulled_from_cache=tuple(
-                {(tasks[d], d.scope) for d in computable_param_graph if d.share}
-            ),
-            validated_scopes=set(),
             callable_to_task_mapping={k: tuple(v) for k, v in call_map.items()},
+        )
+        validate_scopes(
+            self._scopes,
+            param_graph,
         )
         solved = SolvedDependant(
             dependency=dependency,
@@ -308,11 +305,11 @@ class _ContainerCommon:
         """
         cm: _ExecutionCM
         state = self._state
-        if self._execution_scope in state.stacks.keys():
+        if self._scopes[-1] in state.stacks.keys():
             cm = _nullcontext
         else:
             state = state.copy()
-            cm = state.enter_scope(self._execution_scope)
+            cm = state.enter_scope(self._scopes[-1])
         with cm:
             results, leaf_tasks, execution_state, root_task = plan_execution(
                 stacks=state.stacks,
@@ -334,11 +331,11 @@ class _ContainerCommon:
         """Execute an already solved dependency."""
         cm: _ExecutionCM
         state = self._state
-        if self._execution_scope in state.stacks.keys():
+        if self._scopes[-1] in state.stacks.keys():
             cm = _nullcontext
         else:
             state = state.copy()
-            cm = state.enter_scope(self._execution_scope)
+            cm = state.enter_scope(self._scopes[-1])
         async with cm:
             results, leaf_tasks, execution_state, root_task = plan_execution(
                 stacks=state.stacks,
@@ -360,12 +357,12 @@ class BaseContainer(_ContainerCommon):
     def __init__(
         self,
         *,
-        execution_scope: Scope = None,
+        scopes: Iterable[Scope] = (None,),
         executor: Optional[Union[AsyncExecutor, SyncExecutor]] = None,
     ) -> None:
         super().__init__(
             executor=executor or DefaultExecutor(),
-            execution_scope=execution_scope,
+            scopes=scopes,
             binds={},
         )
         self.__state = ContainerState.initialize()
@@ -384,7 +381,7 @@ class BaseContainer(_ContainerCommon):
 
     def copy(self: _BaseContainerType) -> _BaseContainerType:
         new = object.__new__(self.__class__)
-        new._execution_scope = self._execution_scope
+        new._scopes = self._scopes
         new._executor = self._executor
         # binds are shared
         new._binds = self._binds
@@ -454,12 +451,12 @@ class Container(_ContainerCommon):
     def __init__(
         self,
         *,
-        execution_scope: Scope = None,
+        scopes: Iterable[Scope] = (None,),
         executor: Optional[Union[AsyncExecutor, SyncExecutor]] = None,
     ) -> None:
         super().__init__(
             executor=executor or DefaultExecutor(),
-            execution_scope=execution_scope,
+            scopes=scopes,
             binds={},
         )
         self._context = contextvars.ContextVar(f"{self}._context")
@@ -475,7 +472,7 @@ class Container(_ContainerCommon):
 
     def copy(self: _ContainerType) -> _ContainerType:
         new = object.__new__(self.__class__)
-        new._execution_scope = self._execution_scope
+        new._scopes = self._scopes
         new._executor = self._executor
         new._binds = self._binds
         new._context = self._context

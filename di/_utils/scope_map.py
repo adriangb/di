@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Dict, Hashable, List, Mapping, TypeVar, Union
 
 from di.api.scopes import Scope
-from di.exceptions import DuplicateScopeError
+from di.exceptions import DuplicateScopeError, UnknownScopeError
 
 KT = TypeVar("KT", bound=Hashable)
 VT = TypeVar("VT")
@@ -30,10 +30,16 @@ class ScopeMap(Dict[Scope, Dict[KT, VT]]):
         return res
 
     def get_from_scope(self, key: KT, *, scope: Scope, default: T) -> Union[VT, T]:
-        return self[scope].get(key, default)
+        try:
+            return self[scope].get(key, default)
+        except KeyError:
+            raise UnknownScopeError(str(key))
 
     def set(self, key: KT, value: VT, *, scope: Scope) -> None:
-        self[scope][key] = value
+        try:
+            self[scope][key] = value
+        except KeyError:
+            raise UnknownScopeError(str(key))
 
     def add_scope(self, scope: Scope) -> None:
         if scope in self:

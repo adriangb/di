@@ -23,7 +23,7 @@ def test_callable_class_dependant():
     every time.
     """
 
-    container = Container()
+    container = Container(scopes=("app", None))
 
     dep1 = CallableClassDependant(CallableClass, instance_scope="app")
     solved1 = container.solve(dep1)

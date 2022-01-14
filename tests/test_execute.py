@@ -309,7 +309,7 @@ async def test_concurrent_executions_do_not_share_results():
         assert id == expected  # replaced via caching
         assert one == expected  # replaced in results state
 
-    container = Container()
+    container = Container(scopes=("app", None))
     solved = container.solve(Dependant(dep2))
 
     async def execute_in_ctx(id: int) -> None:
@@ -323,9 +323,9 @@ async def test_concurrent_executions_do_not_share_results():
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("scope,shared", [(None, False), ("global", True)])
+@pytest.mark.parametrize("scope,shared", [(None, False), ("app", True)])
 async def test_concurrent_executions_share_cache(
-    scope: Literal[None, "global"], shared: bool
+    scope: Literal[None, "app"], shared: bool
 ):
     """Check that global / local scopes are respected during concurrent execution"""
     objects: List[object] = []
@@ -339,11 +339,11 @@ async def test_concurrent_executions_share_cache(
     async def collect2(obj: object = Depends(get_obj, scope=scope)) -> None:
         objects.append(obj)
 
-    container = Container()
+    container = Container(scopes=("app", None))
     solved1 = container.solve(Dependant(collect1))
     solved2 = container.solve(Dependant(collect2))
 
-    async with container.enter_scope("global"):
+    async with container.enter_scope("app"):
         async with anyio.create_task_group() as tg:
             tg.start_soon(functools.partial(container.execute_async, solved1))
             await anyio.sleep(0.05)
@@ -359,9 +359,11 @@ async def test_async_cm_de_in_sync_scope():
     async def dep() -> AsyncGenerator[None, None]:
         yield
 
-    container = Container()
-    with container.enter_scope("test"):
+    container = Container(scopes=("scope",))
+    with container.enter_scope("scope"):
         with pytest.raises(
             IncompatibleDependencyError, match="canot be used in the sync scope"
         ):
-            await container.execute_async(container.solve(Dependant(dep, scope="test")))
+            await container.execute_async(
+                container.solve(Dependant(dep, scope="scope"))
+            )
