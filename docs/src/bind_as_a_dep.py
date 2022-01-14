@@ -33,7 +33,7 @@ class Postgres(DBProtocol):
 
 async def framework() -> None:
     container = Container()
-    container.bind(Postgres, DBProtocol)
+    container.bind(Dependant(Postgres), DBProtocol)
     solved = container.solve(Dependant(controller))
     # this next line would fail without the bind
     await container.execute_async(solved)

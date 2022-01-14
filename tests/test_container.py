@@ -50,18 +50,6 @@ def test_enter_scope_subclass(
             assert list(container.scopes) == ["test", "another"]
 
 
-def test_binds_property():
-    container = Container()
-    assert container.binds == {}
-
-    def func() -> None:
-        ...
-
-    dep = Dependant(lambda: None)
-    container.bind(dep, func)
-    assert container.binds == {func: dep}
-
-
 @pytest.mark.parametrize(
     "container_cls",
     [BaseContainer, Container, BaseContainerSubclass, ContainerSubclass],

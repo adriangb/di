@@ -36,7 +36,6 @@ from di.api.executor import AsyncExecutor, SyncExecutor
 from di.api.providers import DependencyProvider, DependencyProviderType
 from di.api.scopes import Scope
 from di.api.solved import SolvedDependant
-from di.dependant import Dependant
 from di.exceptions import SolvingError, WiringError
 from di.executors import DefaultExecutor
 
@@ -72,10 +71,6 @@ class _ContainerCommon:
         self._binds = binds or {}
 
     @property
-    def binds(self) -> Mapping[DependencyProvider, DependantBase[Any]]:
-        return self._binds
-
-    @property
     def scopes(self) -> Collection[Scope]:
         return self._state.stacks.keys()
 
@@ -85,10 +80,8 @@ class _ContainerCommon:
 
     def bind(
         self,
-        provider: Union[
-            DependantBase[DependencyType], DependencyProviderType[DependencyType]
-        ],
-        dependency: DependencyProviderType[DependencyType],
+        provider: DependantBase[Any],
+        dependency: DependencyProviderType[Any],
     ) -> ContextManager[None]:
         """Replace a dependency provider with a new one.
 
@@ -98,10 +91,7 @@ class _ContainerCommon:
         Binds are only identified by the identity of the callable and do not take into account
         the scope or any other data from the dependency they are replacing.
         """
-        previous_provider = self.binds.get(dependency, None)
-
-        if not isinstance(provider, DependantBase):
-            provider = Dependant(provider)
+        previous_provider = self._binds.get(dependency, None)
 
         self._binds[dependency] = provider
 

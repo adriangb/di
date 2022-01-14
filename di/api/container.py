@@ -1,5 +1,5 @@
 import sys
-from typing import Any, Collection, ContextManager, Mapping, Optional, TypeVar, Union
+from typing import Any, Collection, ContextManager, Mapping, Optional, TypeVar
 
 if sys.version_info < (3, 8):
     from typing_extensions import Protocol
@@ -25,10 +25,8 @@ class ContainerProtocol(Protocol):
 
     def bind(
         self,
-        provider: Union[
-            DependantBase[DependencyType], DependencyProviderType[DependencyType]
-        ],
-        dependency: DependencyProviderType[DependencyType],
+        provider: DependantBase[Any],
+        dependency: DependencyProviderType[Any],
     ) -> ContextManager[None]:
         """Bind a new dependency provider for a given dependency.
 
