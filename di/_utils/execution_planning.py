@@ -43,10 +43,10 @@ class SolvedDependantCache(NamedTuple):
 
     root_task: Task
     topological_sorter: TopologicalSorter[Task]
-    cacheable_tasks: AbstractSet[Task]
-    cached_tasks: Iterable[Tuple[Task, Scope]]
+    tasks_that_we_can_cache: AbstractSet[Task]
+    tasks_that_can_be_pulled_from_cache: Iterable[Tuple[Task, Scope]]
     validated_scopes: Set[Tuple[Scope, ...]]
-    call_map: Mapping[DependencyProvider, Iterable[Task]]
+    callable_to_task_mapping: Mapping[DependencyProvider, Iterable[Task]]
 
 
 def plan_execution(
@@ -77,17 +77,17 @@ def plan_execution(
         solved_dependency_cache.validated_scopes.add(scopes)
 
     results: Results = {}
-    call_map = solved_dependency_cache.call_map
+    call_map = solved_dependency_cache.callable_to_task_mapping
     for call in user_values.keys() & call_map.keys():
         value = user_values[call]
         for task_id in call_map[call]:
             results[task_id] = value
 
     to_cache: TaskCacheDeque = deque()
-    cacheable_tasks = solved_dependency_cache.cacheable_tasks
+    cacheable_tasks = solved_dependency_cache.tasks_that_we_can_cache
     add_to_cache = to_cache.append
 
-    for task, scope in solved_dependency_cache.cached_tasks:
+    for task, scope in solved_dependency_cache.tasks_that_can_be_pulled_from_cache:
         if task.dependant in cached_values:
             results[task] = cached_values[task.dependant]
         elif task in cacheable_tasks:

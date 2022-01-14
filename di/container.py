@@ -240,16 +240,16 @@ class _ContainerCommon:
         container_cache = SolvedDependantCache(
             root_task=tasks[dependency],
             topological_sorter=ts,
-            cacheable_tasks={
+            tasks_that_we_can_cache={
                 tasks[d]
                 for d in computable_param_graph
                 if d.scope != self._execution_scope and d.share
             },
-            cached_tasks=tuple(
+            tasks_that_can_be_pulled_from_cache=tuple(
                 {(tasks[d], d.scope) for d in computable_param_graph if d.share}
             ),
             validated_scopes=set(),
-            call_map={k: tuple(v) for k, v in call_map.items()},
+            callable_to_task_mapping={k: tuple(v) for k, v in call_map.items()},
         )
         solved = SolvedDependant(
             dependency=dependency,
