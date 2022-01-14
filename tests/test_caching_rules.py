@@ -40,8 +40,10 @@ def test_cache_rules_between_dep(
     container = Container(scopes=("scope", None))
     solved = container.solve(Dependant(dep, scope=scope, share=share))
     with container.enter_scope("scope"):
-        v1 = container.execute_sync(solved)
-        v2 = container.execute_sync(solved)
+        with container.enter_scope(None):
+            v1 = container.execute_sync(solved)
+        with container.enter_scope(None):
+            v2 = container.execute_sync(solved)
     was_cached = v1 == v2
 
     assert cached == was_cached
@@ -82,9 +84,9 @@ def test_cache_rules_multiple_deps(
         return next(gen)
 
     def root_dep(
-        v1: float = Depends(dep, share=dep1_share, scope=scope),
-        v2: float = Depends(dep, share=dep2_share, scope=scope),
-    ) -> Set[float]:
+        v1: int = Depends(dep, share=dep1_share, scope=scope),
+        v2: int = Depends(dep, share=dep2_share, scope=scope),
+    ) -> Set[int]:
         # the order in which v1 and v2 are executed is an implementation detail
         # we represent the result as a set to avoid accidentally depending on that detail
         return {v1, v2}
@@ -92,6 +94,9 @@ def test_cache_rules_multiple_deps(
     container = Container(scopes=("scope", None))
     solved = container.solve(Dependant(root_dep))
     with container.enter_scope("scope"):
-        got = (container.execute_sync(solved), container.execute_sync(solved))
+        with container.enter_scope(None):
+            v1 = container.execute_sync(solved)
+        with container.enter_scope(None):
+            v2 = container.execute_sync(solved)
 
-    assert got == expected
+    assert (v1, v2) == expected

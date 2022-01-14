@@ -26,7 +26,6 @@ from graphlib2 import TopologicalSorter
 
 from di._utils.execution_planning import SolvedDependantCache, plan_execution
 from di._utils.inspect import is_async_gen_callable, is_coroutine_callable
-from di._utils.nullcontext import nullcontext
 from di._utils.scope_validation import validate_scopes
 from di._utils.state import ContainerState
 from di._utils.task import AsyncTask, SyncTask
@@ -44,8 +43,6 @@ _Task = Union[AsyncTask, SyncTask]
 
 _DependantTaskDag = Dict[_Task, Set[_Task]]
 _DependantQueue = Deque[DependantBase[Any]]
-_ExecutionCM = FusedContextManager[None]
-_nullcontext = nullcontext(None)
 
 
 DependencyType = TypeVar("DependencyType")
@@ -64,7 +61,7 @@ class _ContainerCommon:
     def __init__(
         self,
         executor: Union[SyncExecutor, AsyncExecutor],
-        scopes: Iterable[Scope],
+        scopes: Sequence[Scope],
         binds: Optional[Dict[DependencyProvider, DependantBase[Any]]],
     ):
         self._executor = executor
@@ -303,23 +300,15 @@ class _ContainerCommon:
         This method is synchronous and uses a synchronous executor,
         but the executor may still be able to execute async dependencies.
         """
-        cm: _ExecutionCM
-        state = self._state
-        if self._scopes[-1] in state.stacks.keys():
-            cm = _nullcontext
-        else:
-            state = state.copy()
-            cm = state.enter_scope(self._scopes[-1])
-        with cm:
-            results, leaf_tasks, execution_state, root_task = plan_execution(
-                stacks=state.stacks,
-                cache=state.cached_values,
-                solved=solved,
-                values=values,
-            )
-            if root_task not in results:
-                (executor or self._executor).execute_sync(leaf_tasks, execution_state)  # type: ignore[union-attr]
-            return results[root_task]  # type: ignore[no-any-return]
+        results, leaf_tasks, execution_state, root_task = plan_execution(
+            stacks=self._state.stacks,
+            cache=self._state.cached_values,
+            solved=solved,
+            values=values,
+        )
+        if root_task not in results:
+            (executor or self._executor).execute_sync(leaf_tasks, execution_state)  # type: ignore[union-attr]
+        return results[root_task]  # type: ignore[no-any-return]
 
     async def execute_async(
         self,
@@ -329,23 +318,15 @@ class _ContainerCommon:
         values: Optional[Mapping[DependencyProvider, Any]] = None,
     ) -> DependencyType:
         """Execute an already solved dependency."""
-        cm: _ExecutionCM
-        state = self._state
-        if self._scopes[-1] in state.stacks.keys():
-            cm = _nullcontext
-        else:
-            state = state.copy()
-            cm = state.enter_scope(self._scopes[-1])
-        async with cm:
-            results, leaf_tasks, execution_state, root_task = plan_execution(
-                stacks=state.stacks,
-                cache=state.cached_values,
-                solved=solved,
-                values=values,
-            )
-            if root_task not in results:
-                await (executor or self._executor).execute_async(leaf_tasks, execution_state)  # type: ignore[union-attr]
-            return results[root_task]  # type: ignore[no-any-return]
+        results, leaf_tasks, execution_state, root_task = plan_execution(
+            stacks=self._state.stacks,
+            cache=self._state.cached_values,
+            solved=solved,
+            values=values,
+        )
+        if root_task not in results:
+            await (executor or self._executor).execute_async(leaf_tasks, execution_state)  # type: ignore[union-attr]
+        return results[root_task]  # type: ignore[no-any-return]
 
 
 class BaseContainer(_ContainerCommon):
@@ -357,7 +338,7 @@ class BaseContainer(_ContainerCommon):
     def __init__(
         self,
         *,
-        scopes: Iterable[Scope] = (None,),
+        scopes: Sequence[Scope],
         executor: Optional[Union[AsyncExecutor, SyncExecutor]] = None,
     ) -> None:
         super().__init__(
@@ -451,7 +432,7 @@ class Container(_ContainerCommon):
     def __init__(
         self,
         *,
-        scopes: Iterable[Scope] = (None,),
+        scopes: Sequence[Scope],
         executor: Optional[Union[AsyncExecutor, SyncExecutor]] = None,
     ) -> None:
         super().__init__(

@@ -47,10 +47,11 @@ def test_dependency_can_catch_exception_single_sync() -> None:
     def collector(one: None = Depends(dep1)) -> None:
         raise MyException
 
-    container = Container()
+    container = Container(scopes=(None,))
     rec = Recorder()
     container.bind(Dependant(lambda: rec), Recorder)
-    container.execute_sync(container.solve(Dependant(collector)))
+    with container.enter_scope(None):
+        container.execute_sync(container.solve(Dependant(collector)))
     assert rec.caught == {"dep1": True}
 
 
@@ -59,10 +60,11 @@ async def test_dependency_can_catch_exception_single_async() -> None:
     def collector(one: None = Depends(async_dep1)) -> None:
         raise MyException
 
-    container = Container()
+    container = Container(scopes=(None,))
     rec = Recorder()
     container.bind(Dependant(lambda: rec), Recorder)
-    await container.execute_async(container.solve(Dependant(collector)))
+    async with container.enter_scope(None):
+        await container.execute_async(container.solve(Dependant(collector)))
     assert rec.caught == {"async_dep1": True}
 
 
@@ -70,10 +72,11 @@ def test_dependency_can_catch_exception_concurrent_sync() -> None:
     def collector(one: None = Depends(dep1), two: None = Depends(dep2)) -> None:
         raise MyException
 
-    container = Container()
+    container = Container(scopes=(None,))
     rec = Recorder()
     container.bind(Dependant(lambda: rec), Recorder)
-    container.execute_sync(container.solve(Dependant(collector)))
+    with container.enter_scope(None):
+        container.execute_sync(container.solve(Dependant(collector)))
     # one of the dependencies catches and swallows the exception
     # so the other one nevers sees it
     # there is no promises as to the order, both cases are valid
@@ -87,10 +90,11 @@ async def test_dependency_can_catch_exception_concurrent_async() -> None:
     ) -> None:
         raise MyException
 
-    container = Container()
+    container = Container(scopes=(None,))
     rec = Recorder()
     container.bind(Dependant(lambda: rec), Recorder)
-    await container.execute_async(container.solve(Dependant(collector)))
+    async with container.enter_scope(None):
+        await container.execute_async(container.solve(Dependant(collector)))
     # one of the dependencies catches and swallows the exception
     # so the other one nevers sees it
     # there is no promises as to the order, both cases are valid
@@ -102,10 +106,11 @@ async def test_dependency_can_catch_exception_concurrent_mixed() -> None:
     def collector(one: None = Depends(async_dep1), two: None = Depends(dep2)) -> None:
         raise MyException
 
-    container = Container()
+    container = Container(scopes=(None,))
     rec = Recorder()
     container.bind(Dependant(lambda: rec), Recorder)
-    await container.execute_async(container.solve(Dependant(collector)))
+    async with container.enter_scope(None):
+        await container.execute_async(container.solve(Dependant(collector)))
     # one of the dependencies catches and swallows the exception
     # so the other one nevers sees it
     # there is no promises as to the order, both cases are valid
@@ -148,11 +153,12 @@ def test_dependency_can_catch_exception_single_sync_reraise() -> None:
     def collector(one: None = Depends(dep1_reraise)) -> None:
         raise MyException
 
-    container = Container()
+    container = Container(scopes=(None,))
     rec = Recorder()
     container.bind(Dependant(lambda: rec), Recorder)
     try:
-        container.execute_sync(container.solve(Dependant(collector)))
+        with container.enter_scope(None):
+            container.execute_sync(container.solve(Dependant(collector)))
     except MyException:
         pass
     else:
@@ -167,11 +173,12 @@ async def test_dependency_can_catch_exception_single_async_reraise() -> None:
     def collector(one: None = Depends(async_dep1_reraise)) -> None:
         raise MyException
 
-    container = Container()
+    container = Container(scopes=(None,))
     rec = Recorder()
     container.bind(Dependant(lambda: rec), Recorder)
     try:
-        await container.execute_async(container.solve(Dependant(collector)))
+        async with container.enter_scope(None):
+            await container.execute_async(container.solve(Dependant(collector)))
     except MyException:
         pass
     else:
@@ -187,11 +194,12 @@ def test_dependency_can_catch_exception_concurrent_sync_reraise() -> None:
     ) -> None:
         raise MyException
 
-    container = Container()
+    container = Container(scopes=(None,))
     rec = Recorder()
     container.bind(Dependant(lambda: rec), Recorder)
     try:
-        container.execute_sync(container.solve(Dependant(collector)))
+        with container.enter_scope(None):
+            container.execute_sync(container.solve(Dependant(collector)))
     except MyException:
         pass
     else:
@@ -208,11 +216,12 @@ async def test_dependency_can_catch_exception_concurrent_async_reraise() -> None
     ) -> None:
         raise MyException
 
-    container = Container()
+    container = Container(scopes=(None,))
     rec = Recorder()
     container.bind(Dependant(lambda: rec), Recorder)
     try:
-        await container.execute_async(container.solve(Dependant(collector)))
+        async with container.enter_scope(None):
+            await container.execute_async(container.solve(Dependant(collector)))
     except MyException:
         pass
     else:
@@ -229,11 +238,12 @@ async def test_dependency_can_catch_exception_concurrent_mixed_reraise() -> None
     ) -> None:
         raise MyException
 
-    container = Container()
+    container = Container(scopes=(None,))
     rec = Recorder()
     container.bind(Dependant(lambda: rec), Recorder)
     try:
-        await container.execute_async(container.solve(Dependant(collector)))
+        async with container.enter_scope(None):
+            await container.execute_async(container.solve(Dependant(collector)))
     except MyException:
         pass
     else:
@@ -261,5 +271,6 @@ def test_deep_reraise() -> None:
     def root(child: None = Depends(parent)) -> None:
         raise MyException
 
-    container = Container()
-    container.execute_sync(container.solve(Dependant(root)))
+    container = Container(scopes=(None,))
+    with container.enter_scope(None):
+        container.execute_sync(container.solve(Dependant(root)))

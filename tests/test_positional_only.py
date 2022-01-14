@@ -19,6 +19,7 @@ def test_positional_only_parameters():
     )
     exec(return_two_def, globals())
 
-    container = Container()
-    res = container.execute_sync(container.solve(Dependant(return_two)))  # noqa
+    container = Container(scopes=(None,))
+    with container.enter_scope(None):
+        res = container.execute_sync(container.solve(Dependant(return_two)))  # noqa
     assert res == 2

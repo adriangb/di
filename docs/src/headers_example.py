@@ -14,7 +14,7 @@ class Request:
 class HeaderDependant(Dependant[Any]):
     def __init__(self, alias: Optional[str]) -> None:
         self.alias = alias
-        super().__init__(call=None, scope=None, share=False)
+        super().__init__(call=None, scope="request", share=False)
 
     def register_parameter(self, param: inspect.Parameter) -> HeaderDependant:
         if self.alias is not None:
@@ -43,18 +43,21 @@ def Header(alias: Optional[str] = None) -> Any:
 
 
 async def web_framework() -> None:
-    container = Container()
+    container = Container(scopes=["request"])
 
     valid_request = Request(headers={"x-header-one": "one", "x-header-two": "2"})
-    with container.bind(Dependant(lambda: valid_request), Request):
-        await container.execute_async(container.solve(Dependant(controller)))  # success
+    with container.bind(Dependant(lambda: valid_request, scope="request"), Request):
+        solved = container.solve(Dependant(controller, scope="request"))
+    with container.enter_scope("request"):
+        await container.execute_async(solved)  # success
 
     invalid_request = Request(headers={"x-header-one": "one"})
-    with container.bind(Dependant(lambda: invalid_request), Request):
+    with container.bind(Dependant(lambda: invalid_request, scope="request"), Request):
+        solved = container.solve(Dependant(controller, scope="request"))
+
+    with container.enter_scope("request"):
         try:
-            await container.execute_async(
-                container.solve(Dependant(controller))
-            )  # fails
+            await container.execute_async(solved)  # fails
         except KeyError:
             pass
         else:

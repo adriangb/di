@@ -79,8 +79,9 @@ v5 = vFive()
 
 
 def test_execute():
-    container = Container()
-    res = container.execute_sync(container.solve(Dependant(v5)))
+    container = Container(scopes=(None,))
+    with container.enter_scope(None):
+        res = container.execute_sync(container.solve(Dependant(v5)))
     assert res.three.zero is res.zero
 
 
@@ -145,8 +146,9 @@ class AsyncGenCls:
 )
 @pytest.mark.anyio
 async def test_dependency_types(dep: Any):
-    container = Container()
-    assert (await container.execute_async(container.solve(Dependant(dep)))) == 1
+    container = Container(scopes=(None,))
+    async with container.enter_scope(None):
+        assert (await container.execute_async(container.solve(Dependant(dep)))) == 1
 
 
 class Counter:
@@ -269,7 +271,7 @@ class AsyncGenClsSlow:
 )
 @pytest.mark.anyio
 async def test_concurrency_async(dep1: Any, dep2: Any):
-    container = Container()
+    container = Container(scopes=(None,))
 
     counter = Counter()
     container.bind(Dependant(lambda: counter), Counter)
@@ -280,7 +282,8 @@ async def test_concurrency_async(dep1: Any, dep2: Any):
     ):
         ...
 
-    await container.execute_async(container.solve(Dependant(collector)))
+    async with container.enter_scope(None):
+        await container.execute_async(container.solve(Dependant(collector)))
 
 
 @pytest.mark.anyio
@@ -314,7 +317,8 @@ async def test_concurrent_executions_do_not_share_results():
 
     async def execute_in_ctx(id: int) -> None:
         ctx.set(id)
-        await container.execute_async(solved)
+        async with container.enter_scope(None):
+            await container.execute_async(solved)
 
     async with anyio.create_task_group() as tg:
         async with container.enter_scope("app"):
@@ -343,11 +347,19 @@ async def test_concurrent_executions_share_cache(
     solved1 = container.solve(Dependant(collect1))
     solved2 = container.solve(Dependant(collect2))
 
+    async def execute_1():
+        async with container.enter_scope(None):
+            return await container.execute_async(solved1)
+
+    async def execute_2():
+        async with container.enter_scope(None):
+            return await container.execute_async(solved2)
+
     async with container.enter_scope("app"):
         async with anyio.create_task_group() as tg:
-            tg.start_soon(functools.partial(container.execute_async, solved1))
+            tg.start_soon(execute_1)
             await anyio.sleep(0.05)
-            tg.start_soon(functools.partial(container.execute_async, solved2))
+            tg.start_soon(execute_2)
 
     assert (objects[0] is objects[1]) is shared
 

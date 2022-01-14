@@ -162,7 +162,7 @@ class AsyncTask(Task, ExecutorAsyncTask):
                 raise IncompatibleDependencyError(
                     f"The dependency {self.call} is an awaitable dependency"
                     f" and canot be used in the sync scope {self.scope}"
-                )
+                ) from None
             state.results[self] = await enter(
                 self.call(*args, **kwargs)  # type: ignore[arg-type]
             )

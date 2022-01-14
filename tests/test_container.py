@@ -1,20 +1,10 @@
-from typing import Generator, Type, Union
+from typing import Type, Union
 
 import pytest
 
-from di import Container, Dependant
+from di import Container
 from di.api.container import ContainerProtocol
 from di.container import BaseContainer
-
-
-def test_execution_scope() -> None:
-    def dep() -> Generator[int, None, None]:
-        yield 1
-
-    container = Container(scopes=(123,))
-
-    res = container.execute_sync(container.solve(Dependant(dep, scope=123)))
-    assert res == 1
 
 
 @pytest.mark.parametrize("container_cls", [BaseContainer, Container])
@@ -42,7 +32,7 @@ def test_enter_scope_subclass(
     container_cls: Union[Type[ContainerSubclass], Type[BaseContainerSubclass]]
 ) -> None:
 
-    container = container_cls()
+    container = container_cls(scopes=("test", "another"))
     assert list(container.scopes) == []
     with container.enter_scope("test") as container:
         assert isinstance(container, container_cls)
@@ -67,5 +57,5 @@ def test_container_api(
     """Check to make sure the container implementations comply w/ the API."""
     x: ContainerProtocol
     # mypy will throw an error here if the API is not implemented correctly
-    x = container_cls()
-    x = x
+    x = container_cls(scopes=(None,))
+    x = x  # avoid linting errors with unused variable

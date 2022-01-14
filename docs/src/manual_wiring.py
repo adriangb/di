@@ -37,15 +37,17 @@ def get_user(db: AbstractDBConn) -> str:
 
 async def controller(
     # markers can be added via Annotated
-    user1: Annotated[str, Depends(get_user)],
+    user1: Annotated[str, Depends(get_user, scope="request")],
     # or as the default value, in which case types can be checked by MyPy/Pylance
-    user2: str = Depends(get_user),
+    user2: str = Depends(get_user, scope="request"),
 ) -> None:
     assert user1 == user2 == "executed SELECT name from Users LIMIT 1"
 
 
 async def framework():
-    container = Container()
+    container = Container(scopes=["request"])
     # note that di will also autowire the bind, in this case to inject Config
-    container.bind(Dependant(ConcreteDBConn), AbstractDBConn)
-    await container.execute_async(container.solve(Dependant(controller)))
+    container.bind(Dependant(ConcreteDBConn, scope="request"), AbstractDBConn)
+    solved = container.solve(Dependant(controller, scope="request"))
+    async with container.enter_scope("request"):
+        await container.execute_async(solved)

@@ -8,9 +8,10 @@ class Request:
 
 
 async def web_framework():
-    container = Container()
-    solved = container.solve(Dependant(controller))
-    res = await container.execute_async(solved, values={Request: Request(1)})
+    container = Container(scopes=["request"])
+    solved = container.solve(Dependant(controller, scope="request"))
+    async with container.enter_scope("request"):
+        res = await container.execute_async(solved, values={Request: Request(1)})
     assert res == 2
 
 

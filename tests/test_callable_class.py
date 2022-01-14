@@ -23,36 +23,30 @@ def test_callable_class_dependant():
     every time.
     """
 
-    container = Container(scopes=("app", None))
+    container = Container(scopes=("app", "request"))
 
-    dep1 = CallableClassDependant(CallableClass, instance_scope="app")
-    solved1 = container.solve(dep1)
+    dep = CallableClassDependant(CallableClass, scope="request", instance_scope="app")
+    solved = container.solve(dep)
+
     with container.enter_scope("app"):
-        instance1_1, v1_1 = container.execute_sync(solved1)
-        instance1_2, v1_2 = container.execute_sync(solved1)
+        with container.enter_scope("request"):
+            instance1_1, v1_1 = container.execute_sync(solved)
+        with container.enter_scope("request"):
+            instance1_2, v1_2 = container.execute_sync(solved)
         assert instance1_1 is instance1_2
         assert v1_1 == 1
         assert v1_2 == 2
 
-    dep2 = CallableClassDependant(CallableClass, instance_scope="app")
-    solved2 = container.solve(dep2)
     with container.enter_scope("app"):
-        instance2_1, v2_1 = container.execute_sync(solved2)
-        instance2_2, v2_2 = container.execute_sync(solved2)
+        with container.enter_scope("request"):
+            instance2_1, v2_1 = container.execute_sync(solved)
+        with container.enter_scope("request"):
+            instance2_2, v2_2 = container.execute_sync(solved)
         assert instance2_1 is instance2_2
         assert v2_1 == 1
         assert v2_2 == 2
 
     assert instance2_1 is not instance1_1
-
-
-class InitFailsCls:
-    def __init__(self, x: int = 1) -> None:
-        assert x == 2
-        self.x = x
-
-    def __call__(self) -> None:
-        assert self.x == 2
 
 
 def test_not_a_class():

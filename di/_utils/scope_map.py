@@ -33,13 +33,13 @@ class ScopeMap(Dict[Scope, Dict[KT, VT]]):
         try:
             return self[scope].get(key, default)
         except KeyError:
-            raise UnknownScopeError(str(key))
+            raise UnknownScopeError(str(scope)) from None
 
     def set(self, key: KT, value: VT, *, scope: Scope) -> None:
         try:
             self[scope][key] = value
         except KeyError:
-            raise UnknownScopeError(str(key))
+            raise UnknownScopeError(str(scope)) from None
 
     def add_scope(self, scope: Scope) -> None:
         if scope in self:

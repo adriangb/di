@@ -14,9 +14,13 @@ class B:
 
 
 def main():
-    container = Container()
-    dependant = JoinedDependant(Dependant(A), siblings=[Dependant(B)])
+    container = Container(scopes=("request",))
+    dependant = JoinedDependant(
+        Dependant(A, scope="request"),
+        siblings=[Dependant(B, scope="request")],
+    )
     solved = container.solve(dependant)
-    a = container.execute_sync(solved)
+    with container.enter_scope("request"):
+        a = container.execute_sync(solved)
     assert isinstance(a, A)
     assert B.executed
