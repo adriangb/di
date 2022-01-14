@@ -16,7 +16,6 @@ from typing import (
     Mapping,
     Optional,
     Set,
-    Tuple,
     Type,
     TypeVar,
     Union,
@@ -116,7 +115,7 @@ class _ContainerCommon:
         """
         # If the SolvedDependant itself is a bind, replace it's dependant
         if dependency.call in self._binds:
-            dependency = self._binds[dependency.call]
+            dependency = self._binds[dependency.call]  # type: ignore  # for Pylance
 
         # Mapping of already seen dependants to itself for hash based lookups
         dep_registry: Dict[DependantBase[Any], DependantBase[Any]] = {}
@@ -273,34 +272,27 @@ class _ContainerCommon:
             positional_parameters = tuple(positional)
             keyword_parameters = tuple((k, v) for k, v in keyword.items())
 
+            assert dep.call is not None
             if is_async_gen_callable(dep.call) or is_coroutine_callable(dep.call):
                 tasks[dep] = task = AsyncTask(
+                    scope=dep.scope,
+                    call=dep.call,
+                    use_cache=dep.share,
                     dependant=dep,
                     positional_parameters=positional_parameters,
                     keyword_parameters=keyword_parameters,
                 )
             else:
                 tasks[dep] = task = SyncTask(
+                    scope=dep.scope,
+                    call=dep.call,
+                    use_cache=dep.share,
                     dependant=dep,
                     positional_parameters=positional_parameters,
                     keyword_parameters=keyword_parameters,
                 )
             ts.add(task, *(tasks[p.dependency] for p in dag[dep]))
         return tasks
-
-    def _update_cache(
-        self,
-        state: ContainerState,
-        results: Dict[_Task, Any],
-        to_cache: Iterable[Tuple[_Task, Scope]],
-    ) -> None:
-        cache = state.cached_values.set
-        for task in to_cache:
-            cache(
-                task[0].dependant,
-                results[task[0]],
-                scope=task[1],
-            )
 
     def execute_sync(
         self,
@@ -322,15 +314,14 @@ class _ContainerCommon:
             state = state.copy()
             cm = state.enter_scope(self._execution_scope)
         with cm:
-            results, leaf_tasks, execution_state, to_cache, root_task = plan_execution(
+            results, leaf_tasks, execution_state, root_task = plan_execution(
                 stacks=state.stacks,
-                cached_values=state.cached_values.to_mapping(),
+                cache=state.cached_values,
                 solved=solved,
                 values=values,
             )
             if root_task not in results:
                 (executor or self._executor).execute_sync(leaf_tasks, execution_state)  # type: ignore[union-attr]
-                self._update_cache(state, results, to_cache)
             return results[root_task]  # type: ignore[no-any-return]
 
     async def execute_async(
@@ -349,15 +340,14 @@ class _ContainerCommon:
             state = state.copy()
             cm = state.enter_scope(self._execution_scope)
         async with cm:
-            results, leaf_tasks, execution_state, to_cache, root_task = plan_execution(
+            results, leaf_tasks, execution_state, root_task = plan_execution(
                 stacks=state.stacks,
-                cached_values=state.cached_values.to_mapping(),
+                cache=state.cached_values,
                 solved=solved,
                 values=values,
             )
             if root_task not in results:
                 await (executor or self._executor).execute_async(leaf_tasks, execution_state)  # type: ignore[union-attr]
-                self._update_cache(state, results, to_cache)
             return results[root_task]  # type: ignore[no-any-return]
 
 

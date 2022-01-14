@@ -16,6 +16,7 @@ from typing import (
 from graphlib2 import TopologicalSorter
 
 from di._utils.inspect import is_async_gen_callable, is_gen_callable
+from di._utils.scope_map import ScopeMap
 from di.api.dependencies import DependantBase
 from di.api.executor import AsyncTask as ExecutorAsyncTask
 from di.api.executor import SyncTask as ExecutorSyncTask
@@ -30,6 +31,7 @@ class ExecutionState:
         "stacks",
         "results",
         "toplogical_sorter",
+        "cache",
     )
 
     def __init__(
@@ -37,10 +39,12 @@ class ExecutionState:
         stacks: Mapping[Scope, Union[AsyncExitStack, ExitStack]],
         results: Dict[Union[AsyncTask, SyncTask], Any],
         toplogical_sorter: TopologicalSorter[Union[AsyncTask, SyncTask]],
+        cache: ScopeMap[DependencyProvider, Any],
     ):
         self.stacks = stacks
         self.results = results
         self.toplogical_sorter = toplogical_sorter
+        self.cache = cache
 
 
 DependencyType = TypeVar("DependencyType")
@@ -49,7 +53,7 @@ DependencyType = TypeVar("DependencyType")
 def gather_new_tasks(
     state: ExecutionState,
 ) -> Generator[Optional[ExecutorTask], None, None]:
-    """Look amongst our dependants to see if any of them are now dependency free"""
+    """Look amongst our dependant tasks to see if any of them are now dependency free"""
     res = state.results
     ts = state.toplogical_sorter
     while True:
@@ -75,27 +79,32 @@ def gather_new_tasks(
         yield None
 
 
+UNSET: Any = object()
+
+
 class Task:
     __slots__ = (
-        "dependant",
         "call",
+        "scope",
+        "use_cache",
+        "dependant",
         "positional_parameters",
         "keyword_parameters",
-        "scope",
     )
-    call: DependencyProvider
-    scope: Scope
 
     def __init__(
         self,
+        scope: Scope,
+        call: DependencyProvider,
+        use_cache: bool,
         dependant: DependantBase[Any],
         positional_parameters: Iterable[Union[AsyncTask, SyncTask]],
         keyword_parameters: Iterable[Tuple[str, Union[AsyncTask, SyncTask]]],
     ) -> None:
+        self.use_cache = use_cache
+        self.scope = scope
+        self.call = call
         self.dependant = dependant
-        self.scope = self.dependant.scope
-        assert dependant.call is not None
-        self.call = dependant.call
         self.positional_parameters = positional_parameters
         self.keyword_parameters = keyword_parameters
 
@@ -109,7 +118,7 @@ class Task:
         )
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({repr(self.dependant)})"
+        return f"{self.__class__.__name__}(scope={self.scope}, call={self.call})"
 
 
 class AsyncTask(Task, ExecutorAsyncTask):
@@ -117,11 +126,16 @@ class AsyncTask(Task, ExecutorAsyncTask):
 
     def __init__(
         self,
+        scope: Scope,
+        call: DependencyProvider,
+        use_cache: bool,
         dependant: DependantBase[Any],
         positional_parameters: Iterable[Union[AsyncTask, SyncTask]],
         keyword_parameters: Iterable[Tuple[str, Union[AsyncTask, SyncTask]]],
     ) -> None:
-        super().__init__(dependant, positional_parameters, keyword_parameters)
+        super().__init__(
+            scope, call, use_cache, dependant, positional_parameters, keyword_parameters
+        )
         self.is_generator = is_async_gen_callable(self.call)
         if self.is_generator:
             self.call = asynccontextmanager(self.call)  # type: ignore[arg-type]
@@ -130,6 +144,15 @@ class AsyncTask(Task, ExecutorAsyncTask):
         self,
         state: ExecutionState,
     ) -> Iterable[Optional[ExecutorTask]]:
+        if self.use_cache:
+            value = state.cache.get_from_scope(
+                self.call, scope=self.scope, default=UNSET
+            )
+            if value is not UNSET:
+                state.results[self] = value
+                state.toplogical_sorter.done(self)
+                return gather_new_tasks(state)
+
         args, kwargs = self.gather_params(state.results)
 
         if self.is_generator:
@@ -137,15 +160,18 @@ class AsyncTask(Task, ExecutorAsyncTask):
                 enter = state.stacks[self.scope].enter_async_context  # type: ignore[union-attr]
             except AttributeError:
                 raise IncompatibleDependencyError(
-                    f"The dependency {self.dependant} is an awaitable dependency"
-                    f" and canot be used in the sync scope {self.dependant.scope}"
+                    f"The dependency {self.call} is an awaitable dependency"
+                    f" and canot be used in the sync scope {self.scope}"
                 )
             state.results[self] = await enter(
                 self.call(*args, **kwargs)  # type: ignore[arg-type]
             )
         else:
             state.results[self] = await self.call(*args, **kwargs)  # type: ignore[misc]
+
         state.toplogical_sorter.done(self)
+        if self.use_cache:
+            state.cache.set(self.call, state.results[self], scope=self.scope)
         return gather_new_tasks(state)
 
 
@@ -154,11 +180,16 @@ class SyncTask(Task, ExecutorSyncTask):
 
     def __init__(
         self,
+        scope: Scope,
+        call: DependencyProvider,
+        use_cache: bool,
         dependant: DependantBase[Any],
         positional_parameters: Iterable[Union[AsyncTask, SyncTask]],
         keyword_parameters: Iterable[Tuple[str, Union[AsyncTask, SyncTask]]],
     ) -> None:
-        super().__init__(dependant, positional_parameters, keyword_parameters)
+        super().__init__(
+            scope, call, use_cache, dependant, positional_parameters, keyword_parameters
+        )
         self.is_generator = is_gen_callable(self.call)
         if self.is_generator:
             self.call = contextmanager(self.call)  # type: ignore[arg-type]
@@ -167,6 +198,15 @@ class SyncTask(Task, ExecutorSyncTask):
         self,
         state: ExecutionState,
     ) -> Iterable[Optional[ExecutorTask]]:
+        if self.use_cache:
+            value = state.cache.get_from_scope(
+                self.call, scope=self.scope, default=UNSET
+            )
+            if value is not UNSET:
+                state.results[self] = value
+                state.toplogical_sorter.done(self)
+                return gather_new_tasks(state)
+
         args, kwargs = self.gather_params(state.results)
 
         if self.is_generator:
@@ -176,4 +216,6 @@ class SyncTask(Task, ExecutorSyncTask):
         else:
             state.results[self] = self.call(*args, **kwargs)
         state.toplogical_sorter.done(self)
+        if self.use_cache:
+            state.cache.set(self.call, state.results[self], scope=self.scope)
         return gather_new_tasks(state)

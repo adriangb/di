@@ -2,6 +2,7 @@ import typing
 
 import anyio
 import pytest
+from typing_extensions import Annotated
 
 from di import Container, Dependant, Depends
 from di.api.scopes import Scope
@@ -20,19 +21,11 @@ dep1 = Dep()
 dep2 = Dep()
 
 
-def app_scoped(v: int = Depends(dep1, scope="app")):
+def share(v: int = Depends(dep1, scope="app")):
     return v
 
 
-def request_scoped(v: int = Depends(dep1, scope="request")):
-    return v
-
-
-def not_share(v: int = Depends(dep1, scope=None, share=False)):
-    return v
-
-
-def default_scope(v: int = Depends(dep1)):
+def not_share(v: int = Depends(dep1, scope="app", share=False)):
     return v
 
 
@@ -40,28 +33,20 @@ def test_scoped_execute():
     container = Container()
     with container.enter_scope("app"):
         dep1.value = 1
-        r = container.execute_sync(container.solve(Dependant(app_scoped)))
+        r = container.execute_sync(container.solve(Dependant(share)))
         assert r == 1, r
         # we change the value to 2, but we should still get back 1
         # since the value is cached
         dep1.value = 2
-        r = container.execute_sync(container.solve(Dependant(app_scoped)))
+        r = container.execute_sync(container.solve(Dependant(share)))
         assert r == 1, r
         # but if we execute a non-share dependency, we get the current value
         r = container.execute_sync(container.solve(Dependant(not_share)))
         assert r == 2, r
-        # the default scope is None, which gives us the value cached
-        # in the app scope since the app scope is outside of the None scope
-        r = container.execute_sync(container.solve(Dependant(default_scope)))
-        assert r == 1, r
-    # now that we exited the app scope the cache was cleared
-    # and so the default scope gives us the new value
-    r = container.execute_sync(container.solve(Dependant(default_scope)))
-    assert r == 2, r
-    # and it gets refreshed every call to execute()
-    dep1.value = 3
-    r = container.execute_sync(container.solve(Dependant(default_scope)))
-    assert r == 3, r
+    with container.enter_scope("app"):
+        # now that we exited and re-entered app scope the cache was cleared
+        r = container.execute_sync(container.solve(Dependant(share)))
+        assert r == 2, r
 
 
 def test_unknown_scope():
@@ -99,28 +84,34 @@ def test_nested_caching():
     def A() -> str:
         return holder[0]
 
-    def B(a: str = Depends(A, scope="lifespan")) -> str:
+    DepA = Dependant(A, scope="lifespan")
+
+    def B(a: Annotated[str, DepA]) -> str:
         return a + holder[1]
 
-    def C(b: str = Depends(B, scope="request")) -> str:
+    DepB = Dependant(B, scope="request")
+
+    def C(b: Annotated[str, DepB]) -> str:
         return b + holder[2]
 
-    def endpoint(c: str = Depends(C, scope="request")) -> str:
+    DepC = Dependant(C, scope="request")
+
+    def endpoint(c: Annotated[str, DepC]) -> str:
         return c
+
+    DepEndpoint = Dependant(endpoint, scope="request")
 
     container = Container()
     with container.enter_scope("lifespan"):
         with container.enter_scope("request"):
-            res = container.execute_sync(container.solve(Dependant(endpoint)))
+            res = container.execute_sync(container.solve(DepEndpoint))
             assert res == "ABC"
             # values should be cached as long as we're within the request scope
             holder[:] = "DEF"
-            assert (
-                container.execute_sync(container.solve(Dependant(endpoint)))
-            ) == "ABC"
-            assert (container.execute_sync(container.solve(Dependant(C)))) == "ABC"
-            assert (container.execute_sync(container.solve(Dependant(B)))) == "AB"
-            assert (container.execute_sync(container.solve(Dependant(A)))) == "A"
+            assert (container.execute_sync(container.solve(DepEndpoint))) == "ABC"
+            assert (container.execute_sync(container.solve(DepC))) == "ABC"
+            assert (container.execute_sync(container.solve(DepB))) == "AB"
+            assert (container.execute_sync(container.solve(DepA))) == "A"
         # A is still cached for B because it is lifespan scoped
         assert (container.execute_sync(container.solve(Dependant(B)))) == "AE"
 
