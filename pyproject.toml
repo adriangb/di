@@ -38,8 +38,6 @@ pytest = "~6"
 pytest-cov = { version = "~2"}
 pytest-sugar = "~0"
 trio = "~0"
-httpx = "<2"
-requests = "~2"
 coverage = {extras = ["toml"], version = "^6.0"}
 # docs
 mkdocs = "~1"
