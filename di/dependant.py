@@ -206,14 +206,6 @@ class JoinedDependant(DependantBase[T]):
             *(DependencyParameter(dep, None) for dep in self.siblings),
         ]
 
-    def is_equivalent(self, other: DependantBase[Any]) -> bool:
-        if not isinstance(other, JoinedDependant):
-            return False
-        return (self.dependant, tuple(self.siblings)) == (
-            other.dependant,
-            tuple(other.siblings),
-        )
-
     def register_parameter(self, param: inspect.Parameter) -> DependantBase[T]:
         self.dependant = self.dependant.register_parameter(param)
         return self
