@@ -36,10 +36,7 @@ class ScopeMap(Dict[Scope, Dict[KT, VT]]):
             raise UnknownScopeError(str(scope)) from None
 
     def set(self, key: KT, value: VT, *, scope: Scope) -> None:
-        try:
-            self[scope][key] = value
-        except KeyError:
-            raise UnknownScopeError(str(scope)) from None
+        self[scope][key] = value
 
     def add_scope(self, scope: Scope) -> None:
         if scope in self:

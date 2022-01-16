@@ -5,7 +5,7 @@ import pytest
 from di import Container, Dependant, SyncExecutor
 from di.api.dependencies import DependencyParameter
 from di.dependant import JoinedDependant
-from di.exceptions import ScopeViolationError, WiringError
+from di.exceptions import ScopeViolationError, UnknownScopeError, WiringError
 from di.typing import Annotated
 
 
@@ -182,3 +182,12 @@ def test_wiring_from_binds() -> None:
             container.solve(Dependant(CannotBeWired)), executor=SyncExecutor()
         )
     assert isinstance(c, CanBeWired)
+
+
+def test_unknown_scope():
+    def bad_dep(v: Annotated[int, Dependant(lambda: 1, scope="app")]) -> int:
+        return v
+
+    container = Container(scopes=(None,))
+    with pytest.raises(UnknownScopeError):
+        container.solve(Dependant(bad_dep))

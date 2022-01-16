@@ -17,7 +17,7 @@ import anyio
 import pytest
 
 from di import AsyncExecutor, Container, Dependant
-from di.exceptions import IncompatibleDependencyError
+from di.exceptions import IncompatibleDependencyError, UnknownScopeError
 from di.typing import Annotated
 
 
@@ -398,3 +398,14 @@ async def test_async_cm_de_in_sync_scope():
             await container.execute_async(
                 container.solve(Dependant(dep, scope="scope")), executor=AsyncExecutor()
             )
+
+
+def test_unknown_scope():
+    def bad_dep(v: Annotated[int, Dependant(lambda: 1, scope="request")]) -> int:
+        return v
+
+    container = Container(scopes=("app", "request"))
+    solved = container.solve(Dependant(bad_dep))
+    with container.enter_scope("app"):
+        with pytest.raises(UnknownScopeError):
+            container.execute_sync(solved, executor=SyncExecutor())

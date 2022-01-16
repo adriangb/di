@@ -21,10 +21,7 @@ def check_is_inner(
 
 def check_scope(dep: DependantBase[Any], scope_idxs: Dict[Scope, int]) -> None:
     if dep.scope not in scope_idxs:
-        raise UnknownScopeError(
-            f"Dependency{dep} has an unknown scope {dep.scope}."
-            f" Did you forget to enter the {dep.scope} scope?"
-        )
+        raise UnknownScopeError(f"Dependency{dep} has an unknown scope {dep.scope}.")
 
 
 def validate_scopes(

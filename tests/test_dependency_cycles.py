@@ -14,12 +14,12 @@ from di.exceptions import DependencyCycleError
 
 # These methods need to be defined at the global scope for
 # forward references to be resolved correctly at runtime
-def dep1(v: "Annotated[int, Dependant(dep2)]") -> int:  # type: ignore
-    return 1
+def dep1(v: "Annotated[int, Dependant(dep2)]") -> None:  # type: ignore
+    ...  # pragma: no cover
 
 
-def dep2(v: "Annotated[int, Dependant(dep1)]") -> int:
-    return 2
+def dep2(v: "Annotated[int, Dependant(dep1)]") -> None:
+    ...  # pragma: no cover
 
 
 def test_cycle() -> None:

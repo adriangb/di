@@ -5,7 +5,7 @@ import pytest
 
 from di import Container, Dependant, SyncExecutor
 from di.api.scopes import Scope
-from di.exceptions import DuplicateScopeError, UnknownScopeError
+from di.exceptions import DuplicateScopeError
 from di.typing import Annotated
 
 
@@ -53,18 +53,6 @@ def test_scoped_execute():
         with container.enter_scope(None):
             r = container.execute_sync(share_solved, executor=SyncExecutor())
         assert r == 2, r
-
-
-def test_unknown_scope():
-    def bad_dep(v: Annotated[int, Dependant(dep1, scope="abcde")]) -> int:
-        return v
-
-    container = Container(scopes=(None,))
-    with container.enter_scope("app"):
-        with pytest.raises(UnknownScopeError):
-            container.execute_sync(
-                container.solve(Dependant(bad_dep)), executor=SyncExecutor()
-            )
 
 
 @pytest.mark.parametrize("outer", ("global", "local"))
