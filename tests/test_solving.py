@@ -1,4 +1,4 @@
-from typing import Annotated, Any, List
+from typing import Any, List
 
 import pytest
 
@@ -6,6 +6,7 @@ from di import Container, Dependant, SyncExecutor
 from di.api.dependencies import DependencyParameter
 from di.dependant import JoinedDependant
 from di.exceptions import ScopeViolationError, WiringError
+from di.typing import Annotated
 
 
 def test_no_annotations_no_default_value_no_marker():

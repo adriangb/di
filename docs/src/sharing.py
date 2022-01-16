@@ -1,7 +1,7 @@
 from random import random
-from typing import Annotated
 
 from di import Container, Dependant, SyncExecutor
+from di.typing import Annotated
 
 
 def controller(
