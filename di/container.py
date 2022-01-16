@@ -230,6 +230,7 @@ class _ContainerCommon:
         ts: TopologicalSorter[_Task],
     ) -> Dict[CacheKey, _Task]:
         tasks: Dict[CacheKey, _Task] = {}
+        task_id = 0
         for dep in topsorted:
             positional: List[_Task] = []
             keyword: Dict[str, _Task] = {}
@@ -251,6 +252,7 @@ class _ContainerCommon:
                     call=dep.call,
                     use_cache=dep.share,
                     dependant=dep,
+                    task_id=task_id,
                     positional_parameters=positional_parameters,
                     keyword_parameters=keyword_parameters,
                 )
@@ -260,9 +262,11 @@ class _ContainerCommon:
                     call=dep.call,
                     use_cache=dep.share,
                     dependant=dep,
+                    task_id=task_id,
                     positional_parameters=positional_parameters,
                     keyword_parameters=keyword_parameters,
                 )
+            task_id += 1
             ts.add(task, *(tasks[p.dependency.cache_key] for p in dag[dep]))
         return tasks
 
@@ -284,9 +288,9 @@ class _ContainerCommon:
             solved=solved,
             values=values,
         )
-        if root_task not in results:
+        if root_task.task_id not in results:
             executor.execute_sync(leaf_tasks, execution_state)  # type: ignore[union-attr]
-        return results[root_task]  # type: ignore[no-any-return]
+        return results[root_task.task_id]  # type: ignore[no-any-return]
 
     async def execute_async(
         self,
@@ -302,9 +306,9 @@ class _ContainerCommon:
             solved=solved,
             values=values,
         )
-        if root_task not in results:
+        if root_task.task_id not in results:
             await executor.execute_async(leaf_tasks, execution_state)  # type: ignore[union-attr]
-        return results[root_task]  # type: ignore[no-any-return]
+        return results[root_task.task_id]  # type: ignore[no-any-return]
 
 
 class BaseContainer(_ContainerCommon):

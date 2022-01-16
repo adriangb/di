@@ -29,7 +29,7 @@ Task = Union[AsyncTask, SyncTask]
 
 TaskCacheDeque = Deque[Tuple[Task, Scope]]
 
-Results = Dict[Task, Any]
+Results = Dict[int, Any]
 
 TaskDependencyCounts = Dict[Task, int]
 
@@ -48,7 +48,7 @@ def plan_execution(
     solved: SolvedDependant[Any],
     *,
     values: Optional[Mapping[DependencyProvider, Any]] = None,
-) -> Tuple[Dict[Task, Any], Iterable[Optional[ExecutorTask]], ExecutorState, Task,]:
+) -> Tuple[Dict[int, Any], Iterable[Optional[ExecutorTask]], ExecutorState, Task,]:
     """Re-use or create an ExecutionPlan"""
     # This function is a hot loop
     # It is run for every execution, and even with the cache it can be a bottleneck
@@ -63,8 +63,8 @@ def plan_execution(
     call_map = solved_dependency_cache.callable_to_task_mapping
     for call in user_values.keys() & call_map.keys():
         value = user_values[call]
-        for task_id in call_map[call]:
-            results[task_id] = value
+        for task in call_map[call]:
+            results[task.task_id] = value
 
     ts = solved_dependency_cache.topological_sorter.copy()
 
