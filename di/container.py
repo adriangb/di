@@ -32,12 +32,11 @@ from di._utils.task import AsyncTask, SyncTask
 from di._utils.topsort import topsort
 from di._utils.types import FusedContextManager
 from di.api.dependencies import CacheKey, DependantBase, DependencyParameter
-from di.api.executor import AsyncExecutor, SyncExecutor
+from di.api.executor import AsyncExecutorProtocol, SyncExecutorProtocol
 from di.api.providers import DependencyProvider, DependencyProviderType
 from di.api.scopes import Scope
 from di.api.solved import SolvedDependant
 from di.exceptions import WiringError
-from di.executors import DefaultExecutor
 
 _Task = Union[AsyncTask, SyncTask]
 
@@ -52,19 +51,16 @@ __all__ = ("BaseContainer", "Container")
 
 
 class _ContainerCommon:
-    __slots__ = ("_executor", "_scopes", "_binds")
+    __slots__ = ("_scopes", "_binds")
 
-    _executor: Union[SyncExecutor, AsyncExecutor]
     _scopes: Sequence[Scope]
     _binds: Dict[DependencyProvider, DependantBase[Any]]
 
     def __init__(
         self,
-        executor: Union[SyncExecutor, AsyncExecutor],
         scopes: Sequence[Scope],
         binds: Optional[Dict[DependencyProvider, DependantBase[Any]]],
     ):
-        self._executor = executor
         self._scopes = list(scopes)
         self._binds = binds or {}
 
@@ -276,8 +272,8 @@ class _ContainerCommon:
     def execute_sync(
         self,
         solved: SolvedDependant[DependencyType],
+        executor: SyncExecutorProtocol,
         *,
-        executor: Optional[SyncExecutor] = None,
         values: Optional[Mapping[DependencyProvider, Any]] = None,
     ) -> DependencyType:
         """Execute an already solved dependency.
@@ -292,14 +288,14 @@ class _ContainerCommon:
             values=values,
         )
         if root_task not in results:
-            (executor or self._executor).execute_sync(leaf_tasks, execution_state)  # type: ignore[union-attr]
+            executor.execute_sync(leaf_tasks, execution_state)  # type: ignore[union-attr]
         return results[root_task]  # type: ignore[no-any-return]
 
     async def execute_async(
         self,
         solved: SolvedDependant[DependencyType],
+        executor: AsyncExecutorProtocol,
         *,
-        executor: Optional[AsyncExecutor] = None,
         values: Optional[Mapping[DependencyProvider, Any]] = None,
     ) -> DependencyType:
         """Execute an already solved dependency."""
@@ -310,7 +306,7 @@ class _ContainerCommon:
             values=values,
         )
         if root_task not in results:
-            await (executor or self._executor).execute_async(leaf_tasks, execution_state)  # type: ignore[union-attr]
+            await executor.execute_async(leaf_tasks, execution_state)  # type: ignore[union-attr]
         return results[root_task]  # type: ignore[no-any-return]
 
 
@@ -324,10 +320,9 @@ class BaseContainer(_ContainerCommon):
         self,
         *,
         scopes: Sequence[Scope],
-        executor: Optional[Union[AsyncExecutor, SyncExecutor]] = None,
+        executor: Optional[Union[AsyncExecutorProtocol, SyncExecutorProtocol]] = None,
     ) -> None:
         super().__init__(
-            executor=executor or DefaultExecutor(),
             scopes=scopes,
             binds={},
         )
@@ -348,7 +343,6 @@ class BaseContainer(_ContainerCommon):
     def copy(self: _BaseContainerType) -> _BaseContainerType:
         new = object.__new__(self.__class__)
         new._scopes = self._scopes
-        new._executor = self._executor
         # binds are shared
         new._binds = self._binds
         # cached values and scopes are not shared
@@ -418,10 +412,9 @@ class Container(_ContainerCommon):
         self,
         *,
         scopes: Sequence[Scope],
-        executor: Optional[Union[AsyncExecutor, SyncExecutor]] = None,
+        executor: Optional[Union[AsyncExecutorProtocol, SyncExecutorProtocol]] = None,
     ) -> None:
         super().__init__(
-            executor=executor or DefaultExecutor(),
             scopes=scopes,
             binds={},
         )
@@ -439,7 +432,6 @@ class Container(_ContainerCommon):
     def copy(self: _ContainerType) -> _ContainerType:
         new = object.__new__(self.__class__)
         new._scopes = self._scopes
-        new._executor = self._executor
         new._binds = self._binds
         new._context = self._context
         return new  # type: ignore[no-any-return]

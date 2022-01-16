@@ -23,10 +23,9 @@ from di.dependant import (  # noqa: E402
     JoinedDependant,
 )
 from di.executors import (  # noqa: E402
+    AsyncExecutor,
     ConcurrentAsyncExecutor,
-    DefaultExecutor,
-    SimpleAsyncExecutor,
-    SimpleSyncExecutor,
+    SyncExecutor,
 )
 from di.params import Depends  # noqa: E402
 
@@ -40,6 +39,6 @@ __all__ = (
     "Depends",
     "DefaultExecutor",
     "ConcurrentAsyncExecutor",
-    "SimpleAsyncExecutor",
-    "SimpleSyncExecutor",
+    "AsyncExecutor",
+    "SyncExecutor",
 )

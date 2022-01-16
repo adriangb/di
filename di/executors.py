@@ -7,13 +7,19 @@ import anyio
 import anyio.abc
 
 from di._utils.concurrency import callable_in_thread_pool
-from di.api.executor import AsyncExecutor, AsyncTask, State, SyncExecutor, Task
+from di.api.executor import (
+    AsyncExecutorProtocol,
+    AsyncTask,
+    State,
+    SyncExecutorProtocol,
+    Task,
+)
 
 TaskQueue = typing.Deque[typing.Optional[Task]]
 
 
-class SimpleSyncExecutor(SyncExecutor):
-    def drain(self, queue: TaskQueue, state: State) -> None:
+class SyncExecutor(SyncExecutorProtocol):
+    def __drain(self, queue: TaskQueue, state: State) -> None:
         for task in queue:
             if task is None:
                 continue
@@ -28,15 +34,15 @@ class SimpleSyncExecutor(SyncExecutor):
         while True:
             task = q.popleft()
             if task is None:
-                self.drain(q, state)
+                self.__drain(q, state)
                 return
             if isinstance(task, AsyncTask):
                 raise TypeError("Cannot execute async dependencies in execute_sync")
             q.extend(task.compute(state))
 
 
-class SimpleAsyncExecutor(AsyncExecutor):
-    async def drain(self, queue: TaskQueue, state: State) -> None:
+class AsyncExecutor(AsyncExecutorProtocol):
+    async def __drain(self, queue: TaskQueue, state: State) -> None:
         for task in queue:
             if task is None:
                 continue
@@ -53,7 +59,7 @@ class SimpleAsyncExecutor(AsyncExecutor):
         while True:
             task = q.popleft()
             if task is None:
-                await self.drain(q, state)
+                await self.__drain(q, state)
                 return
             if isinstance(task, AsyncTask):
                 newtasks = await task.compute(state)
@@ -81,7 +87,7 @@ async def _async_worker(
         taskgroup.start_soon(_async_worker, taskinfo, state, taskgroup)
 
 
-class ConcurrentAsyncExecutor(AsyncExecutor):
+class ConcurrentAsyncExecutor(AsyncExecutorProtocol):
     async def execute_async(
         self, tasks: typing.Iterable[typing.Optional[Task]], state: State
     ) -> None:
@@ -89,7 +95,3 @@ class ConcurrentAsyncExecutor(AsyncExecutor):
             for task in tasks:
                 if task is not None:
                     taskgroup.start_soon(_async_worker, task, state, taskgroup)
-
-
-class DefaultExecutor(ConcurrentAsyncExecutor, SimpleSyncExecutor):
-    pass

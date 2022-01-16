@@ -3,7 +3,7 @@ from typing import AsyncGenerator, Dict, Generator
 
 import pytest
 
-from di import Container, Dependant, Depends
+from di import AsyncExecutor, Container, Dependant, Depends, SyncExecutor
 
 
 @dataclass
@@ -51,7 +51,9 @@ def test_dependency_can_catch_exception_single_sync() -> None:
     rec = Recorder()
     container.bind(Dependant(lambda: rec), Recorder)
     with container.enter_scope(None):
-        container.execute_sync(container.solve(Dependant(collector)))
+        container.execute_sync(
+            container.solve(Dependant(collector)), executor=SyncExecutor()
+        )
     assert rec.caught == {"dep1": True}
 
 
@@ -64,7 +66,9 @@ async def test_dependency_can_catch_exception_single_async() -> None:
     rec = Recorder()
     container.bind(Dependant(lambda: rec), Recorder)
     async with container.enter_scope(None):
-        await container.execute_async(container.solve(Dependant(collector)))
+        await container.execute_async(
+            container.solve(Dependant(collector)), executor=AsyncExecutor()
+        )
     assert rec.caught == {"async_dep1": True}
 
 
@@ -76,7 +80,9 @@ def test_dependency_can_catch_exception_concurrent_sync() -> None:
     rec = Recorder()
     container.bind(Dependant(lambda: rec), Recorder)
     with container.enter_scope(None):
-        container.execute_sync(container.solve(Dependant(collector)))
+        container.execute_sync(
+            container.solve(Dependant(collector)), executor=SyncExecutor()
+        )
     # one of the dependencies catches and swallows the exception
     # so the other one nevers sees it
     # there is no promises as to the order, both cases are valid
@@ -94,7 +100,9 @@ async def test_dependency_can_catch_exception_concurrent_async() -> None:
     rec = Recorder()
     container.bind(Dependant(lambda: rec), Recorder)
     async with container.enter_scope(None):
-        await container.execute_async(container.solve(Dependant(collector)))
+        await container.execute_async(
+            container.solve(Dependant(collector)), executor=AsyncExecutor()
+        )
     # one of the dependencies catches and swallows the exception
     # so the other one nevers sees it
     # there is no promises as to the order, both cases are valid
@@ -110,7 +118,9 @@ async def test_dependency_can_catch_exception_concurrent_mixed() -> None:
     rec = Recorder()
     container.bind(Dependant(lambda: rec), Recorder)
     async with container.enter_scope(None):
-        await container.execute_async(container.solve(Dependant(collector)))
+        await container.execute_async(
+            container.solve(Dependant(collector)), executor=AsyncExecutor()
+        )
     # one of the dependencies catches and swallows the exception
     # so the other one nevers sees it
     # there is no promises as to the order, both cases are valid
@@ -158,7 +168,9 @@ def test_dependency_can_catch_exception_single_sync_reraise() -> None:
     container.bind(Dependant(lambda: rec), Recorder)
     try:
         with container.enter_scope(None):
-            container.execute_sync(container.solve(Dependant(collector)))
+            container.execute_sync(
+                container.solve(Dependant(collector)), executor=SyncExecutor()
+            )
     except MyException:
         pass
     else:
@@ -178,7 +190,9 @@ async def test_dependency_can_catch_exception_single_async_reraise() -> None:
     container.bind(Dependant(lambda: rec), Recorder)
     try:
         async with container.enter_scope(None):
-            await container.execute_async(container.solve(Dependant(collector)))
+            await container.execute_async(
+                container.solve(Dependant(collector)), executor=AsyncExecutor()
+            )
     except MyException:
         pass
     else:
@@ -199,7 +213,9 @@ def test_dependency_can_catch_exception_concurrent_sync_reraise() -> None:
     container.bind(Dependant(lambda: rec), Recorder)
     try:
         with container.enter_scope(None):
-            container.execute_sync(container.solve(Dependant(collector)))
+            container.execute_sync(
+                container.solve(Dependant(collector)), executor=SyncExecutor()
+            )
     except MyException:
         pass
     else:
@@ -221,7 +237,9 @@ async def test_dependency_can_catch_exception_concurrent_async_reraise() -> None
     container.bind(Dependant(lambda: rec), Recorder)
     try:
         async with container.enter_scope(None):
-            await container.execute_async(container.solve(Dependant(collector)))
+            await container.execute_async(
+                container.solve(Dependant(collector)), executor=AsyncExecutor()
+            )
     except MyException:
         pass
     else:
@@ -243,7 +261,9 @@ async def test_dependency_can_catch_exception_concurrent_mixed_reraise() -> None
     container.bind(Dependant(lambda: rec), Recorder)
     try:
         async with container.enter_scope(None):
-            await container.execute_async(container.solve(Dependant(collector)))
+            await container.execute_async(
+                container.solve(Dependant(collector)), executor=AsyncExecutor()
+            )
     except MyException:
         pass
     else:
@@ -273,4 +293,6 @@ def test_deep_reraise() -> None:
 
     container = Container(scopes=(None,))
     with container.enter_scope(None):
-        container.execute_sync(container.solve(Dependant(root)))
+        container.execute_sync(
+            container.solve(Dependant(root)), executor=SyncExecutor()
+        )

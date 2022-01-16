@@ -1,6 +1,6 @@
 from random import random
 
-from di import Container, Dependant, Depends
+from di import Container, Dependant, Depends, SyncExecutor
 
 
 def controller(
@@ -18,4 +18,4 @@ def main() -> None:
     container = Container(scopes=["request"])
     solved = container.solve(Dependant(controller, scope="request"))
     with container.enter_scope("request"):
-        container.execute_sync(solved)
+        container.execute_sync(solved, executor=SyncExecutor())

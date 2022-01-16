@@ -2,7 +2,7 @@ from typing import Annotated, Any, List
 
 import pytest
 
-from di import Container, Dependant
+from di import Container, Dependant, SyncExecutor
 from di.api.dependencies import DependencyParameter
 from di.dependant import JoinedDependant
 from di.exceptions import ScopeViolationError, WiringError
@@ -19,7 +19,7 @@ def test_no_annotations_no_default_value_no_marker():
         match="You must either provide a dependency marker, a type annotation or a default value",
     ):
         with container.enter_scope(None):
-            container.execute_sync(container.solve(Dependant(badfunc)))  # type: ignore # for Pylance
+            container.execute_sync(container.solve(Dependant(badfunc)), executor=SyncExecutor())  # type: ignore # for Pylance
 
 
 def test_default_argument():
@@ -31,7 +31,7 @@ def test_default_argument():
     container = Container(scopes=(None,))
 
     with container.enter_scope(None):
-        res = container.execute_sync(container.solve(Dependant(default_func)))  # type: ignore # for Pylance
+        res = container.execute_sync(container.solve(Dependant(default_func)), executor=SyncExecutor())  # type: ignore # for Pylance
     assert res == 2
 
 
@@ -44,7 +44,7 @@ def test_marker():
     container = Container(scopes=(None,))
 
     with container.enter_scope(None):
-        res = container.execute_sync(container.solve(Dependant(marker_default_func)))  # type: ignore # for Pylance
+        res = container.execute_sync(container.solve(Dependant(marker_default_func)), executor=SyncExecutor())  # type: ignore # for Pylance
     assert res == 2
 
 
@@ -82,7 +82,7 @@ def test_dependency_with_multiple_scopes():
     solved = container.solve(Dependant(B, scope="request"))
     with container.enter_scope("app"):
         with container.enter_scope("request"):
-            container.execute_sync(solved)
+            container.execute_sync(solved, executor=SyncExecutor())
 
 
 def test_siblings() -> None:
@@ -111,7 +111,7 @@ def test_siblings() -> None:
     dep = JoinedDependant(Dependant(dep2), siblings=[Dependant(s) for s in siblings])
     solved = container.solve(dep)
     with container.enter_scope(None):
-        container.execute_sync(solved)
+        container.execute_sync(solved, executor=SyncExecutor())
     assert all(s.called for s in siblings)
     assert dep1.calls == 1  # they all shared the dependency
 
@@ -143,7 +143,10 @@ def test_non_parameter_dependency():
     # should_be_called is called, but it's return value is not passed into
     # takes_no_parameters since the DependencyParameter has parameter=None
     with container.enter_scope(None):
-        container.execute_sync(container.solve(CustomDependant(takes_no_parameters)))
+        container.execute_sync(
+            container.solve(CustomDependant(takes_no_parameters)),
+            executor=SyncExecutor(),
+        )
     assert calls == 1
 
 
@@ -174,5 +177,7 @@ def test_wiring_from_binds() -> None:
         container.solve(Dependant(CannotBeWired))
     container.bind(Dependant(CanBeWired), CannotBeWired)
     with container.enter_scope(None):
-        c = container.execute_sync(container.solve(Dependant(CannotBeWired)))
+        c = container.execute_sync(
+            container.solve(Dependant(CannotBeWired)), executor=SyncExecutor()
+        )
     assert isinstance(c, CanBeWired)

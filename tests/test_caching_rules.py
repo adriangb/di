@@ -9,6 +9,7 @@ else:
 import pytest
 
 from di import Container, Dependant, Depends
+from tests.executor import test_executor
 
 
 def value_gen() -> Generator[int, None, None]:
@@ -41,9 +42,9 @@ def test_cache_rules_between_dep(
     solved = container.solve(Dependant(dep, scope=scope, share=share))
     with container.enter_scope("scope"):
         with container.enter_scope(None):
-            v1 = container.execute_sync(solved)
+            v1 = container.execute_sync(solved, executor=test_executor)
         with container.enter_scope(None):
-            v2 = container.execute_sync(solved)
+            v2 = container.execute_sync(solved, executor=test_executor)
     was_cached = v1 == v2
 
     assert cached == was_cached
@@ -95,8 +96,8 @@ def test_cache_rules_multiple_deps(
     solved = container.solve(Dependant(root_dep))
     with container.enter_scope("scope"):
         with container.enter_scope(None):
-            v1 = container.execute_sync(solved)
+            v1 = container.execute_sync(solved, executor=test_executor)
         with container.enter_scope(None):
-            v2 = container.execute_sync(solved)
+            v2 = container.execute_sync(solved, executor=test_executor)
 
     assert (v1, v2) == expected

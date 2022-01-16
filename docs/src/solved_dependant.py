@@ -1,4 +1,4 @@
-from di import Container, Dependant
+from di import Container, Dependant, SyncExecutor
 from di.api.solved import SolvedDependant
 
 
@@ -13,7 +13,9 @@ def web_framework():
     assert isinstance(solved, SolvedDependant)
 
     with container.enter_scope("request"):
-        container.execute_sync(solved, values={Request: Request()})
+        container.execute_sync(
+            solved, values={Request: Request()}, executor=SyncExecutor()
+        )
 
     dependencies = solved.get_flat_subdependants()
     assert all(isinstance(item, Dependant) for item in dependencies)

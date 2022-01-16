@@ -32,12 +32,12 @@ class SyncTask:
 Task = Union[AsyncTask, SyncTask]
 
 
-class SyncExecutor(Protocol):
+class SyncExecutorProtocol(Protocol):
     def execute_sync(self, tasks: Iterable[Optional[Task]], state: State) -> None:
         raise NotImplementedError
 
 
-class AsyncExecutor(Protocol):
+class AsyncExecutorProtocol(Protocol):
     async def execute_async(
         self, tasks: Iterable[Optional[Task]], state: State
     ) -> None:

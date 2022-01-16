@@ -1,7 +1,7 @@
 import os
 from dataclasses import dataclass, field
 
-from di import Container, Dependant
+from di import AsyncExecutor, Container, Dependant
 
 
 @dataclass
@@ -22,4 +22,4 @@ async def framework():
     container = Container(scopes=["request"])
     solved = container.solve(Dependant(controller, scope="request"))
     async with container.enter_scope("request"):
-        await container.execute_async(solved)
+        await container.execute_async(solved, executor=AsyncExecutor())

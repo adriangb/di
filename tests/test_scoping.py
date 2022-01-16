@@ -4,7 +4,7 @@ import anyio
 import pytest
 from typing_extensions import Annotated
 
-from di import Container, Dependant, Depends
+from di import Container, Dependant, Depends, SyncExecutor
 from di.api.scopes import Scope
 from di.exceptions import DuplicateScopeError, UnknownScopeError
 
@@ -36,22 +36,22 @@ def test_scoped_execute():
     with container.enter_scope("scope"):
         dep1.value = 1
         with container.enter_scope(None):
-            r = container.execute_sync(share_solved)
+            r = container.execute_sync(share_solved, executor=SyncExecutor())
         assert r == 1, r
         # we change the value to 2, but we should still get back 1
         # since the value is cached
         dep1.value = 2
         with container.enter_scope(None):
-            r = container.execute_sync(share_solved)
+            r = container.execute_sync(share_solved, executor=SyncExecutor())
         assert r == 1, r
         # but if we execute a non-share dependency, we get the current value
         with container.enter_scope(None):
-            r = container.execute_sync(not_share_solved)
+            r = container.execute_sync(not_share_solved, executor=SyncExecutor())
         assert r == 2, r
     with container.enter_scope("scope"):
         # now that we exited and re-entered the scope the cache was cleared
         with container.enter_scope(None):
-            r = container.execute_sync(share_solved)
+            r = container.execute_sync(share_solved, executor=SyncExecutor())
         assert r == 2, r
 
 
@@ -62,7 +62,9 @@ def test_unknown_scope():
     container = Container(scopes=(None,))
     with container.enter_scope("app"):
         with pytest.raises(UnknownScopeError):
-            container.execute_sync(container.solve(Dependant(bad_dep)))
+            container.execute_sync(
+                container.solve(Dependant(bad_dep)), executor=SyncExecutor()
+            )
 
 
 @pytest.mark.parametrize("outer", ("global", "local"))
@@ -110,20 +112,40 @@ def test_nested_caching():
     container = Container(scopes=("app", "request", "endpoint"))
     with container.enter_scope("app"):
         with container.enter_scope("request"):
-            res = container.execute_sync(container.solve(DepEndpoint))
+            res = container.execute_sync(
+                container.solve(DepEndpoint), executor=SyncExecutor()
+            )
             assert res == "ABC"
             # values should be cached as long as we're within the request scope
             holder[:] = "DEF"
             with container.enter_scope("endpoint"):
-                assert (container.execute_sync(container.solve(DepEndpoint))) == "ABC"
+                assert (
+                    container.execute_sync(
+                        container.solve(DepEndpoint), executor=SyncExecutor()
+                    )
+                ) == "ABC"
             with container.enter_scope("endpoint"):
-                assert (container.execute_sync(container.solve(DepC))) == "ABC"
+                assert (
+                    container.execute_sync(
+                        container.solve(DepC), executor=SyncExecutor()
+                    )
+                ) == "ABC"
             with container.enter_scope("endpoint"):
-                assert (container.execute_sync(container.solve(DepB))) == "AB"
+                assert (
+                    container.execute_sync(
+                        container.solve(DepB), executor=SyncExecutor()
+                    )
+                ) == "AB"
             with container.enter_scope("endpoint"):
-                assert (container.execute_sync(container.solve(DepA))) == "A"
+                assert (
+                    container.execute_sync(
+                        container.solve(DepA), executor=SyncExecutor()
+                    )
+                ) == "A"
         # A is still cached because it is lifespan scoped
-        assert (container.execute_sync(container.solve(DepA))) == "A"
+        assert (
+            container.execute_sync(container.solve(DepA), executor=SyncExecutor())
+        ) == "A"
 
 
 def test_nested_lifecycle():
@@ -154,7 +176,8 @@ def test_nested_lifecycle():
             assert list(state.values()) == ["uninitialized"] * 3
             with container.enter_scope("endpoint"):
                 container.execute_sync(
-                    container.solve(Dependant(endpoint, scope="endpoint"))
+                    container.solve(Dependant(endpoint, scope="endpoint")),
+                    executor=SyncExecutor(),
                 )
             assert list(state.values()) == ["initialized"] * 3
         assert list(state.values()) == ["initialized", "destroyed", "destroyed"]

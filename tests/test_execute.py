@@ -6,6 +6,8 @@ import time
 from contextlib import contextmanager
 from typing import Any, AsyncGenerator, Generator, List
 
+from di import ConcurrentAsyncExecutor, SyncExecutor
+
 if sys.version_info < (3, 8):
     from typing_extensions import Literal
 else:
@@ -14,7 +16,7 @@ else:
 import anyio
 import pytest
 
-from di import Container, Dependant, Depends
+from di import AsyncExecutor, Container, Dependant, Depends
 from di.exceptions import IncompatibleDependencyError
 
 
@@ -81,7 +83,9 @@ v5 = vFive()
 def test_execute():
     container = Container(scopes=(None,))
     with container.enter_scope(None):
-        res = container.execute_sync(container.solve(Dependant(v5)))
+        res = container.execute_sync(
+            container.solve(Dependant(v5)), executor=SyncExecutor()
+        )
     assert res.three.zero is res.zero
 
 
@@ -148,7 +152,11 @@ class AsyncGenCls:
 async def test_dependency_types(dep: Any):
     container = Container(scopes=(None,))
     async with container.enter_scope(None):
-        assert (await container.execute_async(container.solve(Dependant(dep)))) == 1
+        assert (
+            await container.execute_async(
+                container.solve(Dependant(dep)), executor=ConcurrentAsyncExecutor()
+            )
+        ) == 1
 
 
 class Counter:
@@ -283,7 +291,9 @@ async def test_concurrency_async(dep1: Any, dep2: Any):
         ...
 
     async with container.enter_scope(None):
-        await container.execute_async(container.solve(Dependant(collector)))
+        await container.execute_async(
+            container.solve(Dependant(collector)), executor=ConcurrentAsyncExecutor()
+        )
 
 
 @pytest.mark.anyio
@@ -318,7 +328,7 @@ async def test_concurrent_executions_do_not_share_results():
     async def execute_in_ctx(id: int) -> None:
         ctx.set(id)
         async with container.enter_scope(None):
-            await container.execute_async(solved)
+            await container.execute_async(solved, executor=ConcurrentAsyncExecutor())
 
     async with anyio.create_task_group() as tg:
         async with container.enter_scope("app"):
@@ -349,11 +359,15 @@ async def test_concurrent_executions_share_cache(
 
     async def execute_1():
         async with container.enter_scope(None):
-            return await container.execute_async(solved1)
+            return await container.execute_async(
+                solved1, executor=ConcurrentAsyncExecutor()
+            )
 
     async def execute_2():
         async with container.enter_scope(None):
-            return await container.execute_async(solved2)
+            return await container.execute_async(
+                solved2, executor=ConcurrentAsyncExecutor()
+            )
 
     async with container.enter_scope("app"):
         async with anyio.create_task_group() as tg:
@@ -377,5 +391,5 @@ async def test_async_cm_de_in_sync_scope():
             IncompatibleDependencyError, match="canot be used in the sync scope"
         ):
             await container.execute_async(
-                container.solve(Dependant(dep, scope="scope"))
+                container.solve(Dependant(dep, scope="scope")), executor=AsyncExecutor()
             )

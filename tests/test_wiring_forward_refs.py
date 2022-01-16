@@ -1,4 +1,4 @@
-from di import Container, Dependant
+from di import Container, Dependant, SyncExecutor
 
 
 class Foo:
@@ -12,6 +12,8 @@ class Foo:
 def test_forward_ref_evalutation():
     container = Container(scopes=(None,))
     with container.enter_scope(None):
-        res = container.execute_sync(container.solve(Dependant(Foo.foo)))
+        res = container.execute_sync(
+            container.solve(Dependant(Foo.foo)), executor=SyncExecutor()
+        )
     assert isinstance(res, Foo)
     assert res.called

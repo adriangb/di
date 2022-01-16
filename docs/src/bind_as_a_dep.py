@@ -6,7 +6,7 @@ if sys.version_info < (3, 8):
 else:
     from typing import Protocol
 
-from di import Container, Dependant
+from di import AsyncExecutor, Container, Dependant
 
 
 class DBProtocol(Protocol):
@@ -37,9 +37,11 @@ async def framework() -> None:
     solved = container.solve(Dependant(controller, scope="request"))
     # this next line would fail without the bind
     async with container.enter_scope("request"):
-        await container.execute_async(solved)
+        await container.execute_async(solved, executor=AsyncExecutor())
     # and we can double check that the bind worked
     # by requesting the instance directly
     async with container.enter_scope("request"):
-        db = await container.execute_async(container.solve(Dependant(DBProtocol)))
+        db = await container.execute_async(
+            container.solve(Dependant(DBProtocol)), executor=AsyncExecutor()
+        )
     assert isinstance(db, Postgres)

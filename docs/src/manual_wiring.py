@@ -7,7 +7,7 @@ if sys.version_info < (3, 9):
 else:
     from typing import Annotated
 
-from di import Container, Dependant, Depends
+from di import AsyncExecutor, Container, Dependant, Depends
 
 
 class AbstractDBConn:
@@ -50,4 +50,4 @@ async def framework():
     container.bind(Dependant(ConcreteDBConn, scope="request"), AbstractDBConn)
     solved = container.solve(Dependant(controller, scope="request"))
     async with container.enter_scope("request"):
-        await container.execute_async(solved)
+        await container.execute_async(solved, executor=AsyncExecutor())

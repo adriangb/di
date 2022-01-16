@@ -1,6 +1,6 @@
 import pytest
 
-from di import Container, Dependant, Depends
+from di import Container, Dependant, Depends, SyncExecutor
 
 
 class Request:
@@ -21,14 +21,20 @@ def test_bind():
     dependant = Dependant(func)
 
     with container.enter_scope(None):
-        res = container.execute_sync(container.solve(dependant))
+        res = container.execute_sync(
+            container.solve(dependant), executor=SyncExecutor()
+        )
         assert res == 1
     with container.bind(Dependant(lambda: 2), func):
         with container.enter_scope(None):
-            res = container.execute_sync(container.solve(dependant))
+            res = container.execute_sync(
+                container.solve(dependant), executor=SyncExecutor()
+            )
             assert res == 2
     with container.enter_scope(None):
-        res = container.execute_sync(container.solve(dependant))
+        res = container.execute_sync(
+            container.solve(dependant), executor=SyncExecutor()
+        )
         assert res == 1
 
 
@@ -50,7 +56,9 @@ def test_bind_transitive_dependency_results_skips_subdpendencies():
     with container.enter_scope(None):
         # we get an error from raises_exception
         with pytest.raises(ValueError):
-            container.execute_sync(container.solve(Dependant(dep)))
+            container.execute_sync(
+                container.solve(Dependant(dep)), executor=SyncExecutor()
+            )
 
     # we bind a non-error provider and re-execute, now raises_exception
     # should not execute at all
@@ -60,11 +68,15 @@ def test_bind_transitive_dependency_results_skips_subdpendencies():
 
     with container.bind(Dependant(not_error), transitive):
         with container.enter_scope(None):
-            container.execute_sync(container.solve(Dependant(dep)))
+            container.execute_sync(
+                container.solve(Dependant(dep)), executor=SyncExecutor()
+            )
     # and this reverts when the bind exits
     with container.enter_scope(None):
         with pytest.raises(ValueError):
-            container.execute_sync(container.solve(Dependant(dep)))
+            container.execute_sync(
+                container.solve(Dependant(dep)), executor=SyncExecutor()
+            )
 
 
 def test_bind_with_dependencies():
@@ -84,8 +96,14 @@ def test_bind_with_dependencies():
 
     container = Container(scopes=(None,))
     with container.enter_scope(None):
-        assert (container.execute_sync(container.solve(Dependant(return_four)))) == 4
+        assert (
+            container.execute_sync(
+                container.solve(Dependant(return_four)), executor=SyncExecutor()
+            )
+        ) == 4
     with container.bind(Dependant(return_three), return_two):
         with container.enter_scope(None):
-            val = container.execute_sync(container.solve(Dependant(return_four)))
+            val = container.execute_sync(
+                container.solve(Dependant(return_four)), executor=SyncExecutor()
+            )
         assert val == 5

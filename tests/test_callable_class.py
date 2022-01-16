@@ -2,8 +2,7 @@ from typing import Tuple
 
 import pytest
 
-from di import Container
-from di.dependant import CallableClassDependant
+from di import CallableClassDependant, Container, SyncExecutor
 
 
 class CallableClass:
@@ -30,18 +29,18 @@ def test_callable_class_dependant():
 
     with container.enter_scope("app"):
         with container.enter_scope("request"):
-            instance1_1, v1_1 = container.execute_sync(solved)
+            instance1_1, v1_1 = container.execute_sync(solved, executor=SyncExecutor())
         with container.enter_scope("request"):
-            instance1_2, v1_2 = container.execute_sync(solved)
+            instance1_2, v1_2 = container.execute_sync(solved, executor=SyncExecutor())
         assert instance1_1 is instance1_2
         assert v1_1 == 1
         assert v1_2 == 2
 
     with container.enter_scope("app"):
         with container.enter_scope("request"):
-            instance2_1, v2_1 = container.execute_sync(solved)
+            instance2_1, v2_1 = container.execute_sync(solved, executor=SyncExecutor())
         with container.enter_scope("request"):
-            instance2_2, v2_2 = container.execute_sync(solved)
+            instance2_2, v2_2 = container.execute_sync(solved, executor=SyncExecutor())
         assert instance2_1 is instance2_2
         assert v2_1 == 1
         assert v2_2 == 2
@@ -51,4 +50,4 @@ def test_callable_class_dependant():
 
 def test_not_a_class():
     with pytest.raises(TypeError):
-        CallableClassDependant(lambda: None)
+        CallableClassDependant(lambda: None)  # type: ignore[arg-type]

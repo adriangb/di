@@ -8,7 +8,7 @@ else:
 
 from di._utils.types import FusedContextManager
 from di.api.dependencies import DependantBase
-from di.api.executor import AsyncExecutor, SyncExecutor
+from di.api.executor import AsyncExecutorProtocol, SyncExecutorProtocol
 from di.api.providers import DependencyProvider, DependencyProviderType
 from di.api.scopes import Scope
 from di.api.solved import SolvedDependant
@@ -57,8 +57,8 @@ class ContainerProtocol(Protocol):
     def execute_sync(
         self,
         solved: SolvedDependant[DependencyType],
+        executor: SyncExecutorProtocol,
         *,
-        executor: Optional[SyncExecutor] = None,
         values: Optional[Mapping[DependencyProvider, Any]] = None,
     ) -> DependencyType:
         """Execute an already solved dependency.
@@ -72,7 +72,7 @@ class ContainerProtocol(Protocol):
         self,
         solved: SolvedDependant[DependencyType],
         *,
-        executor: Optional[AsyncExecutor] = None,
+        executor: AsyncExecutorProtocol,
         values: Optional[Mapping[DependencyProvider, Any]] = None,
     ) -> DependencyType:
         """Execute an already solved dependency.

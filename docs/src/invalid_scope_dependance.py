@@ -1,4 +1,4 @@
-from di import Container, Dependant, Depends
+from di import Container, Dependant, Depends, SyncExecutor
 
 
 class Request:
@@ -20,4 +20,6 @@ def framework() -> None:
         with container.enter_scope("request"):
             request = Request()
             with container.bind(Dependant(lambda: request, scope="request"), Request):
-                container.execute_sync(container.solve(Dependant(controller)))
+                container.execute_sync(
+                    container.solve(Dependant(controller)), executor=SyncExecutor()
+                )

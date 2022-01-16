@@ -1,4 +1,4 @@
-from di import Container, Dependant
+from di import AsyncExecutor, Container, Dependant
 
 
 # Framework code
@@ -11,7 +11,9 @@ async def web_framework():
     container = Container(scopes=["request"])
     solved = container.solve(Dependant(controller, scope="request"))
     async with container.enter_scope("request"):
-        res = await container.execute_async(solved, values={Request: Request(1)})
+        res = await container.execute_async(
+            solved, values={Request: Request(1)}, executor=AsyncExecutor()
+        )
     assert res == 2
 
 
