@@ -29,7 +29,18 @@ def generate_dag(
     sleep: SleepTimes,
 ) -> Callable[..., None]:
     """Build a complex DAG of async dependencies"""
-    sleep_func = time.sleep if sync else anyio.sleep
+    sleep_func: Callable[[float], Any]
+    if sleep.maximum == 0:
+
+        def fsync(secs: float) -> None:
+            ...
+
+        async def fasync(secs: float) -> None:
+            ...
+
+        sleep_func = fsync if sync else fasync
+    else:
+        sleep_func = time.sleep if sync else anyio.sleep
 
     template = (
         "def func_{}({}): sleep({})"
