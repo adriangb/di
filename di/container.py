@@ -31,12 +31,12 @@ from di._utils.state import ContainerState
 from di._utils.task import AsyncTask, SyncTask
 from di._utils.topsort import topsort
 from di._utils.types import FusedContextManager
-from di.api.dependencies import DependantBase, DependencyParameter
+from di.api.dependencies import CacheKey, DependantBase, DependencyParameter
 from di.api.executor import AsyncExecutor, SyncExecutor
 from di.api.providers import DependencyProvider, DependencyProviderType
 from di.api.scopes import Scope
 from di.api.solved import SolvedDependant
-from di.exceptions import SolvingError, WiringError
+from di.exceptions import WiringError
 from di.executors import DefaultExecutor
 
 _Task = Union[AsyncTask, SyncTask]
@@ -116,16 +116,11 @@ class _ContainerCommon:
         if dependency.call in self._binds:
             dependency = self._binds[dependency.call]  # type: ignore  # for Pylance
 
-        # Mapping of already seen dependants to itself for hash based lookups
-        dep_registry: Dict[DependantBase[Any], DependantBase[Any]] = {}
+        dependants: Dict[CacheKey, DependantBase[Any]] = {}
         # DAG mapping dependants to their dependendencies
         dep_dag: Dict[DependantBase[Any], List[DependantBase[Any]]] = {}
-
         # The same DAG as above but including parameters (inspect.Parameter instances)
-        param_graph: Dict[
-            DependantBase[Any],
-            List[DependencyParameter],
-        ] = {}
+        param_graph: Dict[DependantBase[Any], List[DependencyParameter]] = {}
 
         def get_params(
             dep: DependantBase[Any],
@@ -159,34 +154,22 @@ class _ContainerCommon:
                         )
             return params
 
-        def check_equivalent(dep: DependantBase[Any]) -> None:
-            if dep in dep_registry and dep.scope != dep_registry[dep].scope:
-                raise SolvingError(
-                    f"The dependencies {dep} and {dep_registry[dep]}"
-                    " have the same lookup (__hash__ and __eq__) but have different scopes"
-                    f" ({dep.scope} and {dep_registry[dep].scope} respectively)"
-                    " This is likely a mistake, but you can override this behavior by either:"
-                    "\n  1. Wrapping the function in another function or subclassing the class such"
-                    " that they now are considered different dependencies"
-                    "\n  2. Use a custom implemetnation of DependantBase that changes the meaning"
-                    " or computation of __hash__ and/or __eq__"
-                )
-
         # Do a DFS of the DAG checking constraints along the way
         q: _DependantQueue = deque((dependency,))
         while q:
             dep = q.popleft()
-            if dep in dep_registry:
-                check_equivalent(dep)
+            cache_key = dep.cache_key
+            if cache_key in dependants:
+                continue
             else:
-                dep_registry[dep] = dep
+                dependants[cache_key] = dep
                 params = get_params(dep)
                 param_graph[dep] = params
                 dep_dag[dep] = []
                 for param in params:
                     predecessor_dep = param.dependency
                     dep_dag[dep].append(predecessor_dep)
-                    if predecessor_dep not in dep_registry:
+                    if predecessor_dep not in dependants:
                         q.append(predecessor_dep)
         # Filter out any dependencies that do not have a call
         # These do not become tasks since they don't need to be computed
@@ -201,21 +184,21 @@ class _ContainerCommon:
         # with references to all of their children
         dep_topsort = topsort(
             {
-                dep: [p.dependency for p in computable_param_graph[dep]]
-                for dep in computable_param_graph
+                dep.cache_key: [p.dependency.cache_key for p in params]
+                for dep, params in computable_param_graph.items()
             }
         )
         # Create a seperate TopologicalSorter to hold the Tasks
         ts: TopologicalSorter[_Task] = TopologicalSorter()
         tasks = self._build_tasks(
             computable_param_graph,
-            (node for nodes in dep_topsort for node in nodes),
+            (dependants[key] for key_group in dep_topsort for key in key_group),
             ts,
         )
         ts.prepare()
         task_dependency_dag: _DependantTaskDag = {
-            tasks[dep]: {
-                tasks[predecessor_dep.dependency]
+            tasks[dep.cache_key]: {
+                tasks[predecessor_dep.dependency.cache_key]
                 for predecessor_dep in predecessor_deps
             }
             for dep, predecessor_deps in computable_param_graph.items()
@@ -226,18 +209,20 @@ class _ContainerCommon:
                 call_map[t.call] = set()
             call_map[t.call].add(t)
         container_cache = SolvedDependantCache(
-            root_task=tasks[dependency],
+            root_task=tasks[dependency.cache_key],
             topological_sorter=ts,
             callable_to_task_mapping={k: tuple(v) for k, v in call_map.items()},
         )
         validate_scopes(
             self._scopes,
-            param_graph,
+            dep_dag,
         )
         solved = SolvedDependant(
             dependency=dependency,
             dag=param_graph,
-            topsort=dep_topsort,
+            topsort=[
+                [dependants[key] for key in key_group] for key_group in dep_topsort
+            ],
             container_cache=container_cache,
         )
         return solved
@@ -250,14 +235,14 @@ class _ContainerCommon:
         ],
         topsorted: Iterable[DependantBase[Any]],
         ts: TopologicalSorter[_Task],
-    ) -> Dict[DependantBase[Any], _Task]:
-        tasks: Dict[DependantBase[Any], _Task] = {}
+    ) -> Dict[CacheKey, _Task]:
+        tasks: Dict[CacheKey, _Task] = {}
         for dep in topsorted:
             positional: List[_Task] = []
             keyword: Dict[str, _Task] = {}
             for param in dag[dep]:
                 if param.parameter is not None:
-                    task = tasks[param.dependency]
+                    task = tasks[param.dependency.cache_key]
                     if param.parameter.kind is param.parameter.KEYWORD_ONLY:
                         keyword[param.parameter.name] = task
                     else:
@@ -268,7 +253,7 @@ class _ContainerCommon:
 
             assert dep.call is not None
             if is_async_gen_callable(dep.call) or is_coroutine_callable(dep.call):
-                tasks[dep] = task = AsyncTask(
+                tasks[dep.cache_key] = task = AsyncTask(
                     scope=dep.scope,
                     call=dep.call,
                     use_cache=dep.share,
@@ -277,7 +262,7 @@ class _ContainerCommon:
                     keyword_parameters=keyword_parameters,
                 )
             else:
-                tasks[dep] = task = SyncTask(
+                tasks[dep.cache_key] = task = SyncTask(
                     scope=dep.scope,
                     call=dep.call,
                     use_cache=dep.share,
@@ -285,7 +270,7 @@ class _ContainerCommon:
                     positional_parameters=positional_parameters,
                     keyword_parameters=keyword_parameters,
                 )
-            ts.add(task, *(tasks[p.dependency] for p in dag[dep]))
+            ts.add(task, *(tasks[p.dependency.cache_key] for p in dag[dep]))
         return tasks
 
     def execute_sync(

@@ -1,22 +1,15 @@
-import sys
-from typing import Callable, List
-
-from di.dependant import JoinedDependant
-
-if sys.version_info < (3, 8):
-    from typing_extensions import Literal
-else:
-    from typing import Literal
+from typing import Annotated, Any, List
 
 import pytest
 
-from di import Container, Dependant, Depends
+from di import Container, Dependant
 from di.api.dependencies import DependencyParameter
-from di.exceptions import ScopeViolationError, SolvingError, WiringError
+from di.dependant import JoinedDependant
+from di.exceptions import ScopeViolationError, WiringError
 
 
 def test_no_annotations_no_default_value_no_marker():
-    def badfunc(value):
+    def badfunc(value):  # type: ignore # for Pylance
         raise AssertionError("This function should never be called")
 
     container = Container(scopes=(None,))
@@ -26,67 +19,33 @@ def test_no_annotations_no_default_value_no_marker():
         match="You must either provide a dependency marker, a type annotation or a default value",
     ):
         with container.enter_scope(None):
-            container.execute_sync(container.solve(Dependant(badfunc)))
+            container.execute_sync(container.solve(Dependant(badfunc)))  # type: ignore # for Pylance
 
 
 def test_default_argument():
     """No type annotations are required if default values are provided"""
 
-    def default_func(value=2) -> int:
-        return value
+    def default_func(value=2) -> int:  # type: ignore # for Pylance
+        return value  # type: ignore # for Pylance
 
     container = Container(scopes=(None,))
 
     with container.enter_scope(None):
-        res = container.execute_sync(container.solve(Dependant(default_func)))
+        res = container.execute_sync(container.solve(Dependant(default_func)))  # type: ignore # for Pylance
     assert res == 2
 
 
 def test_marker():
     """No type annotations or default value are required if a marker is used"""
 
-    def marker_default_func(value=Depends(lambda: 2)) -> int:
-        return value
+    def marker_default_func(value: Annotated[Any, Dependant(lambda: 2)]) -> int:  # type: ignore # for Pylance
+        return value  # type: ignore # for Pylance
 
     container = Container(scopes=(None,))
 
     with container.enter_scope(None):
-        res = container.execute_sync(container.solve(Dependant(marker_default_func)))
+        res = container.execute_sync(container.solve(Dependant(marker_default_func)))  # type: ignore # for Pylance
     assert res == 2
-
-
-def test_invalid_non_callable_annotation():
-    """The type annotation value: int is not a valid identifier since 1 is not a callable"""
-
-    def func(value: 1 = Depends()) -> int:
-        return value
-
-    container = Container(scopes=(None,))
-
-    match = "Annotation for value is not a callable class or function"
-    with pytest.raises(WiringError, match=match):
-        container.solve(Dependant(func))
-
-
-def func1(value: Literal[1] = Depends()) -> int:
-    return value
-
-
-def func2(value: int = Depends()) -> int:
-    return value
-
-
-@pytest.mark.parametrize("function, annotation", [(func1, Literal[1]), (func2, int)])
-def test_valid_non_callable_annotation(
-    function: Callable[[int], int], annotation: type
-):
-    """No type annotations are required if default values are provided"""
-
-    container = Container(scopes=(None,))
-    container.bind(Dependant(lambda: 1), annotation)
-    with container.enter_scope(None):
-        res = container.execute_sync(container.solve(Dependant(function)))
-    assert res == 1
 
 
 def test_dissalow_depending_on_inner_scope():
@@ -95,7 +54,7 @@ def test_dissalow_depending_on_inner_scope():
     def A() -> None:
         ...
 
-    def B(a: None = Depends(A, scope="inner")):
+    def B(a: Annotated[None, Dependant(A, scope="inner")]):
         ...
 
     container = Container(scopes=("outer", "inner"))
@@ -107,24 +66,23 @@ def test_dissalow_depending_on_inner_scope():
 
 
 def test_dependency_with_multiple_scopes():
-    def A() -> None:
-        ...
 
-    def B(a: None = Depends(A, scope="app")):
-        ...
+    values = iter(range(2))
 
-    def C(a: None = Depends(A, scope="request")):
-        ...
+    def A() -> int:
+        return next(values)
 
-    def D(b: None = Depends(B), c: None = Depends(C)):
-        ...
+    def B(
+        a1: Annotated[None, Dependant(A, scope="app")],
+        a2: Annotated[None, Dependant(A, scope="request")],
+    ) -> None:
+        assert a1 != a2
 
-    container = Container(scopes=(None,))
+    container = Container(scopes=("app", "request"))
+    solved = container.solve(Dependant(B, scope="request"))
     with container.enter_scope("app"):
         with container.enter_scope("request"):
-            match = r"have the same lookup \(__hash__ and __eq__\) but have different scopes"
-            with pytest.raises(SolvingError, match=match):
-                container.solve(Dependant(D))
+            container.execute_sync(solved)
 
 
 def test_siblings() -> None:
@@ -140,11 +98,11 @@ def test_siblings() -> None:
     class Sibling:
         called = False
 
-        def __call__(self, one: int = Depends(dep1)) -> None:
+        def __call__(self, one: Annotated[int, Dependant(dep1)]) -> None:
             assert one == 1
             self.called = True
 
-    def dep2(one: int = Depends(dep1)) -> int:
+    def dep2(one: Annotated[int, Dependant(dep1)]) -> int:
         return one + 1
 
     container = Container(scopes=(None,))
@@ -190,7 +148,7 @@ def test_non_parameter_dependency():
 
 
 class CannotBeWired:
-    def __init__(self, arg) -> None:
+    def __init__(self, arg) -> None:  # type: ignore # for Pylance
         assert arg == 1  # a sentinal value to make sure a bug didn't inject something
 
 

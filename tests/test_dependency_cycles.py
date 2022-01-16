@@ -14,7 +14,7 @@ from di.exceptions import DependencyCycleError
 
 # These methods need to be defined at the global scope for
 # forward references to be resolved correctly at runtime
-def dep1(v: "Annotated[int, Depends(dep2)]") -> int:
+def dep1(v: "Annotated[int, Depends(dep2)]") -> int:  # type: ignore
     return 1
 
 
@@ -24,10 +24,6 @@ def dep2(v: "Annotated[int, Depends(dep1)]") -> int:
 
 def test_cycle() -> None:
     container = Container(scopes=(None,))
-    msg = r"Dependant\(call=<function dep1[^)]+\) -> Dependant\(call=<function dep2[^)]+\) -> Dependant\(call=<function dep1[^)]+\)"
     with container.enter_scope(None):
-        with pytest.raises(DependencyCycleError, match=msg) as errs:
+        with pytest.raises(DependencyCycleError, match="Nodes are in a cycle"):
             container.solve(Dependant(dep1))
-    deps_in_cycle = errs.value.args[1]
-    funcs_in_cylce = [d.call for d in deps_in_cycle]
-    assert funcs_in_cylce in ([dep1, dep2, dep1], [dep2, dep1, dep2])

@@ -162,8 +162,8 @@ def test_nested_lifecycle():
 
 
 @pytest.mark.anyio
-async def test_concurrent_local_scopes():
-    """We can enter the same local scope from two different concurrent tasks"""
+async def test_enter_scope_concurrently():
+    """We can enter the same scope from two different concurrent tasks"""
 
     container = Container(scopes=("request",))
 
@@ -176,20 +176,3 @@ async def test_concurrent_local_scopes():
     async with anyio.create_task_group() as tg:
         tg.start_soon(endpoint)
         tg.start_soon(endpoint)
-
-
-@pytest.mark.anyio
-async def test_execution_scope_already_entered():
-    """Container allows us to manually enter the default scope"""
-
-    container = Container(scopes=(None,))
-
-    def dep() -> None:
-        ...
-
-    async with container.enter_scope(None):
-        await container.execute_async(container.solve(Dependant(dep)))
-        container.execute_sync(container.solve(Dependant(dep)))
-
-    with container.enter_scope(None):
-        container.execute_sync(container.solve(Dependant(dep)))

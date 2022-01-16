@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import inspect
 import sys
-from typing import Any, Iterable, List, Mapping, Optional, Type, TypeVar, cast, overload
+from typing import Any, Iterable, List, Mapping, Optional, Type, TypeVar, overload
 
 if sys.version_info < (3, 8):
     from typing_extensions import Protocol
@@ -15,7 +15,7 @@ else:
     from typing import Annotated, get_args, get_origin
 
 from di._utils.inspect import get_parameters, infer_call_from_annotation
-from di.api.dependencies import DependantBase, DependencyParameter
+from di.api.dependencies import CacheKey, DependantBase, DependencyParameter
 from di.api.providers import (
     AsyncGeneratorProvider,
     CallableProvider,
@@ -106,24 +106,15 @@ class Dependant(DependantBase[T]):
         self.overrides = overrides or {}
         self.sync_to_thread = sync_to_thread
 
-    def __hash__(self) -> int:
-        """Used to identify Dependants.
-        By default, we identify Dependant's by their callable.
-        See DependantBase for more details.
-        """
-        return id(self.call)
-
-    def __eq__(self, o: object) -> bool:
+    @property
+    def cache_key(self) -> CacheKey:
         """Used to identify Dependants.
         By default, just checks that both are marked as shared.
         See DependantBase for more details.
         """
-        if type(self) != type(o):
-            return False
-        o = cast(Dependant[T], o)
-        if self.share is False or o.share is False:
-            return False
-        return self.call is o.call and self.overrides == o.overrides
+        if self.share is False:
+            return self
+        return (self.call, self.scope)  # type: ignore[return-value]
 
     def register_parameter(
         self: DependantBase[T], param: inspect.Parameter
@@ -187,6 +178,9 @@ class Dependant(DependantBase[T]):
             share=self.share,
         )
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(call={self.call}, share={self.share})"
+
 
 class JoinedDependant(DependantBase[T]):
     """A Dependant that aggregates other dependants without directly depending on them"""
@@ -212,17 +206,24 @@ class JoinedDependant(DependantBase[T]):
             *(DependencyParameter(dep, None) for dep in self.siblings),
         ]
 
-    def __hash__(self) -> int:
-        return hash((self.dependant, *self.siblings))
-
-    def __eq__(self, o: object) -> bool:
-        if not isinstance(o, JoinedDependant):
+    def is_equivalent(self, other: DependantBase[Any]) -> bool:
+        if not isinstance(other, JoinedDependant):
             return False
-        return (self.dependant, *self.siblings) == (o.dependant, *o.siblings)
+        return (self.dependant, tuple(self.siblings)) == (
+            other.dependant,
+            tuple(other.siblings),
+        )
 
     def register_parameter(self, param: inspect.Parameter) -> DependantBase[T]:
         self.dependant = self.dependant.register_parameter(param)
         return self
+
+    @property
+    def cache_key(self) -> CacheKey:
+        return (self.dependant.cache_key, tuple((s.cache_key for s in self.siblings)))
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(dependant={self.dependant}, siblings={self.siblings})"
 
 
 class CallableClass(Protocol[T]):
