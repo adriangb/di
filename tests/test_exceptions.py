@@ -3,7 +3,8 @@ from typing import AsyncGenerator, Dict, Generator
 
 import pytest
 
-from di import AsyncExecutor, Container, Dependant, Depends, SyncExecutor
+from di import AsyncExecutor, Container, Dependant, SyncExecutor
+from di.typing import Annotated
 
 
 @dataclass
@@ -44,7 +45,7 @@ async def async_dep2(rec: Recorder) -> AsyncGenerator[None, None]:
 
 
 def test_dependency_can_catch_exception_single_sync() -> None:
-    def collector(one: None = Depends(dep1)) -> None:
+    def collector(one: Annotated[None, Dependant(dep1)]) -> None:
         raise MyException
 
     container = Container(scopes=(None,))
@@ -59,7 +60,7 @@ def test_dependency_can_catch_exception_single_sync() -> None:
 
 @pytest.mark.anyio
 async def test_dependency_can_catch_exception_single_async() -> None:
-    def collector(one: None = Depends(async_dep1)) -> None:
+    def collector(one: Annotated[None, Dependant(async_dep1)]) -> None:
         raise MyException
 
     container = Container(scopes=(None,))
@@ -73,7 +74,9 @@ async def test_dependency_can_catch_exception_single_async() -> None:
 
 
 def test_dependency_can_catch_exception_concurrent_sync() -> None:
-    def collector(one: None = Depends(dep1), two: None = Depends(dep2)) -> None:
+    def collector(
+        one: Annotated[None, Dependant(dep1)], two: Annotated[None, Dependant(dep2)]
+    ) -> None:
         raise MyException
 
     container = Container(scopes=(None,))
@@ -92,7 +95,8 @@ def test_dependency_can_catch_exception_concurrent_sync() -> None:
 @pytest.mark.anyio
 async def test_dependency_can_catch_exception_concurrent_async() -> None:
     def collector(
-        one: None = Depends(async_dep1), two: None = Depends(async_dep2)
+        one: Annotated[None, Dependant(async_dep1)],
+        two: Annotated[None, Dependant(async_dep2)],
     ) -> None:
         raise MyException
 
@@ -111,7 +115,10 @@ async def test_dependency_can_catch_exception_concurrent_async() -> None:
 
 @pytest.mark.anyio
 async def test_dependency_can_catch_exception_concurrent_mixed() -> None:
-    def collector(one: None = Depends(async_dep1), two: None = Depends(dep2)) -> None:
+    def collector(
+        one: Annotated[None, Dependant(async_dep1)],
+        two: Annotated[None, Dependant(dep2)],
+    ) -> None:
         raise MyException
 
     container = Container(scopes=(None,))
@@ -160,7 +167,7 @@ async def async_dep2_reraise(rec: Recorder) -> AsyncGenerator[None, None]:
 
 
 def test_dependency_can_catch_exception_single_sync_reraise() -> None:
-    def collector(one: None = Depends(dep1_reraise)) -> None:
+    def collector(one: Annotated[None, Dependant(dep1_reraise)]) -> None:
         raise MyException
 
     container = Container(scopes=(None,))
@@ -182,7 +189,7 @@ def test_dependency_can_catch_exception_single_sync_reraise() -> None:
 
 @pytest.mark.anyio
 async def test_dependency_can_catch_exception_single_async_reraise() -> None:
-    def collector(one: None = Depends(async_dep1_reraise)) -> None:
+    def collector(one: Annotated[None, Dependant(async_dep1_reraise)]) -> None:
         raise MyException
 
     container = Container(scopes=(None,))
@@ -204,7 +211,8 @@ async def test_dependency_can_catch_exception_single_async_reraise() -> None:
 
 def test_dependency_can_catch_exception_concurrent_sync_reraise() -> None:
     def collector(
-        one: None = Depends(dep1_reraise), two: None = Depends(dep2_reraise)
+        one: Annotated[None, Dependant(dep1_reraise)],
+        two: Annotated[None, Dependant(dep2_reraise)],
     ) -> None:
         raise MyException
 
@@ -228,7 +236,8 @@ def test_dependency_can_catch_exception_concurrent_sync_reraise() -> None:
 @pytest.mark.anyio
 async def test_dependency_can_catch_exception_concurrent_async_reraise() -> None:
     def collector(
-        one: None = Depends(async_dep1_reraise), two: None = Depends(async_dep2_reraise)
+        one: Annotated[None, Dependant(async_dep1_reraise)],
+        two: Annotated[None, Dependant(async_dep2_reraise)],
     ) -> None:
         raise MyException
 
@@ -252,7 +261,8 @@ async def test_dependency_can_catch_exception_concurrent_async_reraise() -> None
 @pytest.mark.anyio
 async def test_dependency_can_catch_exception_concurrent_mixed_reraise() -> None:
     def collector(
-        one: None = Depends(async_dep1_reraise), two: None = Depends(dep2_reraise)
+        one: Annotated[None, Dependant(async_dep1_reraise)],
+        two: Annotated[None, Dependant(dep2_reraise)],
     ) -> None:
         raise MyException
 
@@ -282,13 +292,13 @@ def test_deep_reraise() -> None:
         else:
             raise AssertionError("Exception did not propagate")  # pragma: no cover
 
-    def parent(child: None = Depends(leaf)) -> Generator[None, None, None]:
+    def parent(child: Annotated[None, Dependant(leaf)]) -> Generator[None, None, None]:
         try:
             yield
         except MyException:
             raise
 
-    def root(child: None = Depends(parent)) -> None:
+    def root(child: Annotated[None, Dependant(parent)]) -> None:
         raise MyException
 
     container = Container(scopes=(None,))

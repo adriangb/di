@@ -1,14 +1,16 @@
 from random import random
+from typing import Annotated
 
-from di import Container, Dependant, Depends, SyncExecutor
+from di import Container, Dependant, SyncExecutor
 
 
 def controller(
-    v1: object,  # no marker is equivalent to Depends(object)
-    v2: object = Depends(object, scope="request"),  # the default value is share=True
-    v3: float = Depends(
-        random, share=False, scope="request"
-    ),  # but you can set share=False
+    # no marker is equivalent to Dependant(object)
+    v1: object,
+    # the default value is share=True
+    v2: Annotated[object, Dependant(object, scope="request")],
+    # but you can set share=False
+    v3: Annotated[float, Dependant(random, share=False, scope="request")],
 ) -> None:
     assert v1 is v2
     assert v1 is not v3 and v2 is not v3

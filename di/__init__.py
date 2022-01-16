@@ -27,7 +27,6 @@ from di.executors import (  # noqa: E402
     ConcurrentAsyncExecutor,
     SyncExecutor,
 )
-from di.params import Depends  # noqa: E402
 
 __all__ = (
     "api",
@@ -36,8 +35,6 @@ __all__ = (
     "Dependant",
     "JoinedDependant",
     "CallableClassDependant",
-    "Depends",
-    "DefaultExecutor",
     "ConcurrentAsyncExecutor",
     "AsyncExecutor",
     "SyncExecutor",

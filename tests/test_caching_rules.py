@@ -1,6 +1,8 @@
 import sys
 from typing import Generator, Optional, Set, Tuple
 
+from di.executors import SyncExecutor
+
 if sys.version_info < (3, 8):
     from typing_extensions import Literal
 else:
@@ -8,8 +10,8 @@ else:
 
 import pytest
 
-from di import Container, Dependant, Depends
-from tests.executor import test_executor
+from di import Container, Dependant
+from di.typing import Annotated
 
 
 def value_gen() -> Generator[int, None, None]:
@@ -42,9 +44,9 @@ def test_cache_rules_between_dep(
     solved = container.solve(Dependant(dep, scope=scope, share=share))
     with container.enter_scope("scope"):
         with container.enter_scope(None):
-            v1 = container.execute_sync(solved, executor=test_executor)
+            v1 = container.execute_sync(solved, executor=SyncExecutor())
         with container.enter_scope(None):
-            v2 = container.execute_sync(solved, executor=test_executor)
+            v2 = container.execute_sync(solved, executor=SyncExecutor())
     was_cached = v1 == v2
 
     assert cached == was_cached
@@ -85,8 +87,8 @@ def test_cache_rules_multiple_deps(
         return next(gen)
 
     def root_dep(
-        v1: int = Depends(dep, share=dep1_share, scope=scope),
-        v2: int = Depends(dep, share=dep2_share, scope=scope),
+        v1: Annotated[int, Dependant(dep, share=dep1_share, scope=scope)],
+        v2: Annotated[int, Dependant(dep, share=dep2_share, scope=scope)],
     ) -> Set[int]:
         # the order in which v1 and v2 are executed is an implementation detail
         # we represent the result as a set to avoid accidentally depending on that detail
@@ -96,8 +98,8 @@ def test_cache_rules_multiple_deps(
     solved = container.solve(Dependant(root_dep))
     with container.enter_scope("scope"):
         with container.enter_scope(None):
-            v1 = container.execute_sync(solved, executor=test_executor)
+            v1 = container.execute_sync(solved, executor=SyncExecutor())
         with container.enter_scope(None):
-            v2 = container.execute_sync(solved, executor=test_executor)
+            v2 = container.execute_sync(solved, executor=SyncExecutor())
 
     assert (v1, v2) == expected

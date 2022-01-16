@@ -163,11 +163,11 @@ class Dependant(DependantBase[T]):
         >>>     ...
         >>> def foo_factory(foo: Foo) -> Foo:
         >>>     return foo
-        >>> def parent(foo: Annotated[..., Depends(foo_factory)]):
+        >>> def parent(foo: Annotated[..., Dependant(foo_factory)]):
         >>>    ...
 
-        In this scenario, `Depends(foo_factory)` will call
-        `Depends(foo_factory).create_sub_dependant(Parameter(Foo))`.
+        In this scenario, `Dependant(foo_factory)` will call
+        `Dependant(foo_factory).create_sub_dependant(Parameter(Foo))`.
 
         Usually you'll transfer `scope` and possibly `share`
         to sub-dependencies created in this manner.

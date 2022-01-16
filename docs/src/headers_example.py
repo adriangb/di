@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, Mapping, Optional
+from typing import Annotated, Any, Mapping, Optional, TypeVar
 
-from di import AsyncExecutor, Container, Dependant, Depends
+from di import AsyncExecutor, Container, Dependant
 
 
 class Request:
@@ -11,18 +11,18 @@ class Request:
         self.headers = {k.lower(): v for k, v in headers.items()}
 
 
-class HeaderDependant(Dependant[Any]):
+class Header(Dependant[Any]):
     def __init__(self, alias: Optional[str]) -> None:
         self.alias = alias
         super().__init__(call=None, scope="request", share=False)
 
-    def register_parameter(self, param: inspect.Parameter) -> HeaderDependant:
+    def register_parameter(self, param: inspect.Parameter) -> Header:
         if self.alias is not None:
             name = self.alias
         else:
             name = param.name.replace("_", "-")
 
-        def get_header(request: Request = Depends()) -> str:
+        def get_header(request: Annotated[Request, Dependant()]) -> str:
             return param.annotation(request.headers[name])
 
         self.call = get_header
@@ -38,8 +38,9 @@ class HeaderDependant(Dependant[Any]):
         return self
 
 
-def Header(alias: Optional[str] = None) -> Any:
-    return HeaderDependant(alias=alias)  # type: ignore
+T = TypeVar("T")
+
+FromHeader = Annotated[T, Header(alias=None)]
 
 
 async def web_framework() -> None:
@@ -67,7 +68,8 @@ async def web_framework() -> None:
 
 
 def controller(
-    x_header_one: str = Header(), header_two_val: int = Header(alias="x-header-two")
+    x_header_one: FromHeader[str],
+    header_two_val: Annotated[int, Header(alias="x-header-two")],
 ) -> None:
     """This is the only piece of user code"""
     assert x_header_one == "one"

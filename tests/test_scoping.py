@@ -2,11 +2,11 @@ import typing
 
 import anyio
 import pytest
-from typing_extensions import Annotated
 
-from di import Container, Dependant, Depends, SyncExecutor
+from di import Container, Dependant, SyncExecutor
 from di.api.scopes import Scope
 from di.exceptions import DuplicateScopeError, UnknownScopeError
+from di.typing import Annotated
 
 
 class Dep:
@@ -21,11 +21,11 @@ dep1 = Dep()
 dep2 = Dep()
 
 
-def share(v: int = Depends(dep1, scope="scope")):
+def share(v: Annotated[int, Dependant(dep1, scope="scope")]):
     return v
 
 
-def not_share(v: int = Depends(dep1, scope="scope", share=False)):
+def not_share(v: Annotated[int, Dependant(dep1, scope="scope", share=False)]):
     return v
 
 
@@ -56,7 +56,7 @@ def test_scoped_execute():
 
 
 def test_unknown_scope():
-    def bad_dep(v: int = Depends(dep1, scope="abcde")) -> int:
+    def bad_dep(v: Annotated[int, Dependant(dep1, scope="abcde")]) -> int:
         return v
 
     container = Container(scopes=(None,))
@@ -157,17 +157,21 @@ def test_nested_lifecycle():
         yield
         state["A"] = "destroyed"
 
-    def B(a: None = Depends(A, scope="lifespan")) -> typing.Generator[None, None, None]:
+    def B(
+        a: Annotated[None, Dependant(A, scope="lifespan")]
+    ) -> typing.Generator[None, None, None]:
         state["B"] = "initialized"
         yield
         state["B"] = "destroyed"
 
-    def C(b: None = Depends(B, scope="request")) -> typing.Generator[None, None, None]:
+    def C(
+        b: Annotated[None, Dependant(B, scope="request")]
+    ) -> typing.Generator[None, None, None]:
         state["C"] = "initialized"
         yield
         state["C"] = "destroyed"
 
-    def endpoint(c: None = Depends(C, scope="request")) -> None:
+    def endpoint(c: Annotated[None, Dependant(C, scope="request")]) -> None:
         return
 
     container = Container(scopes=("lifespan", "request", "endpoint"))

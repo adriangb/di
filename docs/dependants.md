@@ -1,16 +1,11 @@
 # Dependants and the DependantBase
 
-Most of these docs use `Depends` and `Dependency` as the main markers and containers for dependencies.
+Most of these docs use `Dependant` as the main marker for dependencies.
 But the container doesn't actually know about either of these two things!
 In fact, the container only knows about the `DependantBase`, which you can find in `di.api.dependencies`.
-`Dependency` is just a concrete implementation of the `DependantBase`, and `Depends` is in turn a wrapper function around `Dependency` for the sole purpose of overriding the types that type checkers see.
+`Dependant` is just one possible implementation of the `DependantBase`.
 
-You can easily build your own version of `Dependency` and `Depends`, by inheriting from `Dependency` or by writing a `DependantBase` implementation from scratch.
-
-!!! note
-    `DependantBase` is a relatively simple interface.
-    We choose to use an ABC primarily so that it is inexpensive to do `isinstance(something, DependantBase)`, which comes up relatively often.
-    Unlike ABCs, Protocols cannot be cheaply or accurately runtime checked in Python.
+You can easily build your own version of `Dependant` by inheriting from `Dependant` or `DependantBase`.
 
 Here is an example that extracts headers from requests:
 

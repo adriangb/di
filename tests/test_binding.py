@@ -1,6 +1,7 @@
 import pytest
 
-from di import Container, Dependant, Depends, SyncExecutor
+from di import Container, Dependant, SyncExecutor
+from di.typing import Annotated
 
 
 class Request:
@@ -46,10 +47,10 @@ def test_bind_transitive_dependency_results_skips_subdpendencies():
     def raises_exception() -> None:
         raise ValueError
 
-    def transitive(_: None = Depends(raises_exception)) -> None:
+    def transitive(_: Annotated[None, Dependant(raises_exception)]) -> None:
         ...
 
-    def dep(t: None = Depends(transitive)) -> None:
+    def dep(t: Annotated[None, Dependant(transitive)]) -> None:
         ...
 
     container = Container(scopes=(None,))
@@ -85,13 +86,13 @@ def test_bind_with_dependencies():
     def return_one() -> int:
         return 1
 
-    def return_two(one: int = Depends(return_one)) -> int:
+    def return_two(one: Annotated[int, Dependant(return_one)]) -> int:
         return one + 1
 
-    def return_three(one: int = Depends(return_one)) -> int:
+    def return_three(one: Annotated[int, Dependant(return_one)]) -> int:
         return one + 2
 
-    def return_four(two: int = Depends(return_two)) -> int:
+    def return_four(two: Annotated[int, Dependant(return_two)]) -> int:
         return two + 2
 
     container = Container(scopes=(None,))
