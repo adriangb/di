@@ -7,17 +7,17 @@ from pyinstrument.profiler import Profiler
 
 from benchmarks.utils import GraphSize, SleepTimes, generate_dag
 from di import Container, Dependant, Depends
-from di.executors import AsyncExecutor, ConcurrentAsyncExecutor, SyncExecutor
+from di.executors import ConcurrentAsyncExecutor, SyncExecutor
 
 INTERVAL = 10e-6  # 10 us
 
 
 async def async_bench(sleep: SleepTimes, graph: GraphSize, iters: int) -> None:
-    container = Container(executor=ConcurrentAsyncExecutor(), scopes=[None])
+    container = Container(scopes=[None])
     solved = container.solve(
         Dependant(generate_dag(Depends, graph, sync=False, sleep=sleep))
     )
-    executor = AsyncExecutor()
+    executor = ConcurrentAsyncExecutor()
     p = Profiler()
     async with container.enter_scope(None):
         await container.execute_async(solved, executor=executor)
@@ -31,7 +31,7 @@ async def async_bench(sleep: SleepTimes, graph: GraphSize, iters: int) -> None:
 
 
 def sync_bench(sleep: SleepTimes, graph: GraphSize, iters: int) -> None:
-    container = Container(executor=SyncExecutor(), scopes=[None])
+    container = Container(scopes=[None])
     solved = container.solve(
         Dependant(generate_dag(Depends, graph, sync=True, sleep=sleep))
     )

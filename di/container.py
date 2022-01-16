@@ -317,7 +317,6 @@ class BaseContainer(_ContainerCommon):
         self,
         *,
         scopes: Sequence[Scope],
-        executor: Optional[Union[AsyncExecutorProtocol, SyncExecutorProtocol]] = None,
     ) -> None:
         super().__init__(
             scopes=scopes,
@@ -409,7 +408,6 @@ class Container(_ContainerCommon):
         self,
         *,
         scopes: Sequence[Scope],
-        executor: Optional[Union[AsyncExecutorProtocol, SyncExecutorProtocol]] = None,
     ) -> None:
         super().__init__(
             scopes=scopes,
