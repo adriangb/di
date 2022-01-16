@@ -216,9 +216,6 @@ class _ContainerCommon:
         solved = SolvedDependant(
             dependency=dependency,
             dag=param_graph,
-            topsort=[
-                [dependants[key] for key in key_group] for key_group in dep_topsort
-            ],
             container_cache=container_cache,
         )
         return solved
