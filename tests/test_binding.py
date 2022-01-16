@@ -1,6 +1,7 @@
 import pytest
 
-from di import Container, Dependant, Depends
+from di import Container, Dependant, SyncExecutor
+from di.typing import Annotated
 
 
 class Request:
@@ -13,59 +14,70 @@ def endpoint(r: Request) -> int:
 
 
 def test_bind():
-    container = Container()
-    with container.enter_scope("app"):
-        r = container.execute_sync(container.solve(Dependant(endpoint)))
-        assert r == 0  # just the default value
-        with container.enter_scope("request"):
-            request = Request(1)  # build a request
-            # bind the request
-            with container.bind(lambda: request, Request):
-                r = container.execute_sync(container.solve(Dependant(endpoint)))
-                assert r == 1  # bound value
-                with container.bind(lambda: Request(2), Request):
-                    r = container.execute_sync(container.solve(Dependant(endpoint)))
-                    assert r == 2
-                r = container.execute_sync(container.solve(Dependant(endpoint)))
-                assert r == 1
-        # when we exit the request scope, the bind of value=1 gets cleared
-        r = container.execute_sync(container.solve(Dependant(endpoint)))
-        assert r == 0  # back to the default value
+    container = Container(scopes=(None,))
 
+    def func() -> int:
+        return 1
 
-def raises_exception() -> None:
-    raise ValueError
+    dependant = Dependant(func)
 
-
-def transitive(_: None = Depends(raises_exception)) -> None:
-    ...
-
-
-def dep(t: None = Depends(transitive)) -> None:
-    ...
+    with container.enter_scope(None):
+        res = container.execute_sync(
+            container.solve(dependant), executor=SyncExecutor()
+        )
+        assert res == 1
+    with container.bind(Dependant(lambda: 2), func):
+        with container.enter_scope(None):
+            res = container.execute_sync(
+                container.solve(dependant), executor=SyncExecutor()
+            )
+            assert res == 2
+    with container.enter_scope(None):
+        res = container.execute_sync(
+            container.solve(dependant), executor=SyncExecutor()
+        )
+        assert res == 1
 
 
 def test_bind_transitive_dependency_results_skips_subdpendencies():
     """If we bind a transitive dependency none of it's sub-dependencies should be executed
     since they are no longer required.
     """
-    container = Container()
-    with container.enter_scope("something") as container:
+
+    def raises_exception() -> None:
+        raise ValueError
+
+    def transitive(_: Annotated[None, Dependant(raises_exception)]) -> None:
+        ...
+
+    def dep(t: Annotated[None, Dependant(transitive)]) -> None:
+        ...
+
+    container = Container(scopes=(None,))
+    with container.enter_scope(None):
         # we get an error from raises_exception
         with pytest.raises(ValueError):
-            container.execute_sync(container.solve(Dependant(dep)))
+            container.execute_sync(
+                container.solve(Dependant(dep)), executor=SyncExecutor()
+            )
 
-        # we bind a non-error provider and re-execute, now raises_exception
-        # should not execute at all
+    # we bind a non-error provider and re-execute, now raises_exception
+    # should not execute at all
 
-        def not_error() -> None:
-            ...
+    def not_error() -> None:
+        ...
 
-        with container.bind(not_error, transitive):
-            container.execute_sync(container.solve(Dependant(dep)))
-        # and this reverts when the bind exits
+    with container.bind(Dependant(not_error), transitive):
+        with container.enter_scope(None):
+            container.execute_sync(
+                container.solve(Dependant(dep)), executor=SyncExecutor()
+            )
+    # and this reverts when the bind exits
+    with container.enter_scope(None):
         with pytest.raises(ValueError):
-            container.execute_sync(container.solve(Dependant(dep)))
+            container.execute_sync(
+                container.solve(Dependant(dep)), executor=SyncExecutor()
+            )
 
 
 def test_bind_with_dependencies():
@@ -74,19 +86,25 @@ def test_bind_with_dependencies():
     def return_one() -> int:
         return 1
 
-    def return_two(one: int = Depends(return_one)) -> int:
+    def return_two(one: Annotated[int, Dependant(return_one)]) -> int:
         return one + 1
 
-    def return_three(one: int = Depends(return_one)) -> int:
+    def return_three(one: Annotated[int, Dependant(return_one)]) -> int:
         return one + 2
 
-    def return_four(two: int = Depends(return_two)) -> int:
+    def return_four(two: Annotated[int, Dependant(return_two)]) -> int:
         return two + 2
 
-    container = Container()
-    with container.enter_scope("something"):
-        assert (container.execute_sync(container.solve(Dependant(return_four)))) == 4
-        with container.bind(return_three, return_two):
-            assert (
-                container.execute_sync(container.solve(Dependant(return_four)))
-            ) == 5
+    container = Container(scopes=(None,))
+    with container.enter_scope(None):
+        assert (
+            container.execute_sync(
+                container.solve(Dependant(return_four)), executor=SyncExecutor()
+            )
+        ) == 4
+    with container.bind(Dependant(return_three), return_two):
+        with container.enter_scope(None):
+            val = container.execute_sync(
+                container.solve(Dependant(return_four)), executor=SyncExecutor()
+            )
+        assert val == 5

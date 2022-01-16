@@ -18,15 +18,11 @@ def get_markers_from_parameter(
 ) -> Generator[DependantBase[Any], None, None]:
     """Infer a sub-dependant from a parameter of this Dependant's .call
 
-    By default, we look for Depends(...) markers (which are instances of DependantBase)
-    in the default values and PEP 593 typing annotations.
 
     In the case of multiple markers in PEP 593 Annotated or nested use of Annotated
     (which are equivalent and get flattened by Annoated itself) we return markers from
     right to left or outer to inner.
     """
-    if isinstance(param.default, DependantBase):
-        yield cast(DependantBase[Any], param.default)
     if get_origin(param.annotation) is Annotated:
         # reverse the arguments so that in the case of
         # Annotated[Annotated[T, InnerDependant()], OuterDependant()]

@@ -6,6 +6,8 @@ import time
 from contextlib import contextmanager
 from typing import Any, AsyncGenerator, Generator, List
 
+from di import ConcurrentAsyncExecutor, SyncExecutor
+
 if sys.version_info < (3, 8):
     from typing_extensions import Literal
 else:
@@ -14,8 +16,9 @@ else:
 import anyio
 import pytest
 
-from di import Container, Dependant, Depends
-from di.exceptions import IncompatibleDependencyError
+from di import AsyncExecutor, Container, Dependant
+from di.exceptions import IncompatibleDependencyError, UnknownScopeError
+from di.typing import Annotated
 
 
 class vZero:
@@ -35,7 +38,7 @@ v1 = vOne()
 
 
 class vTwo:
-    def __call__(self, one: vOne = Depends(v1)) -> "vTwo":
+    def __call__(self, one: Annotated[vOne, Dependant(v1)]) -> "vTwo":
         self.one = one
         return self
 
@@ -44,7 +47,9 @@ v2 = vTwo()
 
 
 class vThree:
-    def __call__(self, zero: vZero = Depends(v0), one: vOne = Depends(v1)) -> "vThree":
+    def __call__(
+        self, zero: Annotated[vZero, Dependant(v0)], one: Annotated[vOne, Dependant(v1)]
+    ) -> "vThree":
         self.zero = zero
         self.one = one
         return self
@@ -54,7 +59,7 @@ v3 = vThree()
 
 
 class vFour:
-    def __call__(self, two: vTwo = Depends(v2)) -> "vFour":
+    def __call__(self, two: Annotated[vTwo, Dependant(v2)]) -> "vFour":
         self.two = two
         return self
 
@@ -65,9 +70,9 @@ v4 = vFour()
 class vFive:
     def __call__(
         self,
-        zero: vZero = Depends(v0),
-        three: vThree = Depends(v3),
-        four: vFour = Depends(v4),
+        zero: Annotated[vZero, Dependant(v0)],
+        three: Annotated[vThree, Dependant(v3)],
+        four: Annotated[vFour, Dependant(v4)],
     ) -> "vFive":
         self.zero = zero
         self.three = three
@@ -79,8 +84,11 @@ v5 = vFive()
 
 
 def test_execute():
-    container = Container()
-    res = container.execute_sync(container.solve(Dependant(v5)))
+    container = Container(scopes=(None,))
+    with container.enter_scope(None):
+        res = container.execute_sync(
+            container.solve(Dependant(v5)), executor=SyncExecutor()
+        )
     assert res.three.zero is res.zero
 
 
@@ -145,8 +153,13 @@ class AsyncGenCls:
 )
 @pytest.mark.anyio
 async def test_dependency_types(dep: Any):
-    container = Container()
-    assert (await container.execute_async(container.solve(Dependant(dep)))) == 1
+    container = Container(scopes=(None,))
+    async with container.enter_scope(None):
+        assert (
+            await container.execute_async(
+                container.solve(Dependant(dep)), executor=ConcurrentAsyncExecutor()
+            )
+        ) == 1
 
 
 class Counter:
@@ -269,18 +282,21 @@ class AsyncGenClsSlow:
 )
 @pytest.mark.anyio
 async def test_concurrency_async(dep1: Any, dep2: Any):
-    container = Container()
+    container = Container(scopes=(None,))
 
     counter = Counter()
-    container.bind(lambda: counter, Counter)
+    container.bind(Dependant(lambda: counter), Counter)
 
     async def collector(
-        a: None = Depends(dep1, share=False, sync_to_thread=True),
-        b: None = Depends(dep2, share=False, sync_to_thread=True),
+        a: Annotated[None, Dependant(dep1, share=False, sync_to_thread=True)],
+        b: Annotated[None, Dependant(dep2, share=False, sync_to_thread=True)],
     ):
         ...
 
-    await container.execute_async(container.solve(Dependant(collector)))
+    async with container.enter_scope(None):
+        await container.execute_async(
+            container.solve(Dependant(collector)), executor=ConcurrentAsyncExecutor()
+        )
 
 
 @pytest.mark.anyio
@@ -294,11 +310,13 @@ async def test_concurrent_executions_do_not_share_results():
     def get_id() -> int:
         return ctx.get()
 
-    async def dep1(id: int = Depends(get_id)) -> int:
+    async def dep1(id: Annotated[int, Dependant(get_id)]) -> int:
         await anyio.sleep(delays[id])
         return id
 
-    async def dep2(id: int = Depends(get_id), one: int = Depends(dep1)) -> None:
+    async def dep2(
+        id: Annotated[int, Dependant(get_id)], one: Annotated[int, Dependant(dep1)]
+    ) -> None:
         # let the other branch run
         await anyio.sleep(max(delays.values()))
         # check if the other branch replaced our value
@@ -309,12 +327,13 @@ async def test_concurrent_executions_do_not_share_results():
         assert id == expected  # replaced via caching
         assert one == expected  # replaced in results state
 
-    container = Container()
+    container = Container(scopes=("app", None))
     solved = container.solve(Dependant(dep2))
 
     async def execute_in_ctx(id: int) -> None:
         ctx.set(id)
-        await container.execute_async(solved)
+        async with container.enter_scope(None):
+            await container.execute_async(solved, executor=ConcurrentAsyncExecutor())
 
     async with anyio.create_task_group() as tg:
         async with container.enter_scope("app"):
@@ -323,9 +342,9 @@ async def test_concurrent_executions_do_not_share_results():
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("scope,shared", [(None, False), ("global", True)])
+@pytest.mark.parametrize("scope,shared", [(None, False), ("app", True)])
 async def test_concurrent_executions_share_cache(
-    scope: Literal[None, "global"], shared: bool
+    scope: Literal[None, "app"], shared: bool
 ):
     """Check that global / local scopes are respected during concurrent execution"""
     objects: List[object] = []
@@ -333,21 +352,33 @@ async def test_concurrent_executions_share_cache(
     def get_obj() -> object:
         return object()
 
-    async def collect1(obj: object = Depends(get_obj, scope=scope)) -> None:
+    async def collect1(obj: Annotated[object, Dependant(get_obj, scope=scope)]) -> None:
         objects.append(obj)
 
-    async def collect2(obj: object = Depends(get_obj, scope=scope)) -> None:
+    async def collect2(obj: Annotated[object, Dependant(get_obj, scope=scope)]) -> None:
         objects.append(obj)
 
-    container = Container()
+    container = Container(scopes=("app", None))
     solved1 = container.solve(Dependant(collect1))
     solved2 = container.solve(Dependant(collect2))
 
-    async with container.enter_scope("global"):
+    async def execute_1():
+        async with container.enter_scope(None):
+            return await container.execute_async(
+                solved1, executor=ConcurrentAsyncExecutor()
+            )
+
+    async def execute_2():
+        async with container.enter_scope(None):
+            return await container.execute_async(
+                solved2, executor=ConcurrentAsyncExecutor()
+            )
+
+    async with container.enter_scope("app"):
         async with anyio.create_task_group() as tg:
-            tg.start_soon(functools.partial(container.execute_async, solved1))
+            tg.start_soon(execute_1)
             await anyio.sleep(0.05)
-            tg.start_soon(functools.partial(container.execute_async, solved2))
+            tg.start_soon(execute_2)
 
     assert (objects[0] is objects[1]) is shared
 
@@ -359,9 +390,22 @@ async def test_async_cm_de_in_sync_scope():
     async def dep() -> AsyncGenerator[None, None]:
         yield
 
-    container = Container()
-    with container.enter_scope("test"):
+    container = Container(scopes=("scope",))
+    with container.enter_scope("scope"):
         with pytest.raises(
             IncompatibleDependencyError, match="canot be used in the sync scope"
         ):
-            await container.execute_async(container.solve(Dependant(dep, scope="test")))
+            await container.execute_async(
+                container.solve(Dependant(dep, scope="scope")), executor=AsyncExecutor()
+            )
+
+
+def test_unknown_scope():
+    def bad_dep(v: Annotated[int, Dependant(lambda: 1, scope="request")]) -> int:
+        return v
+
+    container = Container(scopes=("app", "request"))
+    solved = container.solve(Dependant(bad_dep))
+    with container.enter_scope("app"):
+        with pytest.raises(UnknownScopeError):
+            container.execute_sync(solved, executor=SyncExecutor())

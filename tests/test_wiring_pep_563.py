@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from di import Container, Dependant
+from di import Container, Dependant, SyncExecutor
 
 
 class Test:
@@ -9,6 +9,9 @@ class Test:
 
 
 def test_postponed_evaluation_solving():
-    container = Container()
-    res = container.execute_sync(container.solve(Dependant(Test.__call__)))
+    container = Container(scopes=(None,))
+    with container.enter_scope(None):
+        res = container.execute_sync(
+            container.solve(Dependant(Test.__call__)), executor=SyncExecutor()
+        )
     assert isinstance(res, Test)

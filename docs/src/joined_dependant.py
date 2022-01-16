@@ -1,5 +1,4 @@
-from di import Container, Dependant
-from di.dependant import JoinedDependant
+from di import Container, Dependant, JoinedDependant, SyncExecutor
 
 
 class A:
@@ -14,9 +13,13 @@ class B:
 
 
 def main():
-    container = Container()
-    dependant = JoinedDependant(Dependant(A), siblings=[Dependant(B)])
+    container = Container(scopes=("request",))
+    dependant = JoinedDependant(
+        Dependant(A, scope="request"),
+        siblings=[Dependant(B, scope="request")],
+    )
     solved = container.solve(dependant)
-    a = container.execute_sync(solved)
+    with container.enter_scope("request"):
+        a = container.execute_sync(solved, executor=SyncExecutor())
     assert isinstance(a, A)
     assert B.executed

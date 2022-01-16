@@ -3,40 +3,42 @@
 It will print out results to the console and open web browser windows.
 """
 import anyio
-from pyinstrument.profiler import Profiler
+from pyinstrument.profiler import Profiler  # type: ignore[import]
 
 from benchmarks.utils import GraphSize, SleepTimes, generate_dag
-from di import Container, Dependant, Depends
-from di.executors import ConcurrentAsyncExecutor, SimpleSyncExecutor
+from di import Container, Dependant
+from di.executors import ConcurrentAsyncExecutor, SyncExecutor
 
 INTERVAL = 10e-6  # 10 us
 
 
 async def async_bench(sleep: SleepTimes, graph: GraphSize, iters: int) -> None:
-    container = Container(executor=ConcurrentAsyncExecutor())
-    solved = container.solve(
-        Dependant(generate_dag(Depends, graph, sync=False, sleep=sleep))
-    )
+    container = Container(scopes=[None])
+    solved = container.solve(Dependant(generate_dag(graph, sync=False, sleep=sleep)))
+    executor = ConcurrentAsyncExecutor()
     p = Profiler()
-    await container.execute_async(solved)
+    async with container.enter_scope(None):
+        await container.execute_async(solved, executor=executor)
     p.start()
     for _ in range(iters):
-        await container.execute_async(solved)
+        async with container.enter_scope(None):
+            await container.execute_async(solved, executor=executor)
     p.stop()
     p.print()
     p.open_in_browser()
 
 
 def sync_bench(sleep: SleepTimes, graph: GraphSize, iters: int) -> None:
-    container = Container(executor=SimpleSyncExecutor())
-    solved = container.solve(
-        Dependant(generate_dag(Depends, graph, sync=True, sleep=sleep))
-    )
+    container = Container(scopes=[None])
+    solved = container.solve(Dependant(generate_dag(graph, sync=True, sleep=sleep)))
+    executor = SyncExecutor()
     p = Profiler()
-    container.execute_sync(solved)
+    with container.enter_scope(None):
+        container.execute_sync(solved, executor=executor)
     p.start()
     for _ in range(iters):
-        container.execute_sync(solved)
+        with container.enter_scope(None):
+            container.execute_sync(solved, executor=executor)
     p.stop()
     p.print()
     p.open_in_browser()

@@ -1,12 +1,11 @@
-import typing
 from typing import Any, Iterable, List, Optional
 
 import pytest
 
 from di.api.dependencies import DependantBase
-from di.api.executor import AsyncTask, State, SyncExecutor, SyncTask, Task
+from di.api.executor import AsyncTask, State, SyncTask, Task
 from di.dependant import Dependant
-from di.executors import DefaultExecutor, SimpleAsyncExecutor, SimpleSyncExecutor
+from di.executors import AsyncExecutor, SyncExecutor
 
 
 class TestAsyncTask(AsyncTask):
@@ -31,13 +30,10 @@ class TestSyncTask(SyncTask):
         raise NotImplementedError
 
 
-@pytest.mark.parametrize("exc_cls", [DefaultExecutor, SimpleSyncExecutor])
-def test_executing_async_dependencies_in_sync_executor(
-    exc_cls: typing.Type[SyncExecutor],
-):
+def test_executing_async_dependencies_in_sync_executor():
 
     state = State(object())
-    exc = exc_cls()
+    exc = SyncExecutor()
     match = "Cannot execute async dependencies in execute_sync"
     with pytest.raises(TypeError, match=match):
         exc.execute_sync([TestAsyncTask(Dependant())], state)
@@ -61,7 +57,7 @@ def test_simple_sync_executor():
             executed.append(3)
             return [None]
 
-    exc = SimpleSyncExecutor()
+    exc = SyncExecutor()
 
     exc.execute_sync([Task1(Dependant())], State(object()))
 
@@ -87,7 +83,7 @@ async def test_simple_async_executor():
             executed.append(3)
             return [None]
 
-    exc = SimpleAsyncExecutor()
+    exc = AsyncExecutor()
 
     await exc.execute_async([Task1(Dependant())], State(object()))
 

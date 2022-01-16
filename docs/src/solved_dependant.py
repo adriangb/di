@@ -1,4 +1,4 @@
-from di import Container, Dependant
+from di import Container, Dependant, SyncExecutor
 from di.api.solved import SolvedDependant
 
 
@@ -8,11 +8,14 @@ class Request:
 
 
 def web_framework():
-    container = Container()
-    solved = container.solve(Dependant(controller))
+    container = Container(scopes=["request"])
+    solved = container.solve(Dependant(controller, scope="request"))
     assert isinstance(solved, SolvedDependant)
 
-    container.execute_sync(solved, values={Request: Request()})
+    with container.enter_scope("request"):
+        container.execute_sync(
+            solved, values={Request: Request()}, executor=SyncExecutor()
+        )
 
     dependencies = solved.get_flat_subdependants()
     assert all(isinstance(item, Dependant) for item in dependencies)

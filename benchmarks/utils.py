@@ -5,6 +5,9 @@ from typing import Any, Callable, Dict
 
 import anyio  # noqa
 
+from di import Dependant
+from di.typing import Annotated
+
 random = Random(0)
 
 
@@ -22,21 +25,35 @@ class SleepTimes:
 
 
 def generate_dag(
-    depends: Any,
     graph: GraphSize,
     *,
     sync: bool,
     sleep: SleepTimes,
 ) -> Callable[..., None]:
     """Build a complex DAG of async dependencies"""
-    sleep_func = time.sleep if sync else anyio.sleep
+    sleep_func: Callable[[float], Any]
+    if sleep.maximum == 0:
+
+        def fsync(secs: float) -> None:
+            ...
+
+        async def fasync(secs: float) -> None:
+            ...
+
+        sleep_func = fsync if sync else fasync
+    else:
+        sleep_func = time.sleep if sync else anyio.sleep
 
     template = (
         "def func_{}({}): sleep({})"
         if sync
         else "async def func_{}({}): await sleep({})"
     )
-    globals = {"Depends": depends, "sleep": sleep_func}
+    globals: Dict[str, Any] = {
+        "Annotated": Annotated,
+        "sleep": sleep_func,
+        "Dependant": Dependant,
+    }
 
     funcs: Dict[str, Callable[..., Any]] = {}
     for level in range(graph.levels):
@@ -48,7 +65,10 @@ def generate_dag(
                 list(funcs.keys()), k=min(len(funcs), graph.dependencies_per_node)
             )
             params = ", ".join(
-                [f"dep_{dep_name}: None = Depends({dep_name})" for dep_name in deps]
+                [
+                    f"dep_{dep_name}: Annotated[None, Dependant({dep_name})]"
+                    for dep_name in deps
+                ]
             )
             sleep_time = random.uniform(sleep.minimum, sleep.maximum)
             func_def = template.format(name, params, sleep_time)
@@ -57,7 +77,7 @@ def generate_dag(
     name = "final"
     deps = list(funcs.keys())
     params = ", ".join(
-        [f"dep_{dep_name}: None = Depends({dep_name})" for dep_name in deps]
+        [f"dep_{dep_name}: Annotated[None, Dependant({dep_name})" for dep_name in deps]
     )
     func_def = template.format(name, params, 0)
     exec(func_def, globals, funcs)

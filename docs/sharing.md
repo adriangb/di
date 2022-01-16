@@ -7,7 +7,7 @@ In `di`, we call this concept *dependency sharing*.
 ## How sharing works
 
 Dependencies are usually identified by their callable provider (see [dependants] for ways in which you can change this).
-This could be the constructor for a type or an arbitrary callable encapsulated using `Depends(...)`.
+This could be the constructor for a type or an arbitrary callable encapsulated using `Dependant(...)`.
 By default, dependencies are shared, but this behavior can be changed on a per-dependency basis using the `share=False` parameter.
 
 ```Python hl_lines="7-9"

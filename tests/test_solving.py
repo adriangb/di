@@ -1,88 +1,52 @@
-import sys
-from typing import Callable, List
-
-from di.dependant import JoinedDependant
-
-if sys.version_info < (3, 8):
-    from typing_extensions import Literal
-else:
-    from typing import Literal
+from typing import Any, List
 
 import pytest
 
-from di import Container, Dependant, Depends
+from di import Container, Dependant, SyncExecutor
 from di.api.dependencies import DependencyParameter
-from di.exceptions import ScopeViolationError, SolvingError, WiringError
+from di.dependant import JoinedDependant
+from di.exceptions import ScopeViolationError, UnknownScopeError, WiringError
+from di.typing import Annotated
 
 
 def test_no_annotations_no_default_value_no_marker():
-    def badfunc(value):
+    def badfunc(value):  # type: ignore # for Pylance
         raise AssertionError("This function should never be called")
 
-    container = Container()
+    container = Container(scopes=(None,))
 
     with pytest.raises(
         WiringError,
         match="You must either provide a dependency marker, a type annotation or a default value",
     ):
-        container.execute_sync(container.solve(Dependant(badfunc)))
+        with container.enter_scope(None):
+            container.execute_sync(container.solve(Dependant(badfunc)), executor=SyncExecutor())  # type: ignore # for Pylance
 
 
 def test_default_argument():
     """No type annotations are required if default values are provided"""
 
-    def default_func(value=2) -> int:
-        return value
+    def default_func(value=2) -> int:  # type: ignore # for Pylance
+        return value  # type: ignore # for Pylance
 
-    container = Container()
+    container = Container(scopes=(None,))
 
-    res = container.execute_sync(container.solve(Dependant(default_func)))
+    with container.enter_scope(None):
+        res = container.execute_sync(container.solve(Dependant(default_func)), executor=SyncExecutor())  # type: ignore # for Pylance
     assert res == 2
 
 
 def test_marker():
     """No type annotations or default value are required if a marker is used"""
 
-    def marker_default_func(value=Depends(lambda: 2)) -> int:
-        return value
+    def marker_default_func(value: Annotated[Any, Dependant(lambda: 2)]) -> int:  # type: ignore # for Pylance
+        return value  # type: ignore # for Pylance
 
-    container = Container()
+    container = Container(scopes=(None,))
 
-    res = container.execute_sync(container.solve(Dependant(marker_default_func)))
+    with container.enter_scope(None):
+        res = container.execute_sync(container.solve(Dependant(marker_default_func)), executor=SyncExecutor())  # type: ignore # for Pylance
     assert res == 2
-
-
-def test_invalid_non_callable_annotation():
-    """The type annotation value: int is not a valid identifier since 1 is not a callable"""
-
-    def func(value: 1 = Depends()) -> int:
-        return value
-
-    container = Container()
-
-    match = "Annotation for value is not a callable class or function"
-    with pytest.raises(WiringError, match=match):
-        container.execute_sync(container.solve(Dependant(func)))
-
-
-def func1(value: Literal[1] = Depends()) -> int:
-    return value
-
-
-def func2(value: int = Depends()) -> int:
-    return value
-
-
-@pytest.mark.parametrize("function, annotation", [(func1, Literal[1]), (func2, int)])
-def test_valid_non_callable_annotation(
-    function: Callable[[int], int], annotation: type
-):
-    """No type annotations are required if default values are provided"""
-
-    container = Container()
-    container.bind(lambda: 1, annotation)
-    res = container.execute_sync(container.solve(Dependant(function)))
-    assert res == 1
 
 
 def test_dissalow_depending_on_inner_scope():
@@ -91,36 +55,35 @@ def test_dissalow_depending_on_inner_scope():
     def A() -> None:
         ...
 
-    def B(a: None = Depends(A, scope="inner")):
+    def B(a: Annotated[None, Dependant(A, scope="inner")]):
         ...
 
-    container = Container()
+    container = Container(scopes=("outer", "inner"))
     with container.enter_scope("outer"):
         with container.enter_scope("inner"):
             match = r"scope \(inner\) is narrower than .+'s scope \(outer\)"
             with pytest.raises(ScopeViolationError, match=match):
-                container.execute_sync(container.solve(Dependant(B, scope="outer")))
+                container.solve(Dependant(B, scope="outer"))
 
 
 def test_dependency_with_multiple_scopes():
-    def A() -> None:
-        ...
 
-    def B(a: None = Depends(A, scope="app")):
-        ...
+    values = iter(range(2))
 
-    def C(a: None = Depends(A, scope="request")):
-        ...
+    def A() -> int:
+        return next(values)
 
-    def D(b: None = Depends(B), c: None = Depends(C)):
-        ...
+    def B(
+        a1: Annotated[None, Dependant(A, scope="app")],
+        a2: Annotated[None, Dependant(A, scope="request")],
+    ) -> None:
+        assert a1 != a2
 
-    container = Container()
+    container = Container(scopes=("app", "request"))
+    solved = container.solve(Dependant(B, scope="request"))
     with container.enter_scope("app"):
         with container.enter_scope("request"):
-            match = r"have the same lookup \(__hash__ and __eq__\) but have different scopes"
-            with pytest.raises(SolvingError, match=match):
-                container.execute_sync(container.solve(Dependant(D)))
+            container.execute_sync(solved, executor=SyncExecutor())
 
 
 def test_siblings() -> None:
@@ -136,19 +99,20 @@ def test_siblings() -> None:
     class Sibling:
         called = False
 
-        def __call__(self, one: int = Depends(dep1)) -> None:
+        def __call__(self, one: Annotated[int, Dependant(dep1)]) -> None:
             assert one == 1
             self.called = True
 
-    def dep2(one: int = Depends(dep1)) -> int:
+    def dep2(one: Annotated[int, Dependant(dep1)]) -> int:
         return one + 1
 
-    container = Container()
+    container = Container(scopes=(None,))
 
     siblings = [Sibling(), Sibling()]
     dep = JoinedDependant(Dependant(dep2), siblings=[Dependant(s) for s in siblings])
     solved = container.solve(dep)
-    container.execute_sync(solved)
+    with container.enter_scope(None):
+        container.execute_sync(solved, executor=SyncExecutor())
     assert all(s.called for s in siblings)
     assert dep1.calls == 1  # they all shared the dependency
 
@@ -172,26 +136,30 @@ def test_non_parameter_dependency():
                 )
             ]
 
-    container = Container()
+    container = Container(scopes=(None,))
 
     def takes_no_parameters() -> None:
         pass
 
     # should_be_called is called, but it's return value is not passed into
     # takes_no_parameters since the DependencyParameter has parameter=None
-    container.execute_sync(container.solve(CustomDependant(takes_no_parameters)))
+    with container.enter_scope(None):
+        container.execute_sync(
+            container.solve(CustomDependant(takes_no_parameters)),
+            executor=SyncExecutor(),
+        )
     assert calls == 1
 
 
 class CannotBeWired:
-    def __init__(self, arg) -> None:
+    def __init__(self, arg) -> None:  # type: ignore # for Pylance
         assert arg == 1  # a sentinal value to make sure a bug didn't inject something
 
 
 def test_no_wire() -> None:
     """Specifying wire=False skips wiring on the dependency itself"""
 
-    container = Container()
+    container = Container(scopes=(None,))
     with pytest.raises(WiringError):
         container.solve(Dependant(CannotBeWired))
     container.solve(Dependant(CannotBeWired, wire=False))
@@ -204,10 +172,22 @@ def test_wiring_from_binds() -> None:
         def __init__(self) -> None:
             super().__init__(1)
 
-    container = Container()
-    # container.bind(CanBeWired, CannotBeWired)
+    container = Container(scopes=(None,))
+    # container.bind(Dependant(CanBeWired), CannotBeWired)
     with pytest.raises(WiringError):
         container.solve(Dependant(CannotBeWired))
-    container.bind(CanBeWired, CannotBeWired)
-    c = container.execute_sync(container.solve(Dependant(CannotBeWired)))
+    container.bind(Dependant(CanBeWired), CannotBeWired)
+    with container.enter_scope(None):
+        c = container.execute_sync(
+            container.solve(Dependant(CannotBeWired)), executor=SyncExecutor()
+        )
     assert isinstance(c, CanBeWired)
+
+
+def test_unknown_scope():
+    def bad_dep(v: Annotated[int, Dependant(lambda: 1, scope="app")]) -> int:
+        return v
+
+    container = Container(scopes=(None,))
+    with pytest.raises(UnknownScopeError):
+        container.solve(Dependant(bad_dep))

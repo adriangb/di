@@ -2,23 +2,25 @@ import sys
 
 import pytest
 
-from di import Container, Dependant, Depends  # noqa
+from di import Container, Dependant, SyncExecutor
 
 
-def return_one() -> int:
-    return 1
+class Test:
+    pass
 
 
 @pytest.mark.skipif(
     sys.version_info < (3, 8), reason="3.7 does not support positional only args"
 )
 def test_positional_only_parameters():
-    # avoid a syntax error in 3.7, which does not support /
-    return_two_def = (
-        r"def return_two(one: int = Depends(return_one), /) -> int:  return one + 1"
-    )
-    exec(return_two_def, globals())
+    def func(one: Test) -> None:
+        ...
 
-    container = Container()
-    res = container.execute_sync(container.solve(Dependant(return_two)))  # noqa
-    assert res == 2
+    # avoid a syntax error in 3.7, which does not support /
+    func_def = r"def func(one: Test, /) -> None:  ..."
+    exec(func_def, globals())
+
+    container = Container(scopes=(None,))
+    solved = container.solve(Dependant(func))
+    with container.enter_scope(None):
+        container.execute_sync(solved, executor=SyncExecutor())

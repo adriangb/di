@@ -15,7 +15,7 @@ def other_func() -> None:
     ...
 
 
-class Custom(Dependant[T]):
+class DependantSubclass(Dependant[T]):
     ...
 
 
@@ -23,15 +23,16 @@ class Custom(Dependant[T]):
     "left,right,hash_eq,eq_qe",
     [
         (Dependant(func), Dependant(func), True, True),
-        (Dependant(func, share=False), Dependant(func), True, False),
-        (Dependant(func), Dependant(func, share=False), True, False),
-        (Dependant(func, share=False), Dependant(func, share=False), True, False),
-        (Dependant(func), Custom(func), True, False),
+        (Dependant(func, share=False), Dependant(func), False, False),
+        (Dependant(func), Dependant(func, share=False), False, False),
+        (Dependant(func, share=False), Dependant(func, share=False), False, False),
+        (Dependant(func), DependantSubclass(func), True, True),
         (Dependant(func), Dependant(other_func), False, False),
+        (Dependant(func, scope=0), Dependant(func, scope=1), False, False),
     ],
 )
 def test_equality(
     left: Dependant[Any], right: Dependant[Any], hash_eq: bool, eq_qe: bool
 ):
-    assert (hash(left) == hash(right)) == hash_eq
-    assert (left == right) == eq_qe
+    assert (hash(left.cache_key) == hash(right.cache_key)) == hash_eq
+    assert (left.cache_key == right.cache_key) == eq_qe
