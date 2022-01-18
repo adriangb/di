@@ -147,7 +147,7 @@ class Dependant(DependantBase[T]):
                     # has a default parameter but we create a dependency anyway just for binds
                     # but do not wire it to make autowiring less brittle and less magic
                     sub_dependant = Dependant[Any](
-                        call=lambda: param.default,
+                        call=None,
                         scope=self.scope,
                         share=self.share,
                         wire=False,

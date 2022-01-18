@@ -1,5 +1,5 @@
 import sys
-from typing import Optional, Tuple
+from typing import Optional
 
 if sys.version_info < (3, 9):
     from typing_extensions import Annotated
@@ -44,21 +44,20 @@ def test_wiring_based_from_annotation() -> None:
 
 def test_autowiring_class_with_default_builtin() -> None:
     class A:
-        def __init__(self, value1: str = "default", value2: int = 1) -> None:
-            self.value1 = value1
-            self.value2 = value2
+        def __init__(self, value: str = "default") -> None:
+            self.value = value
 
-    def func(a: A) -> Tuple[str, int]:
-        return (a.value1, a.value2)
+    def func(a: A) -> str:
+        return a.value
 
     dep = Dependant(func)
     container = Container(scopes=(None,))
     solved = container.solve(dep)
 
     with container.enter_scope(None):
-        injected_values = container.execute_sync(solved, SyncExecutor())
+        injected_value = container.execute_sync(solved, SyncExecutor())
 
-    assert injected_values == ("default", 1)
+    assert injected_value == "default"
 
 
 def test_autowiring_class_with_default_class() -> None:
