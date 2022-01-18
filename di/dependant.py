@@ -1,13 +1,7 @@
 from __future__ import annotations
 
 import inspect
-import sys
-from typing import Any, Iterable, List, Mapping, Optional, Type, TypeVar, overload
-
-if sys.version_info < (3, 8):
-    from typing_extensions import Protocol
-else:
-    from typing import Protocol
+from typing import Any, Iterable, List, Mapping, Optional, TypeVar, overload
 
 from di._utils.inspect import get_parameters, get_type
 from di.api.dependencies import CacheKey, DependantBase, DependencyParameter
@@ -199,39 +193,3 @@ class JoinedDependant(DependantBase[T]):
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(dependant={self.dependant}, siblings={self.siblings})"
-
-
-class CallableClass(Protocol[T]):
-    """A callable class that has a __call__ that is valid as dependency provider"""
-
-    __call__: DependencyProviderType[T]
-
-
-def CallableClassDependant(
-    call: Type[CallableClass[T]],
-    *,
-    instance_scope: Scope = None,
-    scope: Scope = None,
-    share: bool = True,
-    wire: bool = True,
-) -> Dependant[T]:
-    """Create a Dependant that will create and call a callable class
-
-    The class instance can come from the class' constructor (by default)
-    or be provided by cls_provider.
-    """
-    if not (inspect.isclass(call) and hasattr(call, "__call__")):
-        raise TypeError("call must be a callable class")
-    instance = Dependant[CallableClass[T]](
-        call,
-        scope=instance_scope,
-        share=True,
-        wire=wire,
-    )
-    return Dependant[T](
-        call=call.__call__,
-        scope=scope,
-        share=share,
-        wire=wire,
-        overrides={"self": instance},
-    )

@@ -1,8 +1,55 @@
-from typing import Tuple
+import inspect
+import sys
+from typing import Tuple, Type, TypeVar
+
+if sys.version_info < (3, 8):
+    from typing_extensions import Protocol
+else:
+    from typing import Protocol
 
 import pytest
 
-from di import CallableClassDependant, Container, SyncExecutor
+from di import Container, Dependant, SyncExecutor
+from di.api.providers import DependencyProviderType
+from di.api.scopes import Scope
+
+T = TypeVar("T")
+
+
+class CallableClassProtocol(Protocol[T]):
+    """A callable class that has a __call__ that is valid as dependency provider"""
+
+    __call__: DependencyProviderType[T]
+
+
+def CallableClassDependant(
+    call: Type[CallableClassProtocol[T]],
+    *,
+    instance_scope: Scope = None,
+    scope: Scope = None,
+    share: bool = True,
+    wire: bool = True,
+) -> Dependant[T]:
+    """Create a Dependant that will create and call a callable class
+
+    The class instance can come from the class' constructor (by default)
+    or be provided by cls_provider.
+    """
+    if not (inspect.isclass(call) and hasattr(call, "__call__")):
+        raise TypeError("call must be a callable class")
+    instance = Dependant[CallableClassProtocol[T]](
+        call,
+        scope=instance_scope,
+        share=True,
+        wire=wire,
+    )
+    return Dependant[T](
+        call=call.__call__,
+        scope=scope,
+        share=share,
+        wire=wire,
+        overrides={"self": instance},
+    )
 
 
 class CallableClass:
