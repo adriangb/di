@@ -59,7 +59,7 @@ def plan_execution(
     solved_dependency_cache: SolvedDependantCache = solved.container_cache
 
     # populate resulsts with values
-    results: Results = {}
+    results: "Results" = {}
     call_map = solved_dependency_cache.callable_to_task_mapping
     for call in user_values.keys() & call_map.keys():
         value = user_values[call]

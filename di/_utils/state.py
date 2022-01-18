@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from contextlib import AsyncExitStack, ExitStack
 from types import TracebackType
-from typing import Any, Dict, Optional, Type, Union, cast
+from typing import Any, Dict, Optional, Type, Union
 
 from di._utils.scope_map import ScopeMap
 from di._utils.types import FusedContextManager
@@ -57,7 +57,7 @@ class ScopeContext(FusedContextManager[None]):
         exc_value: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> Union[None, bool]:
-        return cast(ExitStack, self.stack).__exit__(exc_type, exc_value, traceback)
+        return self.stack.__exit__(exc_type, exc_value, traceback)  # type: ignore[union-attr,no-any-return]
 
     async def __aenter__(self) -> None:
         self.state.stacks[self.scope] = self.stack = AsyncExitStack()
@@ -69,6 +69,4 @@ class ScopeContext(FusedContextManager[None]):
         exc_value: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> Union[None, bool]:
-        return await cast(AsyncExitStack, self.stack).__aexit__(
-            exc_type, exc_value, traceback
-        )
+        return await self.stack.__aexit__(exc_type, exc_value, traceback)  # type: ignore[union-attr,no-any-return]

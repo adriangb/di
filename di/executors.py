@@ -30,7 +30,7 @@ class SyncExecutor(SyncExecutorProtocol):
     def execute_sync(
         self, tasks: typing.Iterable[typing.Optional[Task]], state: State
     ) -> None:
-        q: TaskQueue = deque(tasks)
+        q: "TaskQueue" = deque(tasks)
         while True:
             task = q.popleft()
             if task is None:
@@ -55,7 +55,7 @@ class AsyncExecutor(AsyncExecutorProtocol):
     async def execute_async(
         self, tasks: typing.Iterable[typing.Optional[Task]], state: State
     ) -> None:
-        q: TaskQueue = deque(tasks)
+        q: "TaskQueue" = deque(tasks)
         while True:
             task = q.popleft()
             if task is None:
