@@ -20,7 +20,9 @@ def framework() -> None:
     with container.enter_scope("app"):
         with container.enter_scope("request"):
             request = Request()
-            with container.bind(Dependant(lambda: request, scope="request"), Request):
+            with container.register_by_type(
+                Dependant(lambda: request, scope="request"), Request
+            ):
                 container.execute_sync(
                     container.solve(Dependant(controller)), executor=SyncExecutor()
                 )

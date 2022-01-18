@@ -26,7 +26,7 @@ def test_bind():
             container.solve(dependant), executor=SyncExecutor()
         )
         assert res == 1
-    with container.bind(Dependant(lambda: 2), func):
+    with container.register_by_type(Dependant(lambda: 2), func):
         with container.enter_scope(None):
             res = container.execute_sync(
                 container.solve(dependant), executor=SyncExecutor()
@@ -67,7 +67,7 @@ def test_bind_transitive_dependency_results_skips_subdpendencies():
     def not_error() -> None:
         ...
 
-    with container.bind(Dependant(not_error), transitive):
+    with container.register_by_type(Dependant(not_error), transitive):
         with container.enter_scope(None):
             container.execute_sync(
                 container.solve(Dependant(dep)), executor=SyncExecutor()
@@ -102,7 +102,7 @@ def test_bind_with_dependencies():
                 container.solve(Dependant(return_four)), executor=SyncExecutor()
             )
         ) == 4
-    with container.bind(Dependant(return_three), return_two):
+    with container.register_by_type(Dependant(return_three), return_two):
         with container.enter_scope(None):
             val = container.execute_sync(
                 container.solve(Dependant(return_four)), executor=SyncExecutor()

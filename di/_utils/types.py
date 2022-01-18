@@ -1,5 +1,6 @@
+from dataclasses import dataclass
 from types import TracebackType
-from typing import Generic, Optional, Type, TypeVar, Union
+from typing import Any, Generic, Optional, Type, TypeVar, Union
 
 T = TypeVar("T")
 
@@ -28,3 +29,8 @@ class FusedContextManager(Generic[T]):
         traceback: Optional[TracebackType],
     ) -> Union[None, bool]:
         ...
+
+
+@dataclass
+class Some:
+    value: Any

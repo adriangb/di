@@ -2,14 +2,14 @@ import functools
 import inspect
 import sys
 from functools import lru_cache, wraps
-from typing import Any, Callable, Dict, Mapping, Union
+from typing import Any, Callable, Dict, Mapping, Optional, Union
 
 if sys.version_info < (3, 9):
     from typing_extensions import Annotated, get_args, get_origin, get_type_hints
 else:
     from typing import Annotated, get_type_hints, get_origin, get_args
 
-from di.exceptions import WiringError
+from di._utils.types import Some
 
 
 def cached_accept_callable_class(
@@ -93,10 +93,10 @@ def get_parameters(call: Callable[..., Any]) -> Dict[str, inspect.Parameter]:
     return processed_params
 
 
-def infer_call_from_annotation(parameter: inspect.Parameter) -> Callable[..., Any]:
-    if not callable(parameter.annotation):
-        raise WiringError(
-            f"Annotation for {parameter.name} is not a callable class or function and so we cannot autowire it."
-            " You must explicity provide a default value implementing the DependantBase"
-        )
-    return parameter.annotation  # type: ignore[no-any-return]
+def get_type(param: inspect.Parameter) -> Optional[Some]:
+    annotation = param.annotation
+    if annotation is param.empty:
+        return None
+    if get_origin(annotation) is Annotated:
+        annotation = next(iter(get_args(annotation)))
+    return Some(annotation)

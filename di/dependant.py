@@ -9,12 +9,7 @@ if sys.version_info < (3, 8):
 else:
     from typing import Protocol
 
-if sys.version_info < (3, 9):
-    from typing_extensions import Annotated, get_args, get_origin
-else:
-    from typing import Annotated, get_args, get_origin
-
-from di._utils.inspect import get_parameters, infer_call_from_annotation
+from di._utils.inspect import get_parameters, get_type
 from di.api.dependencies import CacheKey, DependantBase, DependencyParameter
 from di.api.providers import (
     AsyncGeneratorProvider,
@@ -116,9 +111,7 @@ class Dependant(DependantBase[T]):
             return self
         return (self.call, self.scope)  # type: ignore[return-value]
 
-    def register_parameter(
-        self: DependantBase[T], param: inspect.Parameter
-    ) -> DependantBase[T]:
+    def register_parameter(self, param: inspect.Parameter) -> DependantBase[Any]:
         """Hook to register the parameter this Dependant corresponds to.
 
         This can be used to inferr self.call from a type annotation (autowiring),
@@ -126,11 +119,12 @@ class Dependant(DependantBase[T]):
 
         This method can return the same or a new instance of a Dependant to avoid modifying itself.
         """
+        if self.wire is False:
+            return self
         if self.call is None:
-            if get_origin(param.annotation) is Annotated:
-                param = param.replace(annotation=next(iter(get_args(param.annotation))))
-            if param.annotation is not param.empty:
-                self.call = infer_call_from_annotation(param)
+            annotation_type_option = get_type(param)
+            if annotation_type_option is not None:
+                self.call = annotation_type_option.value
         return self
 
     def get_dependencies(self) -> List[DependencyParameter]:
@@ -146,37 +140,26 @@ class Dependant(DependantBase[T]):
                 continue
             else:
                 maybe_sub_dependant = next(get_markers_from_parameter(param), None)
-                if maybe_sub_dependant is None:
-                    sub_dependant = self.create_sub_dependant(param)
-                else:
+                if maybe_sub_dependant is not None:
                     sub_dependant = maybe_sub_dependant
+                elif param.default is param.empty:
+                    # try to auto-wire
+                    sub_dependant = Dependant[Any](
+                        call=None,
+                        scope=self.scope,
+                        share=self.share,
+                    )
+                else:
+                    # has a default parameter but we create a dependency anyway just for binds
+                    # but do not wire it to make autowiring less brittle and less magic
+                    sub_dependant = Dependant[Any](
+                        call=lambda: param.default,
+                        scope=self.scope,
+                        share=self.share,
+                        wire=False,
+                    )
             res.append(DependencyParameter(dependency=sub_dependant, parameter=param))
         return res
-
-    def create_sub_dependant(self, param: inspect.Parameter) -> DependantBase[Any]:
-        """Create a Dependant instance from a sub-dependency of this Dependency.
-
-        This is used in the scenario where a transient dependency is inferred from a type hint.
-        For example:
-
-        >>> class Foo:
-        >>>     ...
-        >>> def foo_factory(foo: Foo) -> Foo:
-        >>>     return foo
-        >>> def parent(foo: Annotated[..., Dependant(foo_factory)]):
-        >>>    ...
-
-        In this scenario, `Dependant(foo_factory)` will call
-        `Dependant(foo_factory).create_sub_dependant(Parameter(Foo))`.
-
-        Usually you'll transfer `scope` and possibly `share`
-        to sub-dependencies created in this manner.
-        """
-        return Dependant[Any](
-            call=None,
-            scope=self.scope,
-            share=self.share,
-        )
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(call={self.call}, share={self.share})"

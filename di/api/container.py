@@ -1,3 +1,4 @@
+import inspect
 import sys
 from typing import Any, Collection, ContextManager, Mapping, Optional, TypeVar
 
@@ -9,7 +10,7 @@ else:
 from di._utils.types import FusedContextManager
 from di.api.dependencies import DependantBase
 from di.api.executor import AsyncExecutorProtocol, SyncExecutorProtocol
-from di.api.providers import DependencyProvider, DependencyProviderType
+from di.api.providers import DependencyProvider
 from di.api.scopes import Scope
 from di.api.solved import SolvedDependant
 
@@ -18,15 +19,21 @@ ContainerType = TypeVar("ContainerType")
 DependencyType = TypeVar("DependencyType")
 
 
+class RegisterHook(Protocol):
+    def __call__(
+        self, param: Optional[inspect.Parameter], dependant: DependantBase[Any]
+    ) -> Optional[DependantBase[Any]]:
+        ...
+
+
 class ContainerProtocol(Protocol):
     @property
     def scopes(self) -> Collection[Scope]:
         ...
 
-    def bind(
+    def register(
         self,
-        provider: DependantBase[Any],
-        dependency: DependencyProviderType[Any],
+        hook: RegisterHook,
     ) -> ContextManager[None]:
         """Bind a new dependency provider for a given dependency.
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextvars
+import inspect
 from collections import deque
 from contextlib import contextmanager
 from types import TracebackType
@@ -25,15 +26,16 @@ from typing import (
 from graphlib2 import TopologicalSorter
 
 from di._utils.execution_planning import SolvedDependantCache, plan_execution
-from di._utils.inspect import is_async_gen_callable, is_coroutine_callable
+from di._utils.inspect import get_type, is_async_gen_callable, is_coroutine_callable
 from di._utils.scope_validation import validate_scopes
 from di._utils.state import ContainerState
 from di._utils.task import AsyncTask, SyncTask
 from di._utils.topsort import topsort
 from di._utils.types import FusedContextManager
+from di.api.container import RegisterHook
 from di.api.dependencies import CacheKey, DependantBase, DependencyParameter
 from di.api.executor import AsyncExecutorProtocol, SyncExecutorProtocol
-from di.api.providers import DependencyProvider, DependencyProviderType
+from di.api.providers import DependencyProvider
 from di.api.scopes import Scope
 from di.api.solved import SolvedDependant
 from di.exceptions import WiringError
@@ -51,18 +53,17 @@ __all__ = ("BaseContainer", "Container")
 
 
 class _ContainerCommon:
-    __slots__ = ("_scopes", "_binds")
+    __slots__ = ("_scopes", "_register_hooks")
 
     _scopes: Sequence[Scope]
-    _binds: Dict[DependencyProvider, DependantBase[Any]]
+    _register_hooks: List[RegisterHook]
 
     def __init__(
         self,
         scopes: Sequence[Scope],
-        binds: Optional[Dict[DependencyProvider, DependantBase[Any]]],
     ):
         self._scopes = list(scopes)
-        self._binds = binds or {}
+        self._register_hooks = []
 
     @property
     def scopes(self) -> Collection[Scope]:
@@ -72,10 +73,9 @@ class _ContainerCommon:
     def _state(self) -> ContainerState:
         raise NotImplementedError
 
-    def bind(
+    def register(
         self,
-        provider: DependantBase[Any],
-        dependency: DependencyProviderType[Any],
+        hook: RegisterHook,
     ) -> ContextManager[None]:
         """Replace a dependency provider with a new one.
 
@@ -85,20 +85,39 @@ class _ContainerCommon:
         Binds are only identified by the identity of the callable and do not take into account
         the scope or any other data from the dependency they are replacing.
         """
-        previous_provider = self._binds.get(dependency, None)
 
-        self._binds[dependency] = provider
+        self._register_hooks.append(hook)
 
         @contextmanager
         def unbind() -> Generator[None, None, None]:
             try:
                 yield
             finally:
-                self._binds.pop(dependency)
-                if previous_provider is not None:
-                    self._binds[dependency] = previous_provider
+                self._register_hooks.remove(hook)
 
         return unbind()
+
+    def register_by_type(
+        self,
+        provider: DependantBase[Any],
+        dependency: DependencyProvider,
+    ) -> ContextManager[None]:
+        def hook(
+            param: Optional[inspect.Parameter], dependant: DependantBase[Any]
+        ) -> Optional[DependantBase[Any]]:
+            if dependant.call is dependency:
+                return provider
+            if param is None:
+                return None
+            type_annotation_option = get_type(param)
+            if type_annotation_option is None:
+                return None
+            type_annotation = type_annotation_option.value
+            if type_annotation is dependency:
+                return provider
+            return None
+
+        return self.register(hook)
 
     def solve(
         self,
@@ -108,9 +127,11 @@ class _ContainerCommon:
 
         Returns a SolvedDependant that can be executed to get the dependency's value.
         """
-        # If the SolvedDependant itself is a bind, replace it's dependant
-        if dependency.call in self._binds:
-            dependency = self._binds[dependency.call]  # type: ignore  # for Pylance
+        # If the dependency itself is a bind, replace it
+        for hook in self._register_hooks:
+            match = hook(None, dependency)
+            if match:
+                dependency = match
 
         dependants: Dict[CacheKey, DependantBase[Any]] = {}
         # DAG mapping dependants to their dependendencies
@@ -129,13 +150,10 @@ class _ContainerCommon:
                     param = param._replace(
                         dependency=param.dependency.register_parameter(param.parameter)
                     )
-                if (
-                    param.dependency.call is not None
-                    and param.dependency.call in self._binds
-                ):
-                    param = param._replace(
-                        dependency=self._binds[param.dependency.call]
-                    )
+                for hook in self._register_hooks:
+                    match = hook(param.parameter, param.dependency)
+                    if match is not None:
+                        param = param._replace(dependency=match)
                 params[idx] = param
                 if param.parameter is not None:
                     if (
@@ -324,13 +342,8 @@ class BaseContainer(_ContainerCommon):
     ) -> None:
         super().__init__(
             scopes=scopes,
-            binds={},
         )
         self.__state = ContainerState.initialize()
-
-    @property
-    def binds(self) -> Mapping[DependencyProvider, DependantBase[Any]]:
-        return self._binds
 
     @property
     def scopes(self) -> Collection[Scope]:
@@ -344,7 +357,7 @@ class BaseContainer(_ContainerCommon):
         new = object.__new__(self.__class__)
         new._scopes = self._scopes
         # binds are shared
-        new._binds = self._binds
+        new._register_hooks = self._register_hooks
         # cached values and scopes are not shared
         new.__state = self.__state.copy()
         return new  # type: ignore[no-any-return]
@@ -415,7 +428,6 @@ class Container(_ContainerCommon):
     ) -> None:
         super().__init__(
             scopes=scopes,
-            binds={},
         )
         self._context = contextvars.ContextVar(f"{self}._context")
         self._context.set(ContainerState.initialize())
@@ -431,7 +443,7 @@ class Container(_ContainerCommon):
     def copy(self: _ContainerType) -> _ContainerType:
         new = object.__new__(self.__class__)
         new._scopes = self._scopes
-        new._binds = self._binds
+        new._register_hooks = self._register_hooks
         new._context = self._context
         return new  # type: ignore[no-any-return]
 
