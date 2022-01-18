@@ -3,7 +3,6 @@ from typing import Type, Union
 import pytest
 
 from di import Container
-from di.api.container import ContainerProtocol
 from di.container import BaseContainer
 
 
@@ -40,22 +39,3 @@ def test_enter_scope_subclass(
         with container.enter_scope("another") as container:
             assert isinstance(container, container_cls)
             assert list(container.scopes) == ["test", "another"]
-
-
-@pytest.mark.parametrize(
-    "container_cls",
-    [BaseContainer, Container, BaseContainerSubclass, ContainerSubclass],
-)
-def test_container_api(
-    container_cls: Union[
-        Type[BaseContainer],
-        Type[Container],
-        Type[BaseContainerSubclass],
-        Type[ContainerSubclass],
-    ]
-) -> None:
-    """Check to make sure the container implementations comply w/ the API."""
-    x: ContainerProtocol
-    # mypy will throw an error here if the API is not implemented correctly
-    x = container_cls(scopes=(None,))
-    x = x  # avoid linting errors with unused variable

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextvars
 import inspect
+import sys
 from collections import deque
 from contextlib import contextmanager
 from types import TracebackType
@@ -23,6 +24,11 @@ from typing import (
     Union,
 )
 
+if sys.version_info < (3, 8):
+    from typing_extensions import Protocol
+else:
+    from typing import Protocol
+
 from graphlib2 import TopologicalSorter
 
 from di._utils.execution_planning import SolvedDependantCache, plan_execution
@@ -32,13 +38,15 @@ from di._utils.state import ContainerState
 from di._utils.task import AsyncTask, SyncTask
 from di._utils.topsort import topsort
 from di._utils.types import FusedContextManager
-from di.api.container import RegisterHook
 from di.api.dependencies import CacheKey, DependantBase, DependencyParameter
 from di.api.executor import AsyncExecutorProtocol, SyncExecutorProtocol
 from di.api.providers import DependencyProvider
 from di.api.scopes import Scope
 from di.api.solved import SolvedDependant
 from di.exceptions import WiringError
+
+__all__ = ("BaseContainer", "Container")
+
 
 _Task = Union[AsyncTask, SyncTask]
 
@@ -49,7 +57,11 @@ _DependantQueue = Deque[DependantBase[Any]]
 DependencyType = TypeVar("DependencyType")
 
 
-__all__ = ("BaseContainer", "Container")
+class RegisterHook(Protocol):
+    def __call__(
+        self, param: Optional[inspect.Parameter], dependant: DependantBase[Any]
+    ) -> Optional[DependantBase[Any]]:
+        ...
 
 
 class _ContainerCommon:
