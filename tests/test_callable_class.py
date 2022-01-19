@@ -27,7 +27,7 @@ def CallableClassDependant(
     *,
     instance_scope: Scope = None,
     scope: Scope = None,
-    share: bool = True,
+    use_cache: bool = True,
     wire: bool = True,
 ) -> Dependant[T]:
     """Create a Dependant that will create and call a callable class
@@ -40,13 +40,13 @@ def CallableClassDependant(
     instance = Dependant[CallableClassProtocol[T]](
         call,
         scope=instance_scope,
-        share=True,
+        use_cache=True,
         wire=wire,
     )
     return Dependant[T](
         call=call.__call__,
         scope=scope,
-        share=share,
+        use_cache=use_cache,
         wire=wire,
         overrides={"self": instance},
     )

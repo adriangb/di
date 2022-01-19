@@ -22,17 +22,17 @@ def value_gen() -> Generator[int, None, None]:
 
 
 @pytest.mark.parametrize(
-    "share, scope, cached",
+    "use_cache, scope, cached",
     [
         (True, "scope", True),
         # Not cached because it is in the execution scope
         (True, None, False),
-        # Not cached because share=False
+        # Not cached because use_cache=False
         (False, "scope", False),
     ],
 )
 def test_cache_rules_between_dep(
-    share: bool, scope: Optional[Literal["scope"]], cached: bool
+    use_cache: bool, scope: Optional[Literal["scope"]], cached: bool
 ) -> None:
 
     gen = value_gen()
@@ -41,7 +41,7 @@ def test_cache_rules_between_dep(
         return next(gen)
 
     container = Container(scopes=("scope", None))
-    solved = container.solve(Dependant(dep, scope=scope, share=share))
+    solved = container.solve(Dependant(dep, scope=scope, use_cache=use_cache))
     with container.enter_scope("scope"):
         with container.enter_scope(None):
             v1 = container.execute_sync(solved, executor=SyncExecutor())
@@ -53,10 +53,10 @@ def test_cache_rules_between_dep(
 
 
 @pytest.mark.parametrize(
-    "dep1_share, dep2_share, scope, expected",
+    "dep1_use_cache, dep2_use_cache, scope, expected",
     [
         (True, True, "scope", ({0}, {0})),
-        # since dep1_share=False, v1 is always "fresh"
+        # since dep1_use_cache=False, v1 is always "fresh"
         (False, True, "scope", ({0, 1}, {2, 1})),
         # same thing the other way around
         (True, False, "scope", ({0, 1}, {0, 2})),
@@ -65,7 +65,7 @@ def test_cache_rules_between_dep(
         # since the dependencies are scoped to a single execution
         # we get the same number within the execution but not between
         (True, True, None, ({0}, {1})),
-        # but if one of the deps is marked with share=False, we get
+        # but if one of the deps is marked with use_cache=False, we get
         # different numbers within an execution, just like before
         (False, True, None, ({0, 1}, {2, 3})),
         # same thing the other way around
@@ -75,8 +75,8 @@ def test_cache_rules_between_dep(
     ],
 )
 def test_cache_rules_multiple_deps(
-    dep1_share: bool,
-    dep2_share: bool,
+    dep1_use_cache: bool,
+    dep2_use_cache: bool,
     scope: Optional[Literal["scope"]],
     expected: Tuple[Set[float], Set[float]],
 ) -> None:
@@ -87,8 +87,8 @@ def test_cache_rules_multiple_deps(
         return next(gen)
 
     def root_dep(
-        v1: Annotated[int, Dependant(dep, share=dep1_share, scope=scope)],
-        v2: Annotated[int, Dependant(dep, share=dep2_share, scope=scope)],
+        v1: Annotated[int, Dependant(dep, use_cache=dep1_use_cache, scope=scope)],
+        v2: Annotated[int, Dependant(dep, use_cache=dep2_use_cache, scope=scope)],
     ) -> Set[int]:
         # the order in which v1 and v2 are executed is an implementation detail
         # we represent the result as a set to avoid accidentally depending on that detail

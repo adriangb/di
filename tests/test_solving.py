@@ -114,7 +114,7 @@ def test_siblings() -> None:
     with container.enter_scope(None):
         container.execute_sync(solved, executor=SyncExecutor())
     assert all(s.called for s in siblings)
-    assert dep1.calls == 1  # they all shared the dependency
+    assert dep1.calls == 1  # they all use_cached the dependency
 
 
 def test_non_parameter_dependency():

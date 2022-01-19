@@ -21,37 +21,37 @@ dep1 = Dep()
 dep2 = Dep()
 
 
-def share(v: Annotated[int, Dependant(dep1, scope="scope")]):
+def use_cache(v: Annotated[int, Dependant(dep1, scope="scope")]):
     return v
 
 
-def not_share(v: Annotated[int, Dependant(dep1, scope="scope", share=False)]):
+def not_use_cache(v: Annotated[int, Dependant(dep1, scope="scope", use_cache=False)]):
     return v
 
 
 def test_scoped_execute():
     container = Container(scopes=("scope", None))
-    share_solved = container.solve(Dependant(share))
-    not_share_solved = container.solve(Dependant(not_share))
+    use_cache_solved = container.solve(Dependant(use_cache))
+    not_use_cache_solved = container.solve(Dependant(not_use_cache))
     with container.enter_scope("scope"):
         dep1.value = 1
         with container.enter_scope(None):
-            r = container.execute_sync(share_solved, executor=SyncExecutor())
+            r = container.execute_sync(use_cache_solved, executor=SyncExecutor())
         assert r == 1, r
         # we change the value to 2, but we should still get back 1
         # since the value is cached
         dep1.value = 2
         with container.enter_scope(None):
-            r = container.execute_sync(share_solved, executor=SyncExecutor())
+            r = container.execute_sync(use_cache_solved, executor=SyncExecutor())
         assert r == 1, r
-        # but if we execute a non-share dependency, we get the current value
+        # but if we execute a non-use_cache dependency, we get the current value
         with container.enter_scope(None):
-            r = container.execute_sync(not_share_solved, executor=SyncExecutor())
+            r = container.execute_sync(not_use_cache_solved, executor=SyncExecutor())
         assert r == 2, r
     with container.enter_scope("scope"):
         # now that we exited and re-entered the scope the cache was cleared
         with container.enter_scope(None):
-            r = container.execute_sync(share_solved, executor=SyncExecutor())
+            r = container.execute_sync(use_cache_solved, executor=SyncExecutor())
         assert r == 2, r
 
 

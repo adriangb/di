@@ -18,7 +18,7 @@ def test_wiring_based_from_annotation() -> None:
 
     dep_a = Dependant(g)
     dep_b = "foo bar baz!"
-    dep_c = Dependant(g, share=False)
+    dep_c = Dependant(g, use_cache=False)
     dep_d = Dependant(g)
 
     def f(

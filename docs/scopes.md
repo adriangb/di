@@ -21,7 +21,7 @@ Scopes provide a framework for several other important features:
 - Dependency value sharing
 
 Every dependency is linked to a scope.
-When a scope exits, all dependencies linked to it are destroyed (if they have cleanup, the cleanup is run) and their value is no longer available as a share value.
+When a scope exits, all dependencies linked to it are destroyed (if they have teardown, the teardown is run) and their value is removed from the cache.
 This means that dependencies scoped to an outer scope cannot depend on dependencies scoped to an inner scope:
 
 ```Python hl_lines="13 22"

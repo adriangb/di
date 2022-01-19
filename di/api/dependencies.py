@@ -30,11 +30,11 @@ class DependantBase(Generic[T]):
     - A callable who's returned value is the dependency
     """
 
-    __slots__ = ("call", "scope", "share")
+    __slots__ = ("call", "scope", "use_cache")
 
     call: Optional[DependencyProviderType[T]]
     scope: Scope
-    share: bool
+    use_cache: bool
 
     @property
     def cache_key(self) -> CacheKey:

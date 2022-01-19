@@ -7,10 +7,10 @@ from di.typing import Annotated
 def controller(
     # no marker is equivalent to Dependant(object)
     v1: object,
-    # the default value is share=True
+    # the default value is use_cache=True
     v2: Annotated[object, Dependant(object, scope="request")],
-    # but you can set share=False
-    v3: Annotated[float, Dependant(random, share=False, scope="request")],
+    # but you can set use_cache=False
+    v3: Annotated[float, Dependant(random, use_cache=False, scope="request")],
 ) -> None:
     assert v1 is v2
     assert v1 is not v3 and v2 is not v3

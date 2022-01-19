@@ -288,8 +288,8 @@ async def test_concurrency_async(dep1: Any, dep2: Any):
     container.register_by_type(Dependant(lambda: counter), Counter)
 
     async def collector(
-        a: Annotated[None, Dependant(dep1, share=False, sync_to_thread=True)],
-        b: Annotated[None, Dependant(dep2, share=False, sync_to_thread=True)],
+        a: Annotated[None, Dependant(dep1, use_cache=False, sync_to_thread=True)],
+        b: Annotated[None, Dependant(dep2, use_cache=False, sync_to_thread=True)],
     ):
         ...
 
@@ -300,7 +300,7 @@ async def test_concurrency_async(dep1: Any, dep2: Any):
 
 
 @pytest.mark.anyio
-async def test_concurrent_executions_do_not_share_results():
+async def test_concurrent_executions_do_not_use_cache_results():
     """If the same solved depedant is executed twice concurrently we should not
     overwrite the result of any sub-dependencies.
     """
@@ -322,7 +322,7 @@ async def test_concurrent_executions_do_not_share_results():
         # check if the other branch replaced our value
         # ctx.get() serves as the source of truth
         expected = ctx.get()
-        # and we check if the result was shared via caching or a bug in the
+        # and we check if the result was use_cached via caching or a bug in the
         # internal state of tasks (see https://github.com/adriangb/di/issues/18)
         assert id == expected  # replaced via caching
         assert one == expected  # replaced in results state
@@ -342,9 +342,9 @@ async def test_concurrent_executions_do_not_share_results():
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("scope,shared", [(None, False), ("app", True)])
-async def test_concurrent_executions_share_cache(
-    scope: Literal[None, "app"], shared: bool
+@pytest.mark.parametrize("scope,use_cache", [(None, False), ("app", True)])
+async def test_concurrent_executions_use_cache(
+    scope: Literal[None, "app"], use_cache: bool
 ):
     """Check that global / local scopes are respected during concurrent execution"""
     objects: List[object] = []
@@ -380,7 +380,7 @@ async def test_concurrent_executions_share_cache(
             await anyio.sleep(0.05)
             tg.start_soon(execute_2)
 
-    assert (objects[0] is objects[1]) is shared
+    assert (objects[0] is objects[1]) is use_cache
 
 
 @pytest.mark.anyio

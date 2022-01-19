@@ -15,7 +15,7 @@ class Request:
 class Header(Dependant[Any]):
     def __init__(self, alias: Optional[str]) -> None:
         self.alias = alias
-        super().__init__(call=None, scope="request", share=False)
+        super().__init__(call=None, scope="request", use_cache=False)
 
     def register_parameter(self, param: inspect.Parameter) -> Header:
         if self.alias is not None:

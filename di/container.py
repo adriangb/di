@@ -280,7 +280,7 @@ class _ContainerCommon:
                 tasks[dep.cache_key] = task = AsyncTask(
                     scope=dep.scope,
                     call=dep.call,
-                    use_cache=dep.share,
+                    use_cache=dep.use_cache,
                     dependant=dep,
                     task_id=task_id,
                     positional_parameters=positional_parameters,
@@ -290,7 +290,7 @@ class _ContainerCommon:
                 tasks[dep.cache_key] = task = SyncTask(
                     scope=dep.scope,
                     call=dep.call,
-                    use_cache=dep.share,
+                    use_cache=dep.use_cache,
                     dependant=dep,
                     task_id=task_id,
                     positional_parameters=positional_parameters,
@@ -368,9 +368,9 @@ class BaseContainer(_ContainerCommon):
     def copy(self: _BaseContainerType) -> _BaseContainerType:
         new = object.__new__(self.__class__)
         new._scopes = self._scopes
-        # binds are shared
+        # binds are use_cached
         new._register_hooks = self._register_hooks
-        # cached values and scopes are not shared
+        # cached values and scopes are not use_cached
         new.__state = self.__state.copy()
         return new  # type: ignore[no-any-return]
 

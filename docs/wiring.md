@@ -49,7 +49,7 @@ Here is an example that makes use of both:
 --8<-- "docs/src/manual_wiring.py"
 ```
 
-Binds in `di` are particularly powerful because the bound providers can themselves have dependencies, and those dependencies can even be autowired.
+Binds in `di` are particularly powerful because the bound providers can themselves have dependencies, and those dependencies can even be auto-wired.
 For more information on binds in `di`, see our [Binds] docs.
 
 Markers are set via [PEP 593's Annotated].

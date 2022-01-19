@@ -23,9 +23,14 @@ class DependantSubclass(Dependant[T]):
     "left,right,hash_eq,eq_qe",
     [
         (Dependant(func), Dependant(func), True, True),
-        (Dependant(func, share=False), Dependant(func), False, False),
-        (Dependant(func), Dependant(func, share=False), False, False),
-        (Dependant(func, share=False), Dependant(func, share=False), False, False),
+        (Dependant(func, use_cache=False), Dependant(func), False, False),
+        (Dependant(func), Dependant(func, use_cache=False), False, False),
+        (
+            Dependant(func, use_cache=False),
+            Dependant(func, use_cache=False),
+            False,
+            False,
+        ),
         (Dependant(func), DependantSubclass(func), False, False),
         (Dependant(func), Dependant(other_func), False, False),
         (Dependant(func, scope=0), Dependant(func, scope=1), False, False),

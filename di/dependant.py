@@ -32,7 +32,7 @@ class Dependant(DependantBase[T]):
         call: Optional[AsyncGeneratorProvider[T]] = None,
         *,
         scope: Optional[Scope] = None,
-        share: bool = True,
+        use_cache: bool = True,
         wire: bool = True,
         overrides: Optional[Mapping[str, DependantBase[Any]]] = None,
         sync_to_thread: bool = False,
@@ -45,7 +45,7 @@ class Dependant(DependantBase[T]):
         call: Optional[CoroutineProvider[T]] = None,
         *,
         scope: Optional[Scope] = None,
-        share: bool = True,
+        use_cache: bool = True,
         wire: bool = True,
         overrides: Optional[Mapping[str, DependantBase[Any]]] = None,
         sync_to_thread: bool = False,
@@ -58,7 +58,7 @@ class Dependant(DependantBase[T]):
         call: Optional[GeneratorProvider[T]] = None,
         *,
         scope: Optional[Scope] = None,
-        share: bool = True,
+        use_cache: bool = True,
         wire: bool = True,
         overrides: Optional[Mapping[str, DependantBase[Any]]] = None,
         sync_to_thread: bool = False,
@@ -71,7 +71,7 @@ class Dependant(DependantBase[T]):
         call: Optional[CallableProvider[T]] = None,
         *,
         scope: Optional[Scope] = None,
-        share: bool = True,
+        use_cache: bool = True,
         wire: bool = True,
         overrides: Optional[Mapping[str, DependantBase[Any]]] = None,
         sync_to_thread: bool = False,
@@ -83,21 +83,21 @@ class Dependant(DependantBase[T]):
         call: Optional[DependencyProviderType[T]] = None,
         *,
         scope: Scope = None,
-        share: bool = True,
+        use_cache: bool = True,
         wire: bool = True,
         overrides: Optional[Mapping[str, DependantBase[Any]]] = None,
         sync_to_thread: bool = False,
     ) -> None:
         self.call = call
         self.scope = scope
-        self.share = share
+        self.use_cache = use_cache
         self.wire = wire
         self.overrides = overrides or {}
         self.sync_to_thread = sync_to_thread
 
     @property
     def cache_key(self) -> CacheKey:
-        if self.share is False or self.call is None:
+        if self.use_cache is False or self.call is None:
             return (self.__class__, id(self))
         return (self.__class__, self.call, self.scope)
 
@@ -137,7 +137,7 @@ class Dependant(DependantBase[T]):
                     sub_dependant = Dependant[Any](
                         call=None,
                         scope=self.scope,
-                        share=self.share,
+                        use_cache=self.use_cache,
                     )
                 else:
                     # has a default parameter but we create a dependency anyway just for binds
@@ -145,14 +145,16 @@ class Dependant(DependantBase[T]):
                     sub_dependant = Dependant[Any](
                         call=None,
                         scope=self.scope,
-                        share=self.share,
+                        use_cache=self.use_cache,
                         wire=False,
                     )
             res.append(DependencyParameter(dependency=sub_dependant, parameter=param))
         return res
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(call={self.call}, share={self.share})"
+        return (
+            f"{self.__class__.__name__}(call={self.call}, use_cache={self.use_cache})"
+        )
 
 
 class JoinedDependant(DependantBase[T]):
@@ -170,7 +172,7 @@ class JoinedDependant(DependantBase[T]):
         self.dependant = dependant
         self.siblings = siblings
         self.scope = dependant.scope
-        self.share = dependant.share
+        self.use_cache = dependant.use_cache
 
     def get_dependencies(self) -> List[DependencyParameter]:
         """Get the dependencies of our main dependant and all siblings"""

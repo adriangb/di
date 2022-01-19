@@ -13,7 +13,7 @@ Here is an example that extracts headers from requests:
 --8<-- "docs/src/headers_example.py"
 ```
 
-Another good example of the customizability provided by `DependantBase` is the implementation of [JointDependant], which lets you schedule and execute dependencies together even if they are not directly connected by wiring:
+Another good example of the flexibility provided by `DependantBase` is the implementation of [JointDependant], which lets you schedule and execute dependencies together even if they are not directly connected by wiring:
 
 ```python
 --8<-- "docs/src/joined_dependant.py"
