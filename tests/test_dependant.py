@@ -26,9 +26,10 @@ class DependantSubclass(Dependant[T]):
         (Dependant(func, share=False), Dependant(func), False, False),
         (Dependant(func), Dependant(func, share=False), False, False),
         (Dependant(func, share=False), Dependant(func, share=False), False, False),
-        (Dependant(func), DependantSubclass(func), True, True),
+        (Dependant(func), DependantSubclass(func), False, False),
         (Dependant(func), Dependant(other_func), False, False),
         (Dependant(func, scope=0), Dependant(func, scope=1), False, False),
+        (Dependant(None), Dependant(None), False, False),
     ],
 )
 def test_equality(

@@ -97,13 +97,9 @@ class Dependant(DependantBase[T]):
 
     @property
     def cache_key(self) -> CacheKey:
-        """Used to identify Dependants.
-        By default, just checks that both are marked as shared.
-        See DependantBase for more details.
-        """
-        if self.share is False:
-            return self
-        return (self.call, self.scope)  # type: ignore[return-value]
+        if self.share is False or self.call is None:
+            return (self.__class__, id(self))
+        return (self.__class__, self.call, self.scope)
 
     def register_parameter(self, param: inspect.Parameter) -> DependantBase[Any]:
         """Hook to register the parameter this Dependant corresponds to.
