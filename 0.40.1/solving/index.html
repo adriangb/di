@@ -312,7 +312,7 @@
   
     <li class="md-nav__item">
       <a href="../binds/" class="md-nav__link">
-        Binds
+        Registration and Binding
       </a>
     </li>
   
@@ -486,20 +486,12 @@
 <h1 id="solving">Solving</h1>
 <p>Solving a dependency means build a directed acyclic graph (DAG) of dependencies by inspecting sub dependencies and resolving binds.
 Once we solve a dependency, we can execute it without doing any introspection.</p>
-<p>Solving is done by the <code>Container</code>.
-The result of solving is stored in a <code>SolvedDependant</code> object which you can pass to <code>Container.execute</code> to get back the result.
+<p>Solving is done by the <strong>Container</strong>.
+The result of solving is stored in a <code>SolvedDependant</code> object which you can pass to <code>Container.execute_{sync,async}</code> to get back the result.
 The simplest form of executing a dependency is thus:</p>
 <div class="highlight"><pre><span></span><code><span class="n">result</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="mi">1</span><span class="p">)))</span>
 </code></pre></div>
 <p>For a more comprehensive overview, see the <a href="../architecture/">architecture</a> section.</p>
-<p>During solving, several things are checked:</p>
-<ol>
-<li>Any dependencies that can't be fully autowirired have binds.</li>
-<li>The same dependency is not used twice with different scopes.</li>
-</ol>
-<p>However, other things are not checked and are deferred to execution time. Namely, <em>scopes are not validated during solving</em>.
-This means that you can solve a DAG including <code>"request"</code> scoped dependencies before entering the <code>"request"</code> scope.
-But it also means that any errors (like a missing scope) won't be caught until runtime.</p>
 <h2 id="solveddependant">SolvedDependant</h2>
 <p><code>di</code> lets you pre-solve your dependencies so that you don't have to run the solver each time you execute.
 This usually comes with a huge performance boost, but only works if you have a static dependency graph.

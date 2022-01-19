@@ -322,7 +322,7 @@
   
     <li class="md-nav__item">
       <a href="../binds/" class="md-nav__link">
-        Binds
+        Registration and Binding
       </a>
     </li>
   
@@ -441,8 +441,10 @@
 <li><a href="https://github.com/adriangb/di/blob/main/di/api/solved.py">SolvedDependant</a> holds the result of a call to <code>Container.solve</code> that can be passed to <code>Container.execute_sync</code> or <code>Container.exeucte_async</code>.</li>
 </ul>
 <p>Fundamentally, our class diagram looks like this:</p>
-<p><img align="left" alt="ClassDiagram" src="../architecture.png" /></p>
-<p>The mermaid diagram used to create this is below.</p>
+<p><img alt="ClassDiagram" src="../architecture.png" /></p>
+<details>
+<summary>Mermaid diagram source</summary>
+<br>
 <div class="highlight"><pre><span></span><code>classDiagram
     SolvedDependant &quot;1..n&quot; --o Dependant: aggregates into a DAG
     Container --&gt; Dependant: visits sub-dependencies
@@ -460,12 +462,13 @@
       +execute()
     }
     class Container{
-      +bind(Callable, Dependant)
+      +register(Provider, Dependency)
       +enter_scope(Scope) Container
       +solve(Dependant) SolvedDependant
       +execute(SolvedDependant, Executor) Result
     }
 </code></pre></div>
+</details>
 
               
             </article>

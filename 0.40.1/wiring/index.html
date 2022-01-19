@@ -315,8 +315,8 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#autowiring-in-di" class="md-nav__link">
-    Autowiring in di
+  <a href="#auto-wiring-in-di" class="md-nav__link">
+    Auto-wiring in di
   </a>
   
 </li>
@@ -367,7 +367,7 @@
   
     <li class="md-nav__item">
       <a href="../binds/" class="md-nav__link">
-        Binds
+        Registration and Binding
       </a>
     </li>
   
@@ -460,8 +460,8 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#autowiring-in-di" class="md-nav__link">
-    Autowiring in di
+  <a href="#auto-wiring-in-di" class="md-nav__link">
+    Auto-wiring in di
   </a>
   
 </li>
@@ -501,53 +501,29 @@
 <p>Wiring is the act of "connecting" together dependencies.
 There are generally two types of wiring that a DI container can do:</p>
 <ul>
-<li>Autowiring: where the container inspects the dependencies and automatically deduces their sub-dependencies.</li>
+<li>Auto-wiring: where the container inspects the dependencies and automatically deduces their sub-dependencies.</li>
 <li>Manual wiring: where the user needs to register each sub-dependency with the container.</li>
 </ul>
-<p>Autowiring is generally preferable: it reduces boilerplate and decouples your application from the Container's API.
-But autowiring is not always possible: sometimes the value is produced by a function (<code>value: int = some_function()</code>) or the type to inject is not the type in the annotation (when using interfaces / protocols).</p>
-<h2 id="autowiring-in-di">Autowiring in <code>di</code></h2>
-<p>Autowiring in <code>di</code> relies on inspecting function signatures and class constructors.
+<p>Auto-wiring is generally preferable: it reduces boilerplate and decouples your application from the Container's API.
+But auto-wiring is not always possible: sometimes the value is produced by a function (<code>value: int = some_function()</code>) or the type to inject is not the type in the annotation (when using interfaces / protocols).</p>
+<h2 id="auto-wiring-in-di">Auto-wiring in <code>di</code></h2>
+<p>Auto-wiring in <code>di</code> relies on inspecting function signatures and class constructors.
 The primary means of inspection are the standard library's <code>inspect.signature</code> and <code>typing.get_type_hints</code>.
-This makes autowiring compatible with a broad range of things, including:</p>
+This makes auto-wiring compatible with a broad range of things, including:</p>
 <ul>
 <li><code>def</code> functions</li>
 <li>Classes</li>
 <li><code>functools.partial</code> binds</li>
 <li>Callable class classes or class instances (classes implementing <code>__call__</code>)</li>
 </ul>
-<p>Here is an example showing autowiring in action.</p>
-<p>Autowiring can work with dataclasses, even ones with a <code>default_factory</code>.
+<p>Here is an example showing auto-wiring in action.</p>
+<p>Auto-wiring can work with dataclasses, even ones with a <code>default_factory</code>.
 In this example we'll load a config from the environment:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
-
-<span class="kn">from</span> <span class="nn">di</span> <span class="kn">import</span> <span class="n">AsyncExecutor</span><span class="p">,</span> <span class="n">Container</span><span class="p">,</span> <span class="n">Dependant</span>
-
-
-<span class="nd">@dataclass</span>
-<span class="k">class</span> <span class="nc">Config</span><span class="p">:</span>
-    <span class="n">host</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;HOST&quot;</span><span class="p">,</span> <span class="s2">&quot;localhost&quot;</span><span class="p">))</span>
-
-
-<span class="k">class</span> <span class="nc">DBConn</span><span class="p">:</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Config</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">host</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">host</span>
-
-
-<span class="k">async</span> <span class="k">def</span> <span class="nf">controller</span><span class="p">(</span><span class="n">conn</span><span class="p">:</span> <span class="n">DBConn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">conn</span><span class="p">,</span> <span class="n">DBConn</span><span class="p">)</span>
-
-
-<span class="k">async</span> <span class="k">def</span> <span class="nf">framework</span><span class="p">():</span>
-    <span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">(</span><span class="n">scopes</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;request&quot;</span><span class="p">])</span>
-    <span class="n">solved</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">&quot;request&quot;</span><span class="p">))</span>
-    <span class="k">async</span> <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">enter_scope</span><span class="p">(</span><span class="s2">&quot;request&quot;</span><span class="p">):</span>
-        <span class="k">await</span> <span class="n">container</span><span class="o">.</span><span class="n">execute_async</span><span class="p">(</span><span class="n">solved</span><span class="p">,</span> <span class="n">executor</span><span class="o">=</span><span class="n">AsyncExecutor</span><span class="p">())</span>
+<div class="highlight"><pre><span></span><code>
 </code></pre></div>
-<p>What makes this "autowiring" is that we didn't have to tell <code>di</code> how to construct <code>DBConn</code>: <code>di</code> detected that <code>controller</code> needed a <code>DBConn</code> and that <code>DBConn</code> in turn needs a <code>Config</code> instance.</p>
+<p>What makes this "auto-wiring" is that we didn't have to tell <code>di</code> how to construct <code>DBConn</code>: <code>di</code> detected that <code>controller</code> needed a <code>DBConn</code> and that <code>DBConn</code> in turn needs a <code>Config</code> instance.</p>
 <h2 id="manual-wiring">Manual wiring</h2>
-<p>But what about situations where autowiring doesn't cut it?
+<p>But what about situations where auto-wiring doesn't cut it?
 A common scenario for this is when type annotations are interfaces / protocols / ABCs, not concrete implementations. This is a good general practice and is very common in larger projects.
 It is also common for a dependency to come from a function, in which case we don't just want an instance of the type annotation, we want the value returned by a specific function.</p>
 <p>In these scenarios, some manual input from the user is required.

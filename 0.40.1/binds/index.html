@@ -17,7 +17,7 @@
     
     
       
-        <title>Binds - di</title>
+        <title>Registration and Binding - di</title>
       
     
     
@@ -70,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#binds" class="md-skip">
+        <a href="#registration-and-binding" class="md-skip">
           Skip to content
         </a>
       
@@ -119,7 +119,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Binds
+              Registration and Binding
             
           </span>
         </div>
@@ -321,7 +321,7 @@
       
       
       <a href="./" class="md-nav__link md-nav__link--active">
-        Binds
+        Registration and Binding
       </a>
       
     </li>
@@ -423,12 +423,13 @@
 </a>
 
 
-<h1 id="binds">Binds</h1>
-<p>Binds provide two important functions:</p>
+<h1 id="registration-and-binding">Registration and Binding</h1>
+<p>Provider registration serves two important functions:</p>
 <ul>
-<li>A way to tell the container how to assemble things that can't be autowired, for example interfaces.</li>
+<li>A way to tell the container how to assemble things that can't be auto-wired, for example interfaces.</li>
 <li>A way to override dependencies in tests.</li>
 </ul>
+<p>We call a the result of registering a provider a <strong>bind</strong>.</p>
 <p>Every bind in <code>di</code> consists of:</p>
 <ul>
 <li>A target callable: this can be a function, an interface / protocol or a concrete class</li>
@@ -483,8 +484,8 @@
         <span class="p">)</span>
     <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">Postgres</span><span class="p">)</span>
 </code></pre></div>
-<p>In this example we bind a concrete <code>Postgres</code> instance to <code>DBProtocol</code>, and we can see that <code>di</code> autowires <code>Postgres</code> as well!</p>
-<p>Binds can be used as a direct function call, in which case they are permanent, or as a context manager.</p>
+<p>In this example we register the <code>Postgres</code> class to <code>DBProtocol</code>, and we can see that <code>di</code> auto-wires <code>Postgres</code> as well!</p>
+<p>Registration can be used as a direct function call, in which case they are permanent, or as a context manager.</p>
 
               
             </article>
