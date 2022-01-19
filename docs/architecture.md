@@ -18,10 +18,11 @@ There are also some auxiliary support classes:
 
 Fundamentally, our class diagram looks like this:
 
-![ClassDiagram](architecture.png){ align=left }
+![ClassDiagram](architecture.png)
 
-The mermaid diagram used to create this is below.
-
+<details>
+<summary>Mermaid diagram source</summary>
+<br>
 ``` mermaid
 classDiagram
     SolvedDependant "1..n" --o Dependant: aggregates into a DAG
@@ -40,12 +41,13 @@ classDiagram
       +execute()
     }
     class Container{
-      +bind(Callable, Dependant)
+      +register(Provider, Dependency)
       +enter_scope(Scope) Container
       +solve(Dependant) SolvedDependant
       +execute(SolvedDependant, Executor) Result
     }
 ```
+</details>
 
 [Dependant]: https://github.com/adriangb/di/blob/main/di/api/dependencies.py
 [Container]: https://github.com/adriangb/di/blob/main/di/api/container.py

@@ -3,8 +3,8 @@
 Solving a dependency means build a directed acyclic graph (DAG) of dependencies by inspecting sub dependencies and resolving binds.
 Once we solve a dependency, we can execute it without doing any introspection.
 
-Solving is done by the `Container`.
-The result of solving is stored in a `SolvedDependant` object which you can pass to `Container.execute` to get back the result.
+Solving is done by the **Container**.
+The result of solving is stored in a `SolvedDependant` object which you can pass to `Container.execute_{sync,async}` to get back the result.
 The simplest form of executing a dependency is thus:
 
 ```python
@@ -12,15 +12,6 @@ result = container.execute(container.solve(Dependant(lambda: 1)))
 ```
 
 For a more comprehensive overview, see the [architecture] section.
-
-During solving, several things are checked:
-
-1. Any dependencies that can't be fully autowirired have binds.
-2. The same dependency is not used twice with different scopes.
-
-However, other things are not checked and are deferred to execution time. Namely, *scopes are not validated during solving*.
-This means that you can solve a DAG including `"request"` scoped dependencies before entering the `"request"` scope.
-But it also means that any errors (like a missing scope) won't be caught until runtime.
 
 ## SolvedDependant
 

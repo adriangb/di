@@ -97,7 +97,7 @@ Finally, we execute the endpoint for each incoming request:
 
 When we do this, we provide the `Request` instance as a value.
 This means that `di` does not introspect at all into the `Request` to figure out how to build it, it just hands the value off to anything that requests it.
-You can also "bind" providers, which is covered in the [binds] section of the docs.
+You can also directly register providers, which is covered in the [provider registration] section of the docs.
 
 [binds]: binds.md
 [dependency inversion]: https://en.wikipedia.org/wiki/Dependency_inversion_principle

@@ -3,37 +3,37 @@
 Wiring is the act of "connecting" together dependencies.
 There are generally two types of wiring that a DI container can do:
 
-- Autowiring: where the container inspects the dependencies and automatically deduces their sub-dependencies.
+- Auto-wiring: where the container inspects the dependencies and automatically deduces their sub-dependencies.
 - Manual wiring: where the user needs to register each sub-dependency with the container.
 
-Autowiring is generally preferable: it reduces boilerplate and decouples your application from the Container's API.
-But autowiring is not always possible: sometimes the value is produced by a function (`value: int = some_function()`) or the type to inject is not the type in the annotation (when using interfaces / protocols).
+Auto-wiring is generally preferable: it reduces boilerplate and decouples your application from the Container's API.
+But auto-wiring is not always possible: sometimes the value is produced by a function (`value: int = some_function()`) or the type to inject is not the type in the annotation (when using interfaces / protocols).
 
-## Autowiring in `di`
+## Auto-wiring in `di`
 
-Autowiring in `di` relies on inspecting function signatures and class constructors.
+Auto-wiring in `di` relies on inspecting function signatures and class constructors.
 The primary means of inspection are the standard library's `inspect.signature` and `typing.get_type_hints`.
-This makes autowiring compatible with a broad range of things, including:
+This makes auto-wiring compatible with a broad range of things, including:
 
 - `def` functions
 - Classes
 - `functools.partial` binds
 - Callable class classes or class instances (classes implementing `__call__`)
 
-Here is an example showing autowiring in action.
+Here is an example showing auto-wiring in action.
 
-Autowiring can work with dataclasses, even ones with a `default_factory`.
+Auto-wiring can work with dataclasses, even ones with a `default_factory`.
 In this example we'll load a config from the environment:
 
 ```Python
---8<-- "docs/src/autowiring.py"
+--8<-- "docs/src/auto-wiring.py"
 ```
 
-What makes this "autowiring" is that we didn't have to tell `di` how to construct `DBConn`: `di` detected that `controller` needed a `DBConn` and that `DBConn` in turn needs a `Config` instance.
+What makes this "auto-wiring" is that we didn't have to tell `di` how to construct `DBConn`: `di` detected that `controller` needed a `DBConn` and that `DBConn` in turn needs a `Config` instance.
 
 ## Manual wiring
 
-But what about situations where autowiring doesn't cut it?
+But what about situations where auto-wiring doesn't cut it?
 A common scenario for this is when type annotations are interfaces / protocols / ABCs, not concrete implementations. This is a good general practice and is very common in larger projects.
 It is also common for a dependency to come from a function, in which case we don't just want an instance of the type annotation, we want the value returned by a specific function.
 

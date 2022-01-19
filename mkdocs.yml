@@ -27,7 +27,7 @@ nav:
   - Architecture: architecture.md
   - Wiring: wiring.md
   - Scopes: scopes.md
-  - Binds: binds.md
+  - Registration and Binding: binds.md
   - Dependants: dependants.md
   - Sharing: sharing.md
   - Solving: solving.md
