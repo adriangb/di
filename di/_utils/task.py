@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from contextlib import AsyncExitStack, ExitStack, asynccontextmanager, contextmanager
+from contextlib import AsyncExitStack, ExitStack
 from typing import (
     Any,
     Callable,
@@ -17,7 +17,7 @@ from typing import (
 
 from graphlib2 import TopologicalSorter
 
-from di._utils.inspect import is_async_gen_callable, is_gen_callable
+from di._utils.inspect import is_async_context_manager, is_sync_context_manager
 from di._utils.scope_map import ScopeMap
 from di.api.dependencies import DependantBase
 from di.api.executor import AsyncTask as ExecutorAsyncTask
@@ -136,7 +136,7 @@ class Task:
 
 
 class AsyncTask(Task, ExecutorAsyncTask):
-    __slots__ = ("is_generator",)
+    __slots__ = ("is_context_manager",)
 
     def __init__(
         self,
@@ -157,9 +157,7 @@ class AsyncTask(Task, ExecutorAsyncTask):
             positional_parameters,
             keyword_parameters,
         )
-        self.is_generator = is_async_gen_callable(self.call)
-        if self.is_generator:
-            self.call = asynccontextmanager(self.call)  # type: ignore[arg-type]
+        self.is_context_manager = is_async_context_manager(call)
 
     async def compute(  # type: ignore[override]  # we do it this way to avoid exposing implementation details to users
         self,
@@ -174,7 +172,7 @@ class AsyncTask(Task, ExecutorAsyncTask):
                 state.toplogical_sorter.done(self)
                 return gather_new_tasks(state)
 
-        if self.is_generator:
+        if self.is_context_manager:
             try:
                 enter = state.stacks[self.scope].enter_async_context  # type: ignore[union-attr]
             except AttributeError:
@@ -197,7 +195,7 @@ class AsyncTask(Task, ExecutorAsyncTask):
 
 
 class SyncTask(Task, ExecutorSyncTask):
-    __slots__ = ("is_generator",)
+    __slots__ = ("is_context_manager",)
 
     def __init__(
         self,
@@ -221,9 +219,7 @@ class SyncTask(Task, ExecutorSyncTask):
             positional_parameters,
             keyword_parameters,
         )
-        self.is_generator = is_gen_callable(self.call)
-        if self.is_generator:
-            self.call = contextmanager(self.call)  # type: ignore[arg-type]
+        self.is_context_manager = is_sync_context_manager(self.call)
 
     def compute(  # type: ignore[override]  # we do it this way to avoid exposing implementation details to users
         self,
@@ -238,7 +234,7 @@ class SyncTask(Task, ExecutorSyncTask):
                 state.toplogical_sorter.done(self)
                 return gather_new_tasks(state)
 
-        if self.is_generator:
+        if self.is_context_manager:
             state.results[self.task_id] = state.stacks[self.scope].enter_context(
                 self.call_user_func_with_deps(self.call, state.results)
             )

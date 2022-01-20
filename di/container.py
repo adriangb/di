@@ -32,7 +32,7 @@ else:
 from graphlib2 import TopologicalSorter
 
 from di._utils.execution_planning import SolvedDependantCache, plan_execution
-from di._utils.inspect import get_type, is_async_gen_callable, is_coroutine_callable
+from di._utils.inspect import get_type, is_async_context_manager, is_coroutine_callable
 from di._utils.scope_validation import validate_scopes
 from di._utils.state import ContainerState
 from di._utils.task import AsyncTask, SyncTask
@@ -276,7 +276,7 @@ class _ContainerCommon:
             keyword_parameters = tuple((k, v) for k, v in keyword.items())
 
             assert dep.call is not None
-            if is_async_gen_callable(dep.call) or is_coroutine_callable(dep.call):
+            if is_async_context_manager(dep.call) or is_coroutine_callable(dep.call):
                 tasks[dep.cache_key] = task = AsyncTask(
                     scope=dep.scope,
                     call=dep.call,

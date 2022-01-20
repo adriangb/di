@@ -1,3 +1,4 @@
+import contextlib
 import contextvars
 import functools
 import sys
@@ -100,10 +101,12 @@ async def async_callable_func() -> int:
     return 1
 
 
+@contextlib.contextmanager
 def sync_gen_func() -> Generator[int, None, None]:
     yield 1
 
 
+@contextlib.asynccontextmanager
 async def async_gen_func() -> AsyncGenerator[int, None]:
     yield 1
 
@@ -119,13 +122,19 @@ class AsyncCallableCls:
 
 
 class SyncGenCls:
-    def __call__(self) -> Generator[int, None, None]:
-        yield 1
+    def __enter__(self) -> int:
+        return 1
+
+    def __exit__(self, *args):  # type: ignore
+        pass
 
 
 class AsyncGenCls:
-    async def __call__(self) -> AsyncGenerator[int, None]:
-        yield 1
+    async def __aenter__(self) -> int:
+        return 1
+
+    async def __aexit__(self, *args):  # type: ignore
+        pass
 
 
 @pytest.mark.parametrize(
@@ -137,8 +146,8 @@ class AsyncGenCls:
         async_gen_func,
         SyncCallableCls(),
         AsyncCallableCls(),
-        SyncGenCls(),
-        AsyncGenCls(),
+        SyncGenCls,
+        AsyncGenCls,
     ],
     ids=[
         "sync_callable_func",
@@ -202,11 +211,13 @@ async def async_callable_func_slow(counter: Counter) -> None:
         return
 
 
+@contextlib.contextmanager
 def sync_gen_func_slow(counter: Counter) -> Generator[None, None, None]:
     sync_callable_func_slow(counter)
     yield None
 
 
+@contextlib.asynccontextmanager
 async def async_gen_func_slow(counter: Counter) -> AsyncGenerator[None, None]:
     await async_callable_func_slow(counter)
     yield None
@@ -223,15 +234,25 @@ class AsyncCallableClsSlow:
 
 
 class SyncGenClsSlow:
-    def __call__(self, counter: Counter) -> Generator[None, None, None]:
-        sync_callable_func_slow(counter)
-        yield None
+    def __init__(self, counter: Counter) -> None:
+        self.counter = counter
+
+    def __enter__(self) -> None:
+        sync_callable_func_slow(self.counter)
+
+    def __exit__(self, *args) -> None:  # type: ignore
+        pass
 
 
 class AsyncGenClsSlow:
-    async def __call__(self, counter: Counter) -> AsyncGenerator[None, None]:
-        await async_callable_func_slow(counter)
-        yield None
+    def __init__(self, counter: Counter) -> None:
+        self.counter = counter
+
+    async def __aenter__(self) -> None:
+        await async_callable_func_slow(self.counter)
+
+    async def __aexit__(self, *args) -> None:  # type: ignore
+        pass
 
 
 @pytest.mark.parametrize(
@@ -243,8 +264,8 @@ class AsyncGenClsSlow:
         async_gen_func_slow,
         SyncCallableClsSlow(),
         AsyncCallableClsSlow(),
-        SyncGenClsSlow(),
-        AsyncGenClsSlow(),
+        SyncGenClsSlow,
+        AsyncGenClsSlow,
     ],
     ids=[
         "sync_callable_func",
@@ -266,8 +287,8 @@ class AsyncGenClsSlow:
         async_gen_func_slow,
         SyncCallableClsSlow(),
         AsyncCallableClsSlow(),
-        SyncGenClsSlow(),
-        AsyncGenClsSlow(),
+        SyncGenClsSlow,
+        AsyncGenClsSlow,
     ],
     ids=[
         "sync_callable_func",
@@ -387,6 +408,7 @@ async def test_concurrent_executions_use_cache(
 async def test_async_cm_de_in_sync_scope():
     """Cannot execute an async contextmanager-like dependency from within a sync scope"""
 
+    @contextlib.asynccontextmanager
     async def dep() -> AsyncGenerator[None, None]:
         yield
 

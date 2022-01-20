@@ -1,7 +1,6 @@
 import functools
 import inspect
 import sys
-from functools import wraps
 from typing import Any, Callable, Dict, Mapping, Optional, Union
 
 if sys.version_info < (3, 9):
@@ -12,38 +11,47 @@ else:
 from di._utils.types import Some
 
 
-def accept_callable_class(func: Callable[..., bool]) -> Callable[..., bool]:
-    @wraps(func)
-    def inner(call: Any) -> bool:
-        if not callable(call):
-            return False
-        if inspect.isclass(call):
-            return False
-        if isinstance(call, functools.partial):
-            call = call.func
-        if func(call):
-            return True
-        _call = getattr(call, "__call__", None)
-        if _call is None:
-            return False
-        return func(_call)
-
-    return inner
+def is_coroutine_callable(call: Any) -> bool:
+    if not callable(call):
+        return False
+    if inspect.isclass(call):
+        return False
+    if isinstance(call, functools.partial):
+        return inspect.iscoroutinefunction(call.func)
+    if inspect.iscoroutinefunction(call):
+        return True
+    if hasattr(call, "__call__"):
+        # not a class but has a __call__, so maybe a callable class instance
+        return inspect.iscoroutinefunction(getattr(call, "__call__"))
+    return False
 
 
-@accept_callable_class
-def is_coroutine_callable(call: Callable[..., Any]) -> bool:
-    return inspect.iscoroutinefunction(call)
+def is_async_context_manager(call: Callable[..., Any]) -> bool:
+    if getattr(call, "__wrapped__", None):
+        # maybe function wrapped with @asynccontextmaanger
+        call = getattr(call, "__wrapped__")
+        return inspect.isasyncgenfunction(call)
+    if (
+        inspect.isclass(call)
+        and hasattr(call, "__aenter__")
+        and hasattr(call, "__aexit__")
+    ):
+        return True
+    return False
 
 
-@accept_callable_class
-def is_async_gen_callable(call: Callable[..., Any]) -> bool:
-    return inspect.isasyncgenfunction(call)
-
-
-@accept_callable_class
-def is_gen_callable(call: Any) -> bool:
-    return inspect.isgeneratorfunction(call)
+def is_sync_context_manager(call: Any) -> bool:
+    if getattr(call, "__wrapped__", None):
+        # maybe function wrapped with @contextmaanger
+        call = getattr(call, "__wrapped__")
+        return inspect.isgeneratorfunction(call)
+    if (
+        inspect.isclass(call)
+        and hasattr(call, "__enter__")
+        and hasattr(call, "__exit__")
+    ):
+        return True
+    return False
 
 
 def get_annotations(call: Callable[..., Any]) -> Dict[str, Any]:

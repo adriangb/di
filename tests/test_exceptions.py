@@ -1,3 +1,4 @@
+import contextlib
 from dataclasses import dataclass, field
 from typing import AsyncGenerator, Dict, Generator
 
@@ -16,6 +17,7 @@ class MyException(Exception):
     ...
 
 
+@contextlib.contextmanager
 def dep1(rec: Recorder) -> Generator[None, None, None]:
     try:
         yield
@@ -23,6 +25,7 @@ def dep1(rec: Recorder) -> Generator[None, None, None]:
         rec.caught["dep1"] = True
 
 
+@contextlib.contextmanager
 def dep2(rec: Recorder) -> Generator[None, None, None]:
     try:
         yield
@@ -30,6 +33,7 @@ def dep2(rec: Recorder) -> Generator[None, None, None]:
         rec.caught["dep2"] = True
 
 
+@contextlib.asynccontextmanager
 async def async_dep1(rec: Recorder) -> AsyncGenerator[None, None]:
     try:
         yield
@@ -37,6 +41,7 @@ async def async_dep1(rec: Recorder) -> AsyncGenerator[None, None]:
         rec.caught["async_dep1"] = True
 
 
+@contextlib.asynccontextmanager
 async def async_dep2(rec: Recorder) -> AsyncGenerator[None, None]:
     try:
         yield
@@ -134,6 +139,7 @@ async def test_dependency_can_catch_exception_concurrent_mixed() -> None:
     assert rec.caught == {"async_dep1": True} or rec.caught == {"dep2": True}
 
 
+@contextlib.contextmanager
 def dep1_reraise(rec: Recorder) -> Generator[None, None, None]:
     try:
         yield
@@ -142,6 +148,7 @@ def dep1_reraise(rec: Recorder) -> Generator[None, None, None]:
         raise
 
 
+@contextlib.contextmanager
 def dep2_reraise(rec: Recorder) -> Generator[None, None, None]:
     try:
         yield
@@ -150,6 +157,7 @@ def dep2_reraise(rec: Recorder) -> Generator[None, None, None]:
         raise
 
 
+@contextlib.asynccontextmanager
 async def async_dep1_reraise(rec: Recorder) -> AsyncGenerator[None, None]:
     try:
         yield
@@ -158,6 +166,7 @@ async def async_dep1_reraise(rec: Recorder) -> AsyncGenerator[None, None]:
         raise
 
 
+@contextlib.asynccontextmanager
 async def async_dep2_reraise(rec: Recorder) -> AsyncGenerator[None, None]:
     try:
         yield
@@ -284,6 +293,7 @@ async def test_dependency_can_catch_exception_concurrent_mixed_reraise() -> None
 
 
 def test_deep_reraise() -> None:
+    @contextlib.contextmanager
     def leaf() -> Generator[None, None, None]:
         try:
             yield
@@ -292,6 +302,7 @@ def test_deep_reraise() -> None:
         else:
             raise AssertionError("Exception did not propagate")  # pragma: no cover
 
+    @contextlib.contextmanager
     def parent(child: Annotated[None, Dependant(leaf)]) -> Generator[None, None, None]:
         try:
             yield

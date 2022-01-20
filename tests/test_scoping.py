@@ -1,3 +1,4 @@
+import contextlib
 import typing
 
 import anyio
@@ -140,11 +141,13 @@ def test_nested_lifecycle():
 
     state: typing.Dict[str, str] = dict.fromkeys(("A", "B", "C"), "uninitialized")
 
+    @contextlib.contextmanager
     def A() -> typing.Generator[None, None, None]:
         state["A"] = "initialized"
         yield
         state["A"] = "destroyed"
 
+    @contextlib.contextmanager
     def B(
         a: Annotated[None, Dependant(A, scope="lifespan")]
     ) -> typing.Generator[None, None, None]:
@@ -152,6 +155,7 @@ def test_nested_lifecycle():
         yield
         state["B"] = "destroyed"
 
+    @contextlib.contextmanager
     def C(
         b: Annotated[None, Dependant(B, scope="request")]
     ) -> typing.Generator[None, None, None]:
