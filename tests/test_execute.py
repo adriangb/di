@@ -118,36 +118,6 @@ class AsyncCallableCls:
         return 1
 
 
-@pytest.mark.parametrize(
-    "dep",
-    [
-        sync_callable_func,
-        async_callable_func,
-        sync_gen_func,
-        async_gen_func,
-        SyncCallableCls(),
-        AsyncCallableCls(),
-    ],
-    ids=[
-        "sync_callable_func",
-        "async_callable_func",
-        "sync_gen_func",
-        "async_gen_func",
-        "SyncCallableCls",
-        "AsyncCallableCls",
-    ],
-)
-@pytest.mark.anyio
-async def test_dependency_types(dep: Any):
-    container = Container(scopes=(None,))
-    async with container.enter_scope(None):
-        assert (
-            await container.execute_async(
-                container.solve(Dependant(dep)), executor=ConcurrentAsyncExecutor()
-            )
-        ) == 1
-
-
 class Counter:
     def __init__(self) -> None:
         self._lock = threading.Lock()
