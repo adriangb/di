@@ -2,8 +2,6 @@
 
 It will print out results to the console and open web browser windows.
 """
-import timeit
-
 import anyio
 from pyinstrument.profiler import Profiler  # type: ignore[import]
 
@@ -18,19 +16,16 @@ async def async_bench(sleep: SleepTimes, graph: GraphSize, iters: int) -> None:
     container = Container(scopes=[None])
     solved = container.solve(Dependant(generate_dag(graph, sync=False, sleep=sleep)))
     executor = ConcurrentAsyncExecutor()
-    # p = Profiler()
+    p = Profiler()
     async with container.enter_scope(None):
         await container.execute_async(solved, executor=executor)
-    # p.start()
-    start = timeit.default_timer()
+    p.start()
     for _ in range(iters):
         async with container.enter_scope(None):
             await container.execute_async(solved, executor=executor)
-    end = timeit.default_timer()
-    # p.stop()
-    # p.print()
-    print(end - start)
-    # p.open_in_browser()
+    p.stop()
+    p.print()
+    p.open_in_browser()
 
 
 def sync_bench(sleep: SleepTimes, graph: GraphSize, iters: int) -> None:
@@ -56,11 +51,11 @@ SLOW_DEPS = SleepTimes(1e-3, 1e-3)
 
 
 if __name__ == "__main__":
-    # anyio.run(async_bench, FAST_DEPS, SMALL_GRAPH, 1_000)
+    anyio.run(async_bench, FAST_DEPS, SMALL_GRAPH, 1_000)
     anyio.run(async_bench, FAST_DEPS, LARGE_GRAPH, 1_000)
-    # anyio.run(async_bench, SLOW_DEPS, SMALL_GRAPH, 1_000)
-    # anyio.run(async_bench, SLOW_DEPS, LARGE_GRAPH, 100)
-    # sync_bench(FAST_DEPS, SMALL_GRAPH, iters=1_000)
-    # sync_bench(FAST_DEPS, LARGE_GRAPH, iters=1_000)
-    # sync_bench(SLOW_DEPS, SMALL_GRAPH, iters=1_000)
-    # sync_bench(SLOW_DEPS, LARGE_GRAPH, iters=10)
+    anyio.run(async_bench, SLOW_DEPS, SMALL_GRAPH, 1_000)
+    anyio.run(async_bench, SLOW_DEPS, LARGE_GRAPH, 100)
+    sync_bench(FAST_DEPS, SMALL_GRAPH, iters=1_000)
+    sync_bench(FAST_DEPS, LARGE_GRAPH, iters=1_000)
+    sync_bench(SLOW_DEPS, SMALL_GRAPH, iters=1_000)
+    sync_bench(SLOW_DEPS, LARGE_GRAPH, iters=10)
