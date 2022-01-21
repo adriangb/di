@@ -63,29 +63,11 @@ def gather_new_tasks(
     state: ExecutionState,
 ) -> Generator[Optional[ExecutorTask], None, None]:
     """Look amongst our dependant tasks to see if any of them are now dependency free"""
-    res = state.results
-    ts = state.toplogical_sorter
-    while True:
-        if not ts.is_active():
-            yield None
-            return
-        ready = ts.get_ready()
-        if not ready:
-            break
-        marked = False
-        for t in ready:
-            if t.task_id in res:
-                # task was passed in by value or cached
-                ts.done(t)
-                marked = True
-            else:
-                yield t
-        if not marked:
-            # we didn't mark any nodes as done
-            # so there's no point in calling get_ready() again
-            break
-    if not ts.is_active():
+    ready = state.toplogical_sorter.get_ready()
+    if not ready and not state.toplogical_sorter.is_active():
         yield None
+        return
+    yield from ready
 
 
 UNSET: Any = object()
@@ -93,7 +75,8 @@ UNSET: Any = object()
 
 class Task:
     __slots__ = (
-        "call",
+        "wrapped_call",
+        "user_function",
         "scope",
         "is_async",
         "dependant",
@@ -103,6 +86,8 @@ class Task:
     )
 
     compute: Any
+    wrapped_call: DependencyProvider
+    user_function: DependencyProvider
 
     def __init__(
         self,
@@ -115,34 +100,36 @@ class Task:
         keyword_parameters: Iterable[Tuple[str, Task]],
     ) -> None:
         self.scope = scope
-        self.call = call
+        self.user_function = call
         self.dependant = dependant
         self.task_id = task_id
         self.call_user_func_with_deps = self.generate_execute_fn(
             positional_parameters, keyword_parameters
         )
-        if is_async_gen_callable(self.call):
+        if is_async_gen_callable(self.user_function):
             self.is_async = True
-            self.call = contextlib.asynccontextmanager(self.call)  # type: ignore[arg-type]
+            self.wrapped_call = contextlib.asynccontextmanager(self.user_function)  # type: ignore[arg-type]
             if use_cache:
                 self.compute = self.compute_async_cm_cache
             else:
                 self.compute = self.compute_async_cm_no_cache
-        elif is_coroutine_callable(self.call):
+        elif is_coroutine_callable(self.user_function):
             self.is_async = True
+            self.wrapped_call = self.user_function
             if use_cache:
                 self.compute = self.compute_async_coro_cache
             else:
                 self.compute = self.compute_async_coro_no_cache
-        elif is_gen_callable(self.call):
+        elif is_gen_callable(self.user_function):
             self.is_async = False
-            self.call = contextlib.contextmanager(self.call)  # type: ignore[arg-type]
+            self.wrapped_call = contextlib.contextmanager(self.user_function)  # type: ignore[arg-type]
             if use_cache:
                 self.compute = self.compute_sync_cm_cache
             else:
                 self.compute = self.compute_sync_cm_no_cache
         else:
             self.is_async = False
+            self.wrapped_call = self.user_function
             if use_cache:
                 self.compute = self.compute_sync_func_cache
             else:
@@ -167,42 +154,46 @@ class Task:
         return out["execute"]
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(scope={self.scope}, call={self.call})"
+        return (
+            f"{self.__class__.__name__}(scope={self.scope}, call={self.user_function})"
+        )
 
     async def compute_async_coro_cache(
         self, state: ExecutionState
     ) -> Union[Iterable[Union[None, Task]], Awaitable[Iterable[Union[None, Task]]]]:
-        call = self.call
-
-        if call in state.values:
-            state.results[self.task_id] = state.values[call]
+        if self.user_function in state.values:
+            state.results[self.task_id] = state.values[self.user_function]
             state.toplogical_sorter.done(self)
             return gather_new_tasks(state)  # type: ignore[return-value]
 
-        value = state.cache.get_from_scope(call, scope=self.scope, default=UNSET)
+        value = state.cache.get_from_scope(
+            self.user_function, scope=self.scope, default=UNSET
+        )
         if value is not UNSET:
             state.results[self.task_id] = value
             state.toplogical_sorter.done(self)
             return gather_new_tasks(state)  # type: ignore[return-value]
 
-        dependency_value = await self.call_user_func_with_deps(call, state.results)
+        dependency_value = await self.call_user_func_with_deps(
+            self.wrapped_call, state.results
+        )
 
         state.results[self.task_id] = dependency_value
         state.toplogical_sorter.done(self)
-        state.cache.set(call, dependency_value, scope=self.scope)
+        state.cache.set(self.user_function, dependency_value, scope=self.scope)
         return gather_new_tasks(state)  # type: ignore[arg-type,return-value]
 
     async def compute_async_coro_no_cache(
         self, state: ExecutionState
     ) -> Union[Iterable[Union[None, Task]], Awaitable[Iterable[Union[None, Task]]]]:
-        call = self.call
-
-        if call in state.values:
-            state.results[self.task_id] = state.values[call]
+        if self.user_function in state.values:
+            state.results[self.task_id] = state.values[self.user_function]
             state.toplogical_sorter.done(self)
             return gather_new_tasks(state)  # type: ignore[return-value]
 
-        dependency_value = await self.call_user_func_with_deps(call, state.results)
+        dependency_value = await self.call_user_func_with_deps(
+            self.user_function, state.results
+        )
 
         state.results[self.task_id] = dependency_value
         state.toplogical_sorter.done(self)
@@ -211,14 +202,14 @@ class Task:
     async def compute_async_cm_cache(
         self, state: ExecutionState
     ) -> Union[Iterable[Union[None, Task]], Awaitable[Iterable[Union[None, Task]]]]:
-        call = self.call
-
-        if call in state.values:
-            state.results[self.task_id] = state.values[call]
+        if self.user_function in state.values:
+            state.results[self.task_id] = state.values[self.user_function]
             state.toplogical_sorter.done(self)
             return gather_new_tasks(state)  # type: ignore[return-value]
 
-        value = state.cache.get_from_scope(call, scope=self.scope, default=UNSET)
+        value = state.cache.get_from_scope(
+            self.user_function, scope=self.scope, default=UNSET
+        )
         if value is not UNSET:
             state.results[self.task_id] = value
             state.toplogical_sorter.done(self)
@@ -228,26 +219,24 @@ class Task:
             enter = state.stacks[self.scope].enter_async_context  # type: ignore[union-attr]
         except AttributeError:
             raise IncompatibleDependencyError(
-                f"The dependency {call} is an awaitable dependency"
+                f"The dependency {self.user_function} is an awaitable dependency"
                 f" and canot be used in the sync scope {self.scope}"
             ) from None
 
         dependency_value: Any = await enter(
-            self.call_user_func_with_deps(call, state.results)
+            self.call_user_func_with_deps(self.wrapped_call, state.results)
         )
 
         state.results[self.task_id] = dependency_value
         state.toplogical_sorter.done(self)
-        state.cache.set(call, dependency_value, scope=self.scope)
+        state.cache.set(self.user_function, dependency_value, scope=self.scope)
         return gather_new_tasks(state)  # type: ignore[arg-type,return-value]
 
     async def compute_async_cm_no_cache(
         self, state: ExecutionState
     ) -> Union[Iterable[Union[None, Task]], Awaitable[Iterable[Union[None, Task]]]]:
-        call = self.call
-
-        if call in state.values:
-            state.results[self.task_id] = state.values[call]
+        if self.user_function in state.values:
+            state.results[self.task_id] = state.values[self.user_function]
             state.toplogical_sorter.done(self)
             return gather_new_tasks(state)  # type: ignore[return-value]
 
@@ -255,12 +244,12 @@ class Task:
             enter = state.stacks[self.scope].enter_async_context  # type: ignore[union-attr]
         except AttributeError:
             raise IncompatibleDependencyError(
-                f"The dependency {call} is an awaitable dependency"
+                f"The dependency {self.user_function} is an awaitable dependency"
                 f" and canot be used in the sync scope {self.scope}"
             ) from None
 
         dependency_value: Any = await enter(
-            self.call_user_func_with_deps(call, state.results)
+            self.call_user_func_with_deps(self.wrapped_call, state.results)
         )
 
         state.results[self.task_id] = dependency_value
@@ -270,39 +259,37 @@ class Task:
     def compute_sync_cm_cache(
         self, state: ExecutionState
     ) -> Union[Iterable[Union[None, Task]], Awaitable[Iterable[Union[None, Task]]]]:
-        call = self.call
-
-        if call in state.values:
-            state.results[self.task_id] = state.values[call]
+        if self.user_function in state.values:
+            state.results[self.task_id] = state.values[self.user_function]
             state.toplogical_sorter.done(self)
             return gather_new_tasks(state)  # type: ignore[return-value]
 
-        value = state.cache.get_from_scope(call, scope=self.scope, default=UNSET)
+        value = state.cache.get_from_scope(
+            self.user_function, scope=self.scope, default=UNSET
+        )
         if value is not UNSET:
             state.results[self.task_id] = value
             state.toplogical_sorter.done(self)
             return gather_new_tasks(state)  # type: ignore[return-value]
 
         val = state.stacks[self.scope].enter_context(
-            self.call_user_func_with_deps(call, state.results)
+            self.call_user_func_with_deps(self.wrapped_call, state.results)
         )
         state.results[self.task_id] = val
         state.toplogical_sorter.done(self)
-        state.cache.set(call, val, scope=self.scope)
+        state.cache.set(self.user_function, val, scope=self.scope)
         return gather_new_tasks(state)  # type: ignore[return-value]
 
     def compute_sync_cm_no_cache(
         self, state: ExecutionState
     ) -> Union[Iterable[Union[None, Task]], Awaitable[Iterable[Union[None, Task]]]]:
-        call = self.call
-
-        if call in state.values:
-            state.results[self.task_id] = state.values[call]
+        if self.user_function in state.values:
+            state.results[self.task_id] = state.values[self.user_function]
             state.toplogical_sorter.done(self)
             return gather_new_tasks(state)  # type: ignore[return-value]
 
         state.results[self.task_id] = state.stacks[self.scope].enter_context(
-            self.call_user_func_with_deps(call, state.results)
+            self.call_user_func_with_deps(self.wrapped_call, state.results)
         )
         state.toplogical_sorter.done(self)
         return gather_new_tasks(state)  # type: ignore[return-value]
@@ -310,35 +297,35 @@ class Task:
     def compute_sync_func_cache(
         self, state: ExecutionState
     ) -> Union[Iterable[Union[None, Task]], Awaitable[Iterable[Union[None, Task]]]]:
-        call = self.call
-
-        if call in state.values:
-            state.results[self.task_id] = state.values[call]
+        if self.user_function in state.values:
+            state.results[self.task_id] = state.values[self.user_function]
             state.toplogical_sorter.done(self)
             return gather_new_tasks(state)  # type: ignore[return-value]
 
-        value = state.cache.get_from_scope(call, scope=self.scope, default=UNSET)
+        value = state.cache.get_from_scope(
+            self.user_function, scope=self.scope, default=UNSET
+        )
         if value is not UNSET:
             state.results[self.task_id] = value
             state.toplogical_sorter.done(self)
             return gather_new_tasks(state)  # type: ignore[return-value]
 
-        val = self.call_user_func_with_deps(call, state.results)
+        val = self.call_user_func_with_deps(self.wrapped_call, state.results)
         state.results[self.task_id] = val
         state.toplogical_sorter.done(self)
-        state.cache.set(call, val, scope=self.scope)
+        state.cache.set(self.user_function, val, scope=self.scope)
         return gather_new_tasks(state)  # type: ignore[return-value]
 
     def compute_sync_func_no_cache(
         self, state: ExecutionState
     ) -> Union[Iterable[Union[None, Task]], Awaitable[Iterable[Union[None, Task]]]]:
-        call = self.call
-
-        if call in state.values:
-            state.results[self.task_id] = state.values[call]
+        if self.user_function in state.values:
+            state.results[self.task_id] = state.values[self.user_function]
             state.toplogical_sorter.done(self)
             return gather_new_tasks(state)  # type: ignore[return-value]
 
-        state.results[self.task_id] = self.call_user_func_with_deps(call, state.results)
+        state.results[self.task_id] = self.call_user_func_with_deps(
+            self.wrapped_call, state.results
+        )
         state.toplogical_sorter.done(self)
         return gather_new_tasks(state)  # type: ignore[return-value]

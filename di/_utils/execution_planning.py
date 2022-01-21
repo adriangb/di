@@ -1,17 +1,7 @@
 from __future__ import annotations
 
 from contextlib import AsyncExitStack, ExitStack
-from typing import (
-    Any,
-    Deque,
-    Dict,
-    Iterable,
-    Mapping,
-    NamedTuple,
-    Optional,
-    Tuple,
-    Union,
-)
+from typing import Any, Dict, Iterable, Mapping, NamedTuple, Optional, Tuple, Union
 
 from graphlib2 import TopologicalSorter
 
@@ -22,13 +12,7 @@ from di.api.providers import DependencyProvider
 from di.api.scopes import Scope
 from di.api.solved import SolvedDependant
 
-Dependency = Any
-
-TaskCacheDeque = Deque[Tuple[Task, Scope]]
-
 Results = Dict[int, Any]
-
-TaskDependencyCounts = Dict[Task, int]
 
 
 class SolvedDependantCache(NamedTuple):
