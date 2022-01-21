@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from typing import Any, Iterable, NewType, Optional, Union
+from typing import Any, Awaitable, Iterable, Optional, Union
 
 if sys.version_info < (3, 8):
     from typing_extensions import Protocol
@@ -10,35 +10,22 @@ else:
 
 from di.api.dependencies import DependantBase
 
-State = NewType("State", object)
 
-
-class AsyncTask:
-    __slots__ = ()
+class Task(Protocol):
     dependant: DependantBase[Any]
+    is_async: bool
 
-    async def compute(self, state: State) -> Iterable[Union[None, Task]]:
+    def compute(
+        self, state: Any
+    ) -> Union[Iterable[Union[None, Task]], Awaitable[Iterable[Union[None, Task]]]]:
         ...
-
-
-class SyncTask:
-    __slots__ = ()
-    dependant: DependantBase[Any]
-
-    def compute(self, state: State) -> Iterable[Union[None, Task]]:
-        ...
-
-
-Task = Union[AsyncTask, SyncTask]
 
 
 class SyncExecutorProtocol(Protocol):
-    def execute_sync(self, tasks: Iterable[Optional[Task]], state: State) -> None:
+    def execute_sync(self, tasks: Iterable[Optional[Task]], state: Any) -> None:
         raise NotImplementedError
 
 
 class AsyncExecutorProtocol(Protocol):
-    async def execute_async(
-        self, tasks: Iterable[Optional[Task]], state: State
-    ) -> None:
+    async def execute_async(self, tasks: Iterable[Optional[Task]], state: Any) -> None:
         raise NotImplementedError

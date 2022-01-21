@@ -1,7 +1,6 @@
 import functools
 import inspect
 import sys
-from functools import lru_cache, wraps
 from typing import Any, Callable, Dict, Mapping, Optional, Union
 
 if sys.version_info < (3, 9):
@@ -12,48 +11,40 @@ else:
 from di._utils.types import Some
 
 
-def cached_accept_callable_class(
-    maxsize: int,
-) -> Callable[[Callable[..., bool]], Callable[..., bool]]:
-    def wrapper(func: Callable[..., bool]) -> Callable[..., bool]:
-        func = lru_cache(maxsize=maxsize)(func)
-
-        @wraps(func)
-        def inner(call: Any) -> bool:
-            if not callable(call):
-                return False
-            if inspect.isclass(call):
-                return False
-            if isinstance(call, functools.partial):
-                call = call.func
-            if func(call):
-                return True
-            _call = getattr(call, "__call__", None)
-            if _call is None:
-                return False
-            return func(_call)
-
-        return inner
-
-    return wrapper
+def unwrap_callable(call: Any) -> Any:
+    unwrapped = True
+    while unwrapped:
+        unwrapped = False
+        if isinstance(call, functools.partial):
+            call = call.func
+            unwrapped = True
+            continue
+        if getattr(call, "__wrapped__", None):
+            # maybe function wrapped with @wraps
+            call = getattr(call, "__wrapped__")
+            unwrapped = True
+            continue
+    return call
 
 
-@cached_accept_callable_class(maxsize=2 ** 10)
-def is_coroutine_callable(call: Callable[..., Any]) -> bool:
-    return inspect.iscoroutinefunction(call)
+def is_coroutine_callable(call: Any) -> bool:
+    if inspect.isclass(call):
+        return False
+    call = unwrap_callable(call)
+    if inspect.iscoroutinefunction(call):
+        return True
+    # not a class but has a __call__, so maybe a callable class instance
+    return inspect.iscoroutinefunction(getattr(call, "__call__"))
 
 
-@cached_accept_callable_class(maxsize=2 ** 10)
 def is_async_gen_callable(call: Callable[..., Any]) -> bool:
-    return inspect.isasyncgenfunction(call)
+    return inspect.isasyncgenfunction(unwrap_callable(call))
 
 
-@cached_accept_callable_class(maxsize=2 ** 10)
 def is_gen_callable(call: Any) -> bool:
-    return inspect.isgeneratorfunction(call)
+    return inspect.isgeneratorfunction(unwrap_callable(call))
 
 
-@lru_cache(maxsize=2 ** 10)
 def get_annotations(call: Callable[..., Any]) -> Dict[str, Any]:
     types_from: Callable[..., Any]
     if not (
@@ -74,7 +65,6 @@ def get_annotations(call: Callable[..., Any]) -> Dict[str, Any]:
     return hints
 
 
-@lru_cache(maxsize=2 ** 10)
 def get_parameters(call: Callable[..., Any]) -> Dict[str, inspect.Parameter]:
     params: Mapping[str, inspect.Parameter]
     if inspect.isclass(call) and (call.__new__ is not object.__new__):  # type: ignore[comparison-overlap]
