@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import typing
 from collections import deque
 
@@ -7,28 +8,24 @@ import anyio
 import anyio.abc
 
 from di._utils.concurrency import callable_in_thread_pool
-from di.api.executor import (
-    AsyncExecutorProtocol,
-    AsyncTask,
-    State,
-    SyncExecutorProtocol,
-    Task,
-)
+from di.api.executor import AsyncExecutorProtocol, SyncExecutorProtocol, Task
 
 TaskQueue = typing.Deque[typing.Optional[Task]]
+TaskResult = typing.Iterable[typing.Union[None, Task]]
 
 
 class SyncExecutor(SyncExecutorProtocol):
-    def __drain(self, queue: TaskQueue, state: State) -> None:
+    def __drain(self, queue: TaskQueue, state: typing.Any) -> None:
         for task in queue:
             if task is None:
                 continue
-            if isinstance(task, AsyncTask):
+            res = task.compute(state)
+            if inspect.isawaitable(res):
                 raise TypeError("Cannot execute async dependencies in execute_sync")
             task.compute(state)
 
     def execute_sync(
-        self, tasks: typing.Iterable[typing.Optional[Task]], state: State
+        self, tasks: typing.Iterable[typing.Optional[Task]], state: typing.Any
     ) -> None:
         q: "TaskQueue" = deque(tasks)
         while True:
@@ -36,24 +33,23 @@ class SyncExecutor(SyncExecutorProtocol):
             if task is None:
                 self.__drain(q, state)
                 return
-            if isinstance(task, AsyncTask):
+            res = task.compute(state)
+            if inspect.isawaitable(res):
                 raise TypeError("Cannot execute async dependencies in execute_sync")
-            q.extend(task.compute(state))
+            q.extend(res)  # type: ignore[arg-type]  # mypy doesn't recognize inspect.isawaitable
 
 
 class AsyncExecutor(AsyncExecutorProtocol):
-    async def __drain(self, queue: TaskQueue, state: State) -> None:
+    async def __drain(self, queue: TaskQueue, state: typing.Any) -> None:
         for task in queue:
             if task is None:
                 continue
-            if isinstance(task, AsyncTask):
-                await task.compute(state)
-            else:
-                task.compute(state)
-            task.compute(state)
+            res = task.compute(state)
+            if inspect.isawaitable(res):
+                await res
 
     async def execute_async(
-        self, tasks: typing.Iterable[typing.Optional[Task]], state: State
+        self, tasks: typing.Iterable[typing.Optional[Task]], state: typing.Any
     ) -> None:
         q: "TaskQueue" = deque(tasks)
         while True:
@@ -61,27 +57,26 @@ class AsyncExecutor(AsyncExecutorProtocol):
             if task is None:
                 await self.__drain(q, state)
                 return
-            if isinstance(task, AsyncTask):
-                newtasks = await task.compute(state)
-            else:
-                newtasks = task.compute(state)
-            q.extend(newtasks)
+            res = task.compute(state)
+            if inspect.isawaitable(res):
+                res = await res
+            q.extend(res)  # type: ignore[arg-type]  # mypy doesn't recognize inspect.isawaitable
 
 
 async def _async_worker(
     task: Task,
-    state: State,
+    state: typing.Any,
     taskgroup: anyio.abc.TaskGroup,
 ) -> None:
-    if isinstance(task, AsyncTask):
-        newtasks = await task.compute(state)
-    elif (
+    if (
         getattr(task.dependant, "sync_to_thread", False) is True
     ):  # instance of Dependant
         newtasks = await callable_in_thread_pool(task.compute)(state)
     else:
         newtasks = task.compute(state)
-    for taskinfo in newtasks:
+        if inspect.isawaitable(newtasks):
+            newtasks = await newtasks
+    for taskinfo in typing.cast(TaskResult, newtasks):
         if taskinfo is None:
             continue
         taskgroup.start_soon(_async_worker, taskinfo, state, taskgroup)
@@ -89,7 +84,7 @@ async def _async_worker(
 
 class ConcurrentAsyncExecutor(AsyncExecutorProtocol):
     async def execute_async(
-        self, tasks: typing.Iterable[typing.Optional[Task]], state: State
+        self, tasks: typing.Iterable[typing.Optional[Task]], state: typing.Any
     ) -> None:
         async with anyio.create_task_group() as taskgroup:
             for task in tasks:

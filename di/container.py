@@ -32,10 +32,10 @@ else:
 from graphlib2 import TopologicalSorter
 
 from di._utils.execution_planning import SolvedDependantCache, plan_execution
-from di._utils.inspect import get_type, is_async_context_manager, is_coroutine_callable
+from di._utils.inspect import get_type
 from di._utils.scope_validation import validate_scopes
 from di._utils.state import ContainerState
-from di._utils.task import AsyncTask, SyncTask
+from di._utils.task import Task
 from di._utils.topsort import topsort
 from di._utils.types import FusedContextManager
 from di.api.dependencies import CacheKey, DependantBase, DependencyParameter
@@ -48,9 +48,7 @@ from di.exceptions import WiringError
 __all__ = ("BaseContainer", "Container")
 
 
-_Task = Union[AsyncTask, SyncTask]
-
-_DependantTaskDag = Dict[_Task, Set[_Task]]
+_DependantTaskDag = Dict[Task, Set[Task]]
 _DependantQueue = Deque[DependantBase[Any]]
 
 
@@ -215,29 +213,16 @@ class _ContainerCommon:
             }
         )
         # Create a seperate TopologicalSorter to hold the Tasks
-        ts: TopologicalSorter[_Task] = TopologicalSorter()
+        ts: TopologicalSorter[Task] = TopologicalSorter()
         tasks = self._build_tasks(
             computable_param_graph,
             (dependants[key] for key_group in dep_topsort for key in key_group),
             ts,
         )
         ts.prepare()
-        task_dependency_dag: _DependantTaskDag = {
-            tasks[dep.cache_key]: {
-                tasks[predecessor_dep.dependency.cache_key]
-                for predecessor_dep in predecessor_deps
-            }
-            for dep, predecessor_deps in computable_param_graph.items()
-        }
-        call_map: Dict[DependencyProvider, Set[_Task]] = {}
-        for t in task_dependency_dag:
-            if t.call not in call_map:
-                call_map[t.call] = set()
-            call_map[t.call].add(t)
         container_cache = SolvedDependantCache(
             root_task=tasks[dependency.cache_key],
             topological_sorter=ts,
-            callable_to_task_mapping={k: tuple(v) for k, v in call_map.items()},
         )
         validate_scopes(
             self._scopes,
@@ -257,13 +242,13 @@ class _ContainerCommon:
             List[DependencyParameter],
         ],
         topsorted: Iterable[DependantBase[Any]],
-        ts: TopologicalSorter[_Task],
-    ) -> Dict[CacheKey, _Task]:
-        tasks: Dict[CacheKey, _Task] = {}
+        ts: TopologicalSorter[Task],
+    ) -> Dict[CacheKey, Task]:
+        tasks: Dict[CacheKey, Task] = {}
         task_id = 0
         for dep in topsorted:
-            positional: List[_Task] = []
-            keyword: Dict[str, _Task] = {}
+            positional: List[Task] = []
+            keyword: Dict[str, Task] = {}
             for param in dag[dep]:
                 if param.parameter is not None:
                     task = tasks[param.dependency.cache_key]
@@ -276,26 +261,15 @@ class _ContainerCommon:
             keyword_parameters = tuple((k, v) for k, v in keyword.items())
 
             assert dep.call is not None
-            if is_async_context_manager(dep.call) or is_coroutine_callable(dep.call):
-                tasks[dep.cache_key] = task = AsyncTask(
-                    scope=dep.scope,
-                    call=dep.call,
-                    use_cache=dep.use_cache,
-                    dependant=dep,
-                    task_id=task_id,
-                    positional_parameters=positional_parameters,
-                    keyword_parameters=keyword_parameters,
-                )
-            else:
-                tasks[dep.cache_key] = task = SyncTask(
-                    scope=dep.scope,
-                    call=dep.call,
-                    use_cache=dep.use_cache,
-                    dependant=dep,
-                    task_id=task_id,
-                    positional_parameters=positional_parameters,
-                    keyword_parameters=keyword_parameters,
-                )
+            tasks[dep.cache_key] = task = Task(
+                scope=dep.scope,
+                call=dep.call,
+                use_cache=dep.use_cache,
+                dependant=dep,
+                task_id=task_id,
+                positional_parameters=positional_parameters,
+                keyword_parameters=keyword_parameters,
+            )
             task_id += 1
             ts.add(task, *(tasks[p.dependency.cache_key] for p in dag[dep]))
         return tasks

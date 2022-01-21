@@ -256,16 +256,16 @@ class AsyncGenClsSlow:
 
 
 @pytest.mark.parametrize(
-    "dep1",
+    "dep1,sync1",
     [
-        sync_callable_func_slow,
-        async_callable_func_slow,
-        sync_gen_func_slow,
-        async_gen_func_slow,
-        SyncCallableClsSlow(),
-        AsyncCallableClsSlow(),
-        SyncGenClsSlow,
-        AsyncGenClsSlow,
+        (sync_callable_func_slow, True),
+        (async_callable_func_slow, False),
+        (sync_gen_func_slow, True),
+        (async_gen_func_slow, False),
+        (SyncCallableClsSlow(), True),
+        (AsyncCallableClsSlow(), False),
+        (SyncGenClsSlow, True),
+        (AsyncGenClsSlow, False),
     ],
     ids=[
         "sync_callable_func",
@@ -279,16 +279,16 @@ class AsyncGenClsSlow:
     ],
 )
 @pytest.mark.parametrize(
-    "dep2",
+    "dep2,sync2",
     [
-        sync_callable_func_slow,
-        async_callable_func_slow,
-        sync_gen_func_slow,
-        async_gen_func_slow,
-        SyncCallableClsSlow(),
-        AsyncCallableClsSlow(),
-        SyncGenClsSlow,
-        AsyncGenClsSlow,
+        (sync_callable_func_slow, True),
+        (async_callable_func_slow, False),
+        (sync_gen_func_slow, True),
+        (async_gen_func_slow, False),
+        (SyncCallableClsSlow(), True),
+        (AsyncCallableClsSlow(), False),
+        (SyncGenClsSlow, True),
+        (AsyncGenClsSlow, False),
     ],
     ids=[
         "sync_callable_func",
@@ -302,15 +302,15 @@ class AsyncGenClsSlow:
     ],
 )
 @pytest.mark.anyio
-async def test_concurrency_async(dep1: Any, dep2: Any):
+async def test_concurrency_async(dep1: Any, sync1: bool, dep2: Any, sync2: bool):
     container = Container(scopes=(None,))
 
     counter = Counter()
     container.register_by_type(Dependant(lambda: counter), Counter)
 
     async def collector(
-        a: Annotated[None, Dependant(dep1, use_cache=False, sync_to_thread=True)],
-        b: Annotated[None, Dependant(dep2, use_cache=False, sync_to_thread=True)],
+        a: Annotated[None, Dependant(dep1, use_cache=False, sync_to_thread=sync1)],
+        b: Annotated[None, Dependant(dep2, use_cache=False, sync_to_thread=sync2)],
     ):
         ...
 
