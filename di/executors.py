@@ -19,8 +19,7 @@ class SyncExecutor(SyncExecutorProtocol):
         for task in queue:
             if task is None:
                 continue
-            res = task.compute(state)
-            if inspect.isawaitable(res):
+            if task.is_async:
                 raise TypeError("Cannot execute async dependencies in execute_sync")
             task.compute(state)
 
@@ -33,10 +32,9 @@ class SyncExecutor(SyncExecutorProtocol):
             if task is None:
                 self.__drain(q, state)
                 return
-            res = task.compute(state)
-            if inspect.isawaitable(res):
+            if task.is_async:
                 raise TypeError("Cannot execute async dependencies in execute_sync")
-            q.extend(res)  # type: ignore[arg-type]  # mypy doesn't recognize inspect.isawaitable
+            q.extend(task.compute(state))  # type: ignore[arg-type]  # mypy doesn't recognize inspect.isawaitable
 
 
 class AsyncExecutor(AsyncExecutorProtocol):
@@ -57,9 +55,10 @@ class AsyncExecutor(AsyncExecutorProtocol):
             if task is None:
                 await self.__drain(q, state)
                 return
-            res = task.compute(state)
-            if inspect.isawaitable(res):
-                res = await res
+            if task.is_async:
+                res = await task.compute(state)  # type: ignore
+            else:
+                res = task.compute(state)
             q.extend(res)  # type: ignore[arg-type]  # mypy doesn't recognize inspect.isawaitable
 
 
@@ -68,16 +67,18 @@ async def _async_worker(
     state: typing.Any,
     taskgroup: anyio.abc.TaskGroup,
 ) -> None:
-    try:
-        in_thread = task.dependant.sync_to_thread  # type: ignore  # allow other Dependant implementations
-    except AttributeError:
-        in_thread = False
-    if in_thread:
-        newtasks = await callable_in_thread_pool(task.compute)(state)
+    newtasks: "TaskResult"
+    if task.is_async:
+        newtasks = await task.compute(state)  # type: ignore[assignment,misc]
     else:
-        newtasks = task.compute(state)
-        if inspect.isawaitable(newtasks):
-            newtasks = await newtasks
+        try:
+            in_thread = task.dependant.sync_to_thread  # type: ignore  # allow other Dependant implementations
+        except AttributeError:
+            in_thread = False
+        if in_thread:
+            newtasks = await callable_in_thread_pool(task.compute)(state)  # type: ignore[assignment]
+        else:
+            newtasks = task.compute(state)  # type: ignore[assignment]
     for taskinfo in newtasks:  # type: ignore
         if taskinfo is None:
             continue

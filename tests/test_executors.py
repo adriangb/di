@@ -9,6 +9,8 @@ from di.executors import AsyncExecutor, SyncExecutor
 
 
 class TestAsyncTask(Task):
+    is_async = True
+
     def __init__(
         self,
         dependant: DependantBase[Any],
@@ -20,6 +22,8 @@ class TestAsyncTask(Task):
 
 
 class TestSyncTask(Task):
+    is_async = False
+
     def __init__(
         self,
         dependant: DependantBase[Any],

@@ -11,13 +11,28 @@ else:
 from di._utils.types import Some
 
 
+def unwrap_callable(call: Any) -> Any:
+    unwrapped = True
+    while unwrapped:
+        unwrapped = False
+        if isinstance(call, functools.partial):
+            call = call.func
+            unwrapped = True
+            continue
+        if getattr(call, "__wrapped__", None):
+            # maybe function wrapped with @wraps
+            call = getattr(call, "__wrapped__")
+            unwrapped = True
+            continue
+    return call
+
+
 def is_coroutine_callable(call: Any) -> bool:
     if not callable(call):
         return False
     if inspect.isclass(call):
         return False
-    if isinstance(call, functools.partial):
-        return inspect.iscoroutinefunction(call.func)
+    call = unwrap_callable(call)
     if inspect.iscoroutinefunction(call):
         return True
     if hasattr(call, "__call__"):
@@ -26,32 +41,12 @@ def is_coroutine_callable(call: Any) -> bool:
     return False
 
 
-def is_async_context_manager(call: Callable[..., Any]) -> bool:
-    if getattr(call, "__wrapped__", None):
-        # maybe function wrapped with @asynccontextmaanger
-        call = getattr(call, "__wrapped__")
-        return inspect.isasyncgenfunction(call)
-    if (
-        inspect.isclass(call)
-        and hasattr(call, "__aenter__")
-        and hasattr(call, "__aexit__")
-    ):
-        return True
-    return False
+def is_async_gen_callable(call: Callable[..., Any]) -> bool:
+    return inspect.isasyncgenfunction(unwrap_callable(call))
 
 
-def is_sync_context_manager(call: Any) -> bool:
-    if getattr(call, "__wrapped__", None):
-        # maybe function wrapped with @contextmaanger
-        call = getattr(call, "__wrapped__")
-        return inspect.isgeneratorfunction(call)
-    if (
-        inspect.isclass(call)
-        and hasattr(call, "__enter__")
-        and hasattr(call, "__exit__")
-    ):
-        return True
-    return False
+def is_gen_callable(call: Any) -> bool:
+    return inspect.isgeneratorfunction(unwrap_callable(call))
 
 
 def get_annotations(call: Callable[..., Any]) -> Dict[str, Any]:

@@ -13,6 +13,7 @@ from di.api.dependencies import DependantBase
 
 class Task(Protocol):
     dependant: DependantBase[Any]
+    is_async: bool
 
     def compute(
         self, state: Any
