@@ -68,18 +68,20 @@ async def _async_worker(
     state: typing.Any,
     taskgroup: anyio.abc.TaskGroup,
 ) -> None:
-    if (
-        getattr(task.dependant, "sync_to_thread", False) is True
-    ):  # instance of Dependant
+    try:
+        in_thread = task.dependant.sync_to_thread  # type: ignore  # allow other Dependant implementations
+    except AttributeError:
+        in_thread = False
+    if in_thread:
         newtasks = await callable_in_thread_pool(task.compute)(state)
     else:
         newtasks = task.compute(state)
         if inspect.isawaitable(newtasks):
             newtasks = await newtasks
-    for taskinfo in typing.cast(TaskResult, newtasks):
+    for taskinfo in newtasks:  # type: ignore
         if taskinfo is None:
             continue
-        taskgroup.start_soon(_async_worker, taskinfo, state, taskgroup)
+        taskgroup.start_soon(_async_worker, taskinfo, state, taskgroup)  # type: ignore
 
 
 class ConcurrentAsyncExecutor(AsyncExecutorProtocol):
@@ -89,4 +91,4 @@ class ConcurrentAsyncExecutor(AsyncExecutorProtocol):
         async with anyio.create_task_group() as taskgroup:
             for task in tasks:
                 if task is not None:
-                    taskgroup.start_soon(_async_worker, task, state, taskgroup)
+                    taskgroup.start_soon(_async_worker, task, state, taskgroup)  # type: ignore

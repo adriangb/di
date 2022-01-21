@@ -77,7 +77,7 @@ def generate_dag(
     name = "final"
     deps = list(funcs.keys())
     params = ", ".join(
-        [f"dep_{dep_name}: Annotated[None, Dependant({dep_name})" for dep_name in deps]
+        [f"dep_{dep_name}: Annotated[None, Dependant({dep_name})]" for dep_name in deps]
     )
     func_def = template.format(name, params, 0)
     exec(func_def, globals, funcs)

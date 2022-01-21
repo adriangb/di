@@ -13,7 +13,7 @@ class TestAsyncTask(Task):
         self,
         dependant: DependantBase[Any],
     ):
-        ...
+        self.dependant = dependant
 
     async def compute(self, state: Any) -> Iterable[Optional[Task]]:
         raise NotImplementedError
@@ -24,7 +24,7 @@ class TestSyncTask(Task):
         self,
         dependant: DependantBase[Any],
     ):
-        ...
+        self.dependant = dependant
 
     def compute(self, state: Any) -> Iterable[Optional[Task]]:
         raise NotImplementedError

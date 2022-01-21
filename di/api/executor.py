@@ -11,8 +11,7 @@ else:
 from di.api.dependencies import DependantBase
 
 
-class Task:
-    __slots__ = ()
+class Task(Protocol):
     dependant: DependantBase[Any]
 
     def compute(
