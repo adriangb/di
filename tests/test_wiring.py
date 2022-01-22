@@ -51,7 +51,7 @@ def test_autowiring_class_with_default_builtin() -> None:
         return a.value
 
     dep = Dependant(func)
-    container = Container(scopes=(None,))
+    container = Container()
     solved = container.solve(dep)
 
     with container.enter_scope(None):
@@ -73,7 +73,7 @@ def test_autowiring_class_with_default_class() -> None:
         return b.a.value
 
     dep = Dependant(func)
-    container = Container(scopes=(None,))
+    container = Container()
     solved = container.solve(dep)
 
     with container.enter_scope(None):
@@ -95,7 +95,7 @@ def test_autowiring_class_with_default_class_from_bind() -> None:
         return b.a.value
 
     dep = Dependant(func)
-    container = Container(scopes=(None,))
+    container = Container()
     container.register_by_type(Dependant(lambda: A("bound")), A)
     solved = container.solve(dep)
 

@@ -13,7 +13,7 @@ INTERVAL = 10e-6  # 10 us
 
 
 async def async_bench(sleep: SleepTimes, graph: GraphSize, iters: int) -> None:
-    container = Container(scopes=[None])
+    container = Container()
     solved = container.solve(Dependant(generate_dag(graph, sync=False, sleep=sleep)))
     executor = ConcurrentAsyncExecutor()
     p = Profiler()
@@ -29,7 +29,7 @@ async def async_bench(sleep: SleepTimes, graph: GraphSize, iters: int) -> None:
 
 
 def sync_bench(sleep: SleepTimes, graph: GraphSize, iters: int) -> None:
-    container = Container(scopes=[None])
+    container = Container()
     solved = container.solve(Dependant(generate_dag(graph, sync=True, sleep=sleep)))
     executor = SyncExecutor()
     p = Profiler()

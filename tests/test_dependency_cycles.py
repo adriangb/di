@@ -23,7 +23,7 @@ def dep2(v: "Annotated[int, Dependant(dep1)]") -> None:
 
 
 def test_cycle() -> None:
-    container = Container(scopes=(None,))
+    container = Container()
     with container.enter_scope(None):
         with pytest.raises(DependencyCycleError, match="Nodes are in a cycle"):
             container.solve(Dependant(dep1))

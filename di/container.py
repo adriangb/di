@@ -8,7 +8,6 @@ from contextlib import contextmanager
 from types import TracebackType
 from typing import (
     Any,
-    Collection,
     ContextManager,
     Deque,
     Dict,
@@ -72,12 +71,16 @@ class _ContainerCommon:
         self,
         scopes: Sequence[Scope],
     ):
-        self._scopes = list(scopes)
+        self._scopes = tuple(scopes)
         self._register_hooks = []
 
     @property
-    def scopes(self) -> Collection[Scope]:
-        return self._state.stacks.keys()
+    def scopes(self) -> Sequence[Scope]:
+        return self._scopes
+
+    @property
+    def current_scopes(self) -> Sequence[Scope]:
+        return tuple(self._state.stacks.keys())
 
     @property
     def _state(self) -> ContainerState:
@@ -324,16 +327,12 @@ class BaseContainer(_ContainerCommon):
     def __init__(
         self,
         *,
-        scopes: Sequence[Scope],
+        scopes: Sequence[Scope] = (None,),
     ) -> None:
         super().__init__(
             scopes=scopes,
         )
         self.__state = ContainerState.initialize()
-
-    @property
-    def scopes(self) -> Collection[Scope]:
-        return self.__state.stacks.keys()
 
     @property
     def _state(self) -> ContainerState:
@@ -410,7 +409,7 @@ class Container(_ContainerCommon):
     def __init__(
         self,
         *,
-        scopes: Sequence[Scope],
+        scopes: Sequence[Scope] = (None,),
     ) -> None:
         super().__init__(
             scopes=scopes,
@@ -421,10 +420,6 @@ class Container(_ContainerCommon):
     @property
     def _state(self) -> ContainerState:
         return self._context.get()
-
-    @property
-    def scopes(self) -> Collection[Scope]:
-        return self._state.stacks.keys()
 
     def copy(self: _ContainerType) -> _ContainerType:
         new = object.__new__(self.__class__)

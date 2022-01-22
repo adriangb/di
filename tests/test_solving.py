@@ -13,7 +13,7 @@ def test_no_annotations_no_default_value_no_marker():
     def badfunc(value):  # type: ignore # for Pylance
         raise AssertionError("This function should never be called")
 
-    container = Container(scopes=(None,))
+    container = Container()
 
     with pytest.raises(
         WiringError,
@@ -29,7 +29,7 @@ def test_default_argument():
     def default_func(value=2) -> int:  # type: ignore # for Pylance
         return value  # type: ignore # for Pylance
 
-    container = Container(scopes=(None,))
+    container = Container()
 
     with container.enter_scope(None):
         res = container.execute_sync(container.solve(Dependant(default_func)), executor=SyncExecutor())  # type: ignore # for Pylance
@@ -42,7 +42,7 @@ def test_marker():
     def marker_default_func(value: Annotated[Any, Dependant(lambda: 2)]) -> int:  # type: ignore # for Pylance
         return value  # type: ignore # for Pylance
 
-    container = Container(scopes=(None,))
+    container = Container()
 
     with container.enter_scope(None):
         res = container.execute_sync(container.solve(Dependant(marker_default_func)), executor=SyncExecutor())  # type: ignore # for Pylance
@@ -106,7 +106,7 @@ def test_siblings() -> None:
     def dep2(one: Annotated[int, Dependant(dep1)]) -> int:
         return one + 1
 
-    container = Container(scopes=(None,))
+    container = Container()
 
     siblings = [Sibling(), Sibling()]
     dep = JoinedDependant(Dependant(dep2), siblings=[Dependant(s) for s in siblings])
@@ -136,7 +136,7 @@ def test_non_parameter_dependency():
                 )
             ]
 
-    container = Container(scopes=(None,))
+    container = Container()
 
     def takes_no_parameters() -> None:
         pass
@@ -159,7 +159,7 @@ class CannotBeWired:
 def test_no_wire() -> None:
     """Specifying wire=False skips wiring on the dependency itself"""
 
-    container = Container(scopes=(None,))
+    container = Container()
     with pytest.raises(WiringError):
         container.solve(Dependant(CannotBeWired))
     container.solve(Dependant(CannotBeWired, wire=False))
@@ -172,7 +172,7 @@ def test_wiring_from_binds() -> None:
         def __init__(self) -> None:
             super().__init__(1)
 
-    container = Container(scopes=(None,))
+    container = Container()
     # container.register_by_type(Dependant(CanBeWired), CannotBeWired)
     with pytest.raises(WiringError):
         container.solve(Dependant(CannotBeWired))
@@ -188,6 +188,6 @@ def test_unknown_scope():
     def bad_dep(v: Annotated[int, Dependant(lambda: 1, scope="app")]) -> int:
         return v
 
-    container = Container(scopes=(None,))
+    container = Container()
     with pytest.raises(UnknownScopeError):
         container.solve(Dependant(bad_dep))

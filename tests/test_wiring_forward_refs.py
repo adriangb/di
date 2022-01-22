@@ -10,7 +10,7 @@ class Foo:
 
 
 def test_forward_ref_evalutation():
-    container = Container(scopes=(None,))
+    container = Container()
     with container.enter_scope(None):
         res = container.execute_sync(
             container.solve(Dependant(Foo.foo)), executor=SyncExecutor()

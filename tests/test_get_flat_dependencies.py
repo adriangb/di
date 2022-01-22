@@ -46,7 +46,7 @@ def assert_compare_call(
 
 @pytest.mark.anyio
 async def test_get_flat_dependencies():
-    container = Container(scopes=(None,))
+    container = Container()
 
     assert_compare_call(
         container.solve(Dependant(call=call7)).get_flat_subdependants(),

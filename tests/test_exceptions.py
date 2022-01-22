@@ -48,7 +48,7 @@ def test_dependency_can_catch_exception_single_sync() -> None:
     def collector(one: Annotated[None, Dependant(dep1)]) -> None:
         raise MyException
 
-    container = Container(scopes=(None,))
+    container = Container()
     rec = Recorder()
     container.register_by_type(Dependant(lambda: rec), Recorder)
     with container.enter_scope(None):
@@ -63,7 +63,7 @@ async def test_dependency_can_catch_exception_single_async() -> None:
     def collector(one: Annotated[None, Dependant(async_dep1)]) -> None:
         raise MyException
 
-    container = Container(scopes=(None,))
+    container = Container()
     rec = Recorder()
     container.register_by_type(Dependant(lambda: rec), Recorder)
     async with container.enter_scope(None):
@@ -79,7 +79,7 @@ def test_dependency_can_catch_exception_concurrent_sync() -> None:
     ) -> None:
         raise MyException
 
-    container = Container(scopes=(None,))
+    container = Container()
     rec = Recorder()
     container.register_by_type(Dependant(lambda: rec), Recorder)
     with container.enter_scope(None):
@@ -100,7 +100,7 @@ async def test_dependency_can_catch_exception_concurrent_async() -> None:
     ) -> None:
         raise MyException
 
-    container = Container(scopes=(None,))
+    container = Container()
     rec = Recorder()
     container.register_by_type(Dependant(lambda: rec), Recorder)
     async with container.enter_scope(None):
@@ -121,7 +121,7 @@ async def test_dependency_can_catch_exception_concurrent_mixed() -> None:
     ) -> None:
         raise MyException
 
-    container = Container(scopes=(None,))
+    container = Container()
     rec = Recorder()
     container.register_by_type(Dependant(lambda: rec), Recorder)
     async with container.enter_scope(None):
@@ -170,7 +170,7 @@ def test_dependency_can_catch_exception_single_sync_reraise() -> None:
     def collector(one: Annotated[None, Dependant(dep1_reraise)]) -> None:
         raise MyException
 
-    container = Container(scopes=(None,))
+    container = Container()
     rec = Recorder()
     container.register_by_type(Dependant(lambda: rec), Recorder)
     try:
@@ -192,7 +192,7 @@ async def test_dependency_can_catch_exception_single_async_reraise() -> None:
     def collector(one: Annotated[None, Dependant(async_dep1_reraise)]) -> None:
         raise MyException
 
-    container = Container(scopes=(None,))
+    container = Container()
     rec = Recorder()
     container.register_by_type(Dependant(lambda: rec), Recorder)
     try:
@@ -216,7 +216,7 @@ def test_dependency_can_catch_exception_concurrent_sync_reraise() -> None:
     ) -> None:
         raise MyException
 
-    container = Container(scopes=(None,))
+    container = Container()
     rec = Recorder()
     container.register_by_type(Dependant(lambda: rec), Recorder)
     try:
@@ -241,7 +241,7 @@ async def test_dependency_can_catch_exception_concurrent_async_reraise() -> None
     ) -> None:
         raise MyException
 
-    container = Container(scopes=(None,))
+    container = Container()
     rec = Recorder()
     container.register_by_type(Dependant(lambda: rec), Recorder)
     try:
@@ -266,7 +266,7 @@ async def test_dependency_can_catch_exception_concurrent_mixed_reraise() -> None
     ) -> None:
         raise MyException
 
-    container = Container(scopes=(None,))
+    container = Container()
     rec = Recorder()
     container.register_by_type(Dependant(lambda: rec), Recorder)
     try:
@@ -301,7 +301,7 @@ def test_deep_reraise() -> None:
     def root(child: Annotated[None, Dependant(parent)]) -> None:
         raise MyException
 
-    container = Container(scopes=(None,))
+    container = Container()
     with container.enter_scope(None):
         container.execute_sync(
             container.solve(Dependant(root)), executor=SyncExecutor()

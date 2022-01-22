@@ -86,7 +86,7 @@ async def test_dependency_types(
     use_cache: bool,
 ):
     dep = wrapper(dep)
-    container = Container(scopes=(None,))
+    container = Container()
     solved = container.solve(Dependant(dep, use_cache=use_cache))  # type: ignore
     executor = ConcurrentAsyncExecutor()
     async with container.enter_scope(None):

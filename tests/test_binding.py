@@ -14,7 +14,7 @@ def endpoint(r: Request) -> int:
 
 
 def test_bind():
-    container = Container(scopes=(None,))
+    container = Container()
 
     def func() -> int:
         return 1
@@ -53,7 +53,7 @@ def test_bind_transitive_dependency_results_skips_subdpendencies():
     def dep(t: Annotated[None, Dependant(transitive)]) -> None:
         ...
 
-    container = Container(scopes=(None,))
+    container = Container()
     with container.enter_scope(None):
         # we get an error from raises_exception
         with pytest.raises(ValueError):
@@ -95,7 +95,7 @@ def test_bind_with_dependencies():
     def return_four(two: Annotated[int, Dependant(return_two)]) -> int:
         return two + 2
 
-    container = Container(scopes=(None,))
+    container = Container()
     with container.enter_scope(None):
         assert (
             container.execute_sync(

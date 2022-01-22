@@ -20,7 +20,7 @@ def test_positional_only_parameters():
     func_def = r"def func(one: Test, /) -> None:  ..."
     exec(func_def, globals())
 
-    container = Container(scopes=(None,))
+    container = Container()
     solved = container.solve(Dependant(func))
     with container.enter_scope(None):
         container.execute_sync(solved, executor=SyncExecutor())

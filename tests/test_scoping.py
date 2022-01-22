@@ -60,7 +60,7 @@ def test_scoped_execute():
 def test_duplicate_global_scope(outer: Scope, inner: Scope):
     """Cannot enter the same global scope twice"""
 
-    container = Container(scopes=(None,))
+    container = Container()
 
     fn = {
         typing.cast(Scope, "global"): container.enter_scope,

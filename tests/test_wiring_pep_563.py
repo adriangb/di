@@ -9,7 +9,7 @@ class Test:
 
 
 def test_postponed_evaluation_solving():
-    container = Container(scopes=(None,))
+    container = Container()
     with container.enter_scope(None):
         res = container.execute_sync(
             container.solve(Dependant(Test.__call__)), executor=SyncExecutor()

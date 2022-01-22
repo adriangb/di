@@ -84,7 +84,7 @@ v5 = vFive()
 
 
 def test_execute():
-    container = Container(scopes=(None,))
+    container = Container()
     with container.enter_scope(None):
         res = container.execute_sync(
             container.solve(Dependant(v5)), executor=SyncExecutor()
@@ -218,7 +218,7 @@ class AsyncCallableClsSlow:
 )
 @pytest.mark.anyio
 async def test_concurrency_async(dep1: Any, sync1: bool, dep2: Any, sync2: bool):
-    container = Container(scopes=(None,))
+    container = Container()
 
     counter = Counter()
     container.register_by_type(Dependant(lambda: counter), Counter)
