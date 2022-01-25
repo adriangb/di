@@ -1,6 +1,6 @@
 import pytest
 
-from docs.src import web_framework
+from docs_src import web_framework
 
 
 @pytest.mark.anyio

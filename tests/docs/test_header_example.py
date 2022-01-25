@@ -1,6 +1,6 @@
 import pytest
 
-from docs.src import headers_example
+from docs_src import headers_example
 
 
 @pytest.mark.anyio

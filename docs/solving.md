@@ -23,18 +23,17 @@ Note that you can still have *values* in your DAG change, just not the shape of 
 For example, here is a more advanced use case where the framework solves the endpoint and then provides the `Request` as a value each time the endpoint is called.
 
 This means that `di` does *not* do any reflection for each request, nor does it have to do dependency resolution.
-Instead, only some basic checks on scopes are done and the dependencies are executed with almost no overhead.
 
-```Python hl_lines="11-13 15"
---8<-- "docs/src/solved_dependant.py"
+```Python hl_lines="11-13 16-18"
+--8<-- "docs_src/solved_dependant.py"
 ```
 
 ## Getting a list of dependencies
 
 `di` provides a convenience function to flatten the dependency DAG into a list off all sub dependencies in `Container.get_flat_subdependants`.
 
-```Python hl_lines="17-19"
---8<-- "docs/src/solved_dependant.py"
+```Python hl_lines="20"
+--8<-- "docs_src/solved_dependant.py"
 ```
 
 This lists all of the *Dependants* for the solved dependency.

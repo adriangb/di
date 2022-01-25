@@ -2,7 +2,7 @@ import sys
 
 import pytest
 
-from docs.src import sharing
+from docs_src import sharing
 
 
 @pytest.mark.skipif(

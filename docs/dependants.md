@@ -10,13 +10,13 @@ You can easily build your own version of `Dependant` by inheriting from `Dependa
 Here is an example that extracts headers from requests:
 
 ```python
---8<-- "docs/src/headers_example.py"
+--8<-- "docs_src/headers_example.py"
 ```
 
 Another good example of the flexibility provided by `DependantBase` is the implementation of [JointDependant], which lets you schedule and execute dependencies together even if they are not directly connected by wiring:
 
 ```python
---8<-- "docs/src/joined_dependant.py"
+--8<-- "docs_src/joined_dependant.py"
 ```
 
 Here `B` is executed even though `A` does not depend on it.

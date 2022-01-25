@@ -1,7 +1,7 @@
 import pytest
 
 from di.exceptions import ScopeViolationError
-from docs.src import invalid_scope_dependance
+from docs_src import invalid_scope_dependance
 
 
 def test_invalid_scope_dependance() -> None:

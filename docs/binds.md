@@ -15,7 +15,7 @@ Every bind in `di` consists of:
 This means that binds are themselves dependencies:
 
 ```Python
---8<-- "docs/src/bind_as_a_dep.py"
+--8<-- "docs_src/bind_as_a_dep.py"
 ```
 
 In this example we register the `Postgres` class to `DBProtocol`, and we can see that `di` auto-wires `Postgres` as well!

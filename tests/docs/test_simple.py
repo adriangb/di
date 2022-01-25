@@ -1,4 +1,4 @@
-from docs.src.simple import main
+from docs_src.simple import main
 
 
 def test_simple_example():

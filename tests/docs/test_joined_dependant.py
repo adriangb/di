@@ -1,4 +1,4 @@
-from docs.src import joined_dependant
+from docs_src import joined_dependant
 
 
 def test_bind_as_a_dep() -> None:

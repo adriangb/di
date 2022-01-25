@@ -1,6 +1,6 @@
 import pytest
 
-from docs.src import bind_as_a_dep
+from docs_src import bind_as_a_dep
 
 
 @pytest.mark.anyio

@@ -2,21 +2,26 @@ site_name: "di"
 site_description: Simple pythonic dependency injection
 site_url: https://www.adriangb.com/di
 
+
 theme:
-  name: material
+  name: "material"
   custom_dir: docs/overrides
   palette:
-    - scheme: default
+    - scheme: "default"
+      primary: "black"
+      accent: "amber"
       media: "(prefers-color-scheme: light)"
       toggle:
-        icon: material/lightbulb
+        icon: "material/weather-night"
         name: "Switch to dark mode"
-    - scheme: slate
+    - scheme: "slate"
+      primary: "black"
+      accent: "amber"
       media: "(prefers-color-scheme: dark)"
-      primary: blue
       toggle:
-        icon: material/lightbulb-outline
+        icon: "material/weather-sunny"
         name: "Switch to light mode"
+
 
 repo_name: adriangb/di
 repo_url: https://github.com/adriangb/di
@@ -24,12 +29,13 @@ edit_uri: "blob/main/docs/"
 
 nav:
   - Intro: README.md
+  - Examples: examples.md
   - Architecture: architecture.md
   - Wiring: wiring.md
   - Scopes: scopes.md
   - Registration and Binding: binds.md
   - Dependants: dependants.md
-  - Sharing: sharing.md
+  - Caching: cache.md
   - Solving: solving.md
   - Contributing: contributing.md
 

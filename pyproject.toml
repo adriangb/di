@@ -65,7 +65,7 @@ exclude_lines = ["pragma: no cover", '\.\.\.', "raise NotImplementedError", "TYP
 testpaths = ["tests"]
 
 [tool.mypy]
-files = "di/**/*.py,tests/**/*.py,docs/src/**/*.py"
+files = "di/**/*.py,tests/**/*.py,docs_src/**/*.py"
 show_error_codes = true
 pretty = true
 warn_unreachable = true

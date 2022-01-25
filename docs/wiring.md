@@ -26,7 +26,7 @@ Auto-wiring can work with dataclasses, even ones with a `default_factory`.
 In this example we'll load a config from the environment:
 
 ```Python
---8<-- "docs/src/auto-wiring.py"
+--8<-- "docs_src/autowiring.py"
 ```
 
 What makes this "auto-wiring" is that we didn't have to tell `di` how to construct `DBConn`: `di` detected that `controller` needed a `DBConn` and that `DBConn` in turn needs a `Config` instance.
@@ -46,7 +46,7 @@ There are two important concepts in `di` to handle this input:
 Here is an example that makes use of both:
 
 ```Python
---8<-- "docs/src/manual_wiring.py"
+--8<-- "docs_src/manual_wiring.py"
 ```
 
 Binds in `di` are particularly powerful because the bound providers can themselves have dependencies, and those dependencies can even be auto-wired.

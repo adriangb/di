@@ -1,4 +1,4 @@
-from docs.src import solved_dependant
+from docs_src import solved_dependant
 
 
 def test_solved() -> None:

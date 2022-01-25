@@ -24,8 +24,8 @@ Every dependency is linked to a scope.
 When a scope exits, all dependencies linked to it are destroyed (if they have teardown, the teardown is run) and their value is removed from the cache.
 This means that dependencies scoped to an outer scope cannot depend on dependencies scoped to an inner scope:
 
-```Python hl_lines="13 22"
---8<-- "docs/src/invalid_scope_dependance.py"
+```Python hl_lines="14 24"
+--8<-- "docs_src/invalid_scope_dependance.py"
 ```
 
 This example will fail with `di.exceptions.ScopeViolationError` because an `"app"` scoped dependency (`conn`, as requested by `controller` via `Dependant(scope="app")`) depends on a request scope dependency (in `framework`, we specify `Dependant(..., scope="request"`).

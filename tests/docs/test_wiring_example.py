@@ -1,6 +1,6 @@
 import pytest
 
-from docs.src import autowiring, manual_wiring
+from docs_src import autowiring, manual_wiring
 
 
 @pytest.mark.anyio
