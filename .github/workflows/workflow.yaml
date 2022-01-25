@@ -13,12 +13,15 @@ jobs:
   lint:
     name: Run Linters
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.7", "3.8", "3.9", "3.10"]
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.x'
+          python-version: ${{ matrix.python-version }}
       - name: Install and configure Poetry
         uses: snok/install-poetry@v1.3.0
       - name: Lint
@@ -110,6 +113,8 @@ jobs:
       - name: Install and configure Poetry
         uses: snok/install-poetry@v1.3.0
       - name: Release on PyPi
+        continue-on-error: true  # allow pushes to main that don't release
+        id: pypi
         run: |
           PACKAGE_VERSION=$(poetry version -s)
           echo "package_version=$PACKAGE_VERSION" >> $GITHUB_ENV
@@ -118,6 +123,7 @@ jobs:
           poetry publish --build
       - name: 🚀 Create GitHub Release 😺
         uses: ncipollo/release-action@v1
+        if: steps.pypi.outcome == 'success'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ env.package_version }}

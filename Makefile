@@ -1,14 +1,20 @@
-.PHONY: .clean test test-mutation docs-build docs-serve
+.PHONY: install-poetry .clean test test-mutation docs-build docs-serve
 
 GIT_SHA = $(shell git rev-parse --short HEAD)
 PACKAGE_VERSION = $(shell poetry version -s | cut -d+ -f1)
 
-.init:
-	@echo "---- 📦 Building package ----"
+.install-poetry:
+	@echo "---- 👷 Installing build dependencies ----"
 	deactivate > /dev/null 2>&1 || true
-	poetry -V || pip install -U --pre poetry
+	pip install -U wheel
+	poetry -V || pip install -U poetry
+	touch .install-poetry
+
+install-poetry: .install-poetry
+
+.init: .install-poetry
+	@echo "---- 📦 Building package ----"
 	rm -rf .venv
-	deactivate || true
 	poetry install
 	git init .
 	poetry run pre-commit install --install-hooks
@@ -16,6 +22,7 @@ PACKAGE_VERSION = $(shell poetry version -s | cut -d+ -f1)
 
 .clean:
 	rm -rf .init .mypy_cache .pytest_cache
+	poetry -V || rm -rf .install-poetry
 
 init: .clean .init
 	@echo ---- 🔧 Re-initialized project ----
@@ -35,7 +42,7 @@ test-mutation: .init
 
 docs-serve: .init
 	@echo ---- 📝 Serving docs ----
-	@poetry run mkdocs serve
+	@poetry run mkdocs serve --dev-addr localhost:8001
 
 docs-deploy: .init
 	@echo ---- 🚀 Deploying docs ----
