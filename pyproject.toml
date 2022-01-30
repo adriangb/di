@@ -28,7 +28,7 @@ graphlib2 = ">=0.2.13"
 
 [tool.poetry.dev-dependencies]
 # linting
-black = ">=21.12b0,<22"
+black = "~22"
 flake8 = "~3.9"
 isort = "~5.10"
 mypy = "v0.930"
