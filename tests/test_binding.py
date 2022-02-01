@@ -26,7 +26,7 @@ def test_bind():
             container.solve(dependant), executor=SyncExecutor()
         )
         assert res == 1
-    with container.register_by_type(Dependant(lambda: 2), func):
+    with container.register_by_identity(Dependant(lambda: 2), func):
         with container.enter_scope(None):
             res = container.execute_sync(
                 container.solve(dependant), executor=SyncExecutor()
@@ -102,9 +102,31 @@ def test_bind_with_dependencies():
                 container.solve(Dependant(return_four)), executor=SyncExecutor()
             )
         ) == 4
-    with container.register_by_type(Dependant(return_three), return_two):
+    with container.register_by_identity(Dependant(return_three), return_two):
         with container.enter_scope(None):
             val = container.execute_sync(
                 container.solve(Dependant(return_four)), executor=SyncExecutor()
             )
         assert val == 5
+
+
+def test_bind_covariant() -> None:
+    class Animal:
+        pass
+
+    class Dog(Animal):
+        pass
+
+    container = Container()
+    container.register_by_type(
+        Dependant(lambda: Dog()),
+        Animal,
+        covariant=True,
+    )
+
+    solved = container.solve(Dependant(Animal))
+
+    with container.enter_scope(None):
+        instance = container.execute_sync(solved, executor=SyncExecutor())
+
+    assert isinstance(instance, Dog)

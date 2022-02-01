@@ -113,6 +113,36 @@ class _ContainerCommon:
     def register_by_type(
         self,
         provider: DependantBase[Any],
+        dependency: type,
+        *,
+        covariant: bool = False,
+    ) -> ContextManager[None]:
+        def hook(
+            param: Optional[inspect.Parameter], dependant: DependantBase[Any]
+        ) -> Optional[DependantBase[Any]]:
+            if dependant.call is dependency:
+                return provider
+            if param is None:
+                return None
+            type_annotation_option = get_type(param)
+            if type_annotation_option is None:
+                return None
+            type_annotation = type_annotation_option.value
+            if type_annotation is dependency:
+                return provider
+            if (
+                covariant
+                and inspect.isclass(dependency)
+                and issubclass(dependency, type_annotation)
+            ):
+                return provider
+            return None
+
+        return self.register(hook)
+
+    def register_by_identity(
+        self,
+        provider: DependantBase[Any],
         dependency: DependencyProvider,
     ) -> ContextManager[None]:
         def hook(
