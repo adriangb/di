@@ -1,3 +1,5 @@
+from typing import List
+
 import pytest
 
 from di import Container, Dependant, SyncExecutor
@@ -124,7 +126,12 @@ def test_bind_covariant() -> None:
         covariant=True,
     )
 
-    solved = container.solve(Dependant(Animal))
+    # include a generic to make sure we are safe with
+    # isisntance checks and MRO checks
+    def dep(animal: Animal, generic: Annotated[List[int], Dependant(list)]) -> Animal:
+        return animal
+
+    solved = container.solve(Dependant(dep))
 
     with container.enter_scope(None):
         instance = container.execute_sync(solved, executor=SyncExecutor())

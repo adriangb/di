@@ -130,12 +130,10 @@ class _ContainerCommon:
             type_annotation = type_annotation_option.value
             if type_annotation is dependency:
                 return provider
-            if (
-                covariant
-                and inspect.isclass(dependency)
-                and issubclass(dependency, type_annotation)
-            ):
-                return provider
+            if covariant:
+                if inspect.isclass(type_annotation) and inspect.isclass(dependency):
+                    if dependency in type_annotation.__mro__:
+                        return provider
             return None
 
         return self.register(hook)
