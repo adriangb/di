@@ -134,7 +134,7 @@ class Dependant(DependantBase[T]):
                     sub_dependant = maybe_sub_dependant
                 elif param.default is param.empty:
                     # try to auto-wire
-                    sub_dependant = Dependant[Any](
+                    sub_dependant = self.__class__(
                         call=None,
                         scope=self.scope,
                         use_cache=self.use_cache,
@@ -142,7 +142,7 @@ class Dependant(DependantBase[T]):
                 else:
                     # has a default parameter but we create a dependency anyway just for binds
                     # but do not wire it to make autowiring less brittle and less magic
-                    sub_dependant = Dependant[Any](
+                    sub_dependant = self.__class__(
                         call=None,
                         scope=self.scope,
                         use_cache=self.use_cache,

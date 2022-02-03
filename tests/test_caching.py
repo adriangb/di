@@ -1,4 +1,5 @@
-from typing import Tuple
+from dataclasses import dataclass
+from typing import Any, Tuple
 
 from di import Container, Dependant, SyncExecutor
 from di.typing import Annotated
@@ -142,3 +143,34 @@ def test_sharing_within_execution_scope() -> None:
         one, two, three = container.execute_sync(solved, executor=executor)
         assert one is three
         assert two is not one
+
+
+def test_dependant_custom_cache_key() -> None:
+
+    # we make a dependant that does not care about the scope
+    # so a "request" scoped dependency will pick up cache from an "app" scoped one
+    class CustomDependant(Dependant[Any]):
+        @property
+        def cache_key(self) -> Any:
+            return (self.__class__, self.call)
+
+    @dataclass
+    class State:
+        foo: str = "bar"
+
+    container = Container(scopes=("app", "request"))
+    app_scoped_state_dep = CustomDependant(State, scope="app")
+    app_scoped_state_solved = container.solve(app_scoped_state_dep)
+    request_scoped_state_dep = CustomDependant(State, scope="request")
+    request_scoped_state_solved = container.solve(request_scoped_state_dep)
+
+    with container.enter_scope("app"):
+        instance_1 = container.execute_sync(
+            app_scoped_state_solved, executor=SyncExecutor()
+        )
+        with container.enter_scope("request"):
+            instance_2 = container.execute_sync(
+                request_scoped_state_solved, executor=SyncExecutor()
+            )
+
+        assert instance_2 is instance_1

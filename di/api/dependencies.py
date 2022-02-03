@@ -1,26 +1,16 @@
 from __future__ import annotations
 
 import inspect
-import sys
 from typing import Any, Generic, List, NamedTuple, Optional, TypeVar
 
-if sys.version_info < (3, 8):
-    from typing_extensions import Protocol
-else:
-    from typing import Protocol
-
+from di._utils.types import CacheKey
 from di.api.providers import DependencyProviderType
 from di.api.scopes import Scope
 
 T = TypeVar("T")
 
 
-class CacheKey(Protocol):
-    def __hash__(self) -> int:
-        ...
-
-    def __eq__(self, __o: object) -> bool:
-        ...
+__all__ = ("CacheKey", "DependantBase", "DependencyParameter")
 
 
 class DependantBase(Generic[T]):

@@ -1,8 +1,23 @@
+import sys
 from dataclasses import dataclass
 from types import TracebackType
 from typing import Any, Generic, Optional, Type, TypeVar, Union
 
+if sys.version_info < (3, 8):
+    from typing_extensions import Protocol
+else:
+    from typing import Protocol
+
+
 T = TypeVar("T")
+
+
+class CacheKey(Protocol):
+    def __hash__(self) -> int:
+        ...
+
+    def __eq__(self, __o: object) -> bool:
+        ...
 
 
 class FusedContextManager(Generic[T]):

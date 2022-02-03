@@ -7,6 +7,7 @@ from graphlib2 import TopologicalSorter
 
 from di._utils.scope_map import ScopeMap
 from di._utils.task import ExecutionState, Task, gather_new_tasks
+from di._utils.types import CacheKey
 from di.api.executor import Task as ExecutorTask
 from di.api.providers import DependencyProvider
 from di.api.scopes import Scope
@@ -24,7 +25,7 @@ class SolvedDependantCache(NamedTuple):
 
 def plan_execution(
     stacks: Mapping[Scope, Union[AsyncExitStack, ExitStack]],
-    cache: ScopeMap[DependencyProvider, Any],
+    cache: ScopeMap[CacheKey, Any],
     solved: SolvedDependant[Any],
     *,
     values: Optional[Mapping[DependencyProvider, Any]] = None,

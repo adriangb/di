@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, Hashable, List, Mapping, TypeVar, Union
+from typing import Dict, Hashable, List, TypeVar, Union
 
 from di.api.scopes import Scope
 from di.exceptions import DuplicateScopeError, UnknownScopeError
@@ -8,9 +8,6 @@ from di.exceptions import DuplicateScopeError, UnknownScopeError
 KT = TypeVar("KT", bound=Hashable)
 VT = TypeVar("VT")
 T = TypeVar("T")
-
-
-UNSET = object()
 
 
 class ScopeMap(Dict[Scope, Dict[KT, VT]]):
@@ -22,21 +19,19 @@ class ScopeMap(Dict[Scope, Dict[KT, VT]]):
     no iteration is required: we can simply pop all keys in that scope.
     """
 
-    def to_mapping(self) -> Mapping[KT, VT]:
-        ms = iter(self.values())
-        res = next(ms).copy()
-        for m in ms:
-            res.update(m)
-        return res
-
-    def get_from_scope(self, key: KT, *, scope: Scope, default: T) -> Union[VT, T]:
-        try:
-            return self[scope].get(key, default)
-        except KeyError:
-            raise UnknownScopeError(str(scope)) from None
+    def get_key(self, key: KT, *, scope: Scope, default: T) -> Union[VT, T]:
+        for current_scope, scopemap in self.items():
+            if key in scopemap:
+                return scopemap[key]
+            if current_scope == scope:
+                break
+        return default
 
     def set(self, key: KT, value: VT, *, scope: Scope) -> None:
-        self[scope][key] = value
+        try:
+            self[scope][key] = value
+        except KeyError:
+            raise UnknownScopeError
 
     def add_scope(self, scope: Scope) -> None:
         if scope in self:

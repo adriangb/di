@@ -296,6 +296,7 @@ class _ContainerCommon:
                 scope=dep.scope,
                 call=dep.call,
                 use_cache=dep.use_cache,
+                cache_key=dep.cache_key,
                 dependant=dep,
                 task_id=task_id,
                 positional_parameters=positional_parameters,

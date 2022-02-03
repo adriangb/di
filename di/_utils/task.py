@@ -24,6 +24,7 @@ from di._utils.inspect import (
     is_gen_callable,
 )
 from di._utils.scope_map import ScopeMap
+from di._utils.types import CacheKey
 from di.api.dependencies import DependantBase
 from di.api.executor import State as ExecutorState
 from di.api.executor import Task as ExecutorTask
@@ -46,7 +47,7 @@ class ExecutionState(ExecutorState):
         stacks: Mapping[Scope, Union[AsyncExitStack, ExitStack]],
         results: Dict[int, Any],
         toplogical_sorter: TopologicalSorter[Task],
-        cache: ScopeMap[DependencyProvider, Any],
+        cache: ScopeMap[CacheKey, Any],
         values: Mapping[DependencyProvider, Any],
     ):
         self.stacks = stacks
@@ -78,6 +79,7 @@ class Task:
         "wrapped_call",
         "user_function",
         "scope",
+        "cache_key",
         "is_async",
         "dependant",
         "task_id",
@@ -94,6 +96,7 @@ class Task:
         scope: Scope,
         call: DependencyProvider,
         use_cache: bool,
+        cache_key: CacheKey,
         dependant: DependantBase[Any],
         task_id: int,
         positional_parameters: Iterable[Task],
@@ -101,6 +104,7 @@ class Task:
     ) -> None:
         self.scope = scope
         self.user_function = call
+        self.cache_key = cache_key
         self.dependant = dependant
         self.task_id = task_id
         if is_async_gen_callable(self.user_function):
@@ -167,9 +171,7 @@ class Task:
             state.toplogical_sorter.done(self)
             return gather_new_tasks(state)
 
-        value = state.cache.get_from_scope(
-            self.user_function, scope=self.scope, default=UNSET
-        )
+        value = state.cache.get_key(self.cache_key, scope=self.scope, default=UNSET)
         if value is not UNSET:
             state.results[self.task_id] = value
             state.toplogical_sorter.done(self)
@@ -181,7 +183,7 @@ class Task:
 
         state.results[self.task_id] = dependency_value
         state.toplogical_sorter.done(self)
-        state.cache.set(self.user_function, dependency_value, scope=self.scope)
+        state.cache.set(self.cache_key, dependency_value, scope=self.scope)
         return gather_new_tasks(state)
 
     async def compute_async_coro_no_cache(
@@ -208,9 +210,7 @@ class Task:
             state.toplogical_sorter.done(self)
             return gather_new_tasks(state)
 
-        value = state.cache.get_from_scope(
-            self.wrapped_call, scope=self.scope, default=UNSET
-        )
+        value = state.cache.get_key(self.cache_key, scope=self.scope, default=UNSET)
         if value is not UNSET:
             state.results[self.task_id] = value
             state.toplogical_sorter.done(self)
@@ -230,7 +230,7 @@ class Task:
 
         state.results[self.task_id] = dependency_value
         state.toplogical_sorter.done(self)
-        state.cache.set(self.user_function, dependency_value, scope=self.scope)
+        state.cache.set(self.cache_key, dependency_value, scope=self.scope)
         return gather_new_tasks(state)  # type: ignore[arg-type,return-value]
 
     async def compute_async_cm_no_cache(
@@ -265,9 +265,7 @@ class Task:
             state.toplogical_sorter.done(self)
             return gather_new_tasks(state)
 
-        value = state.cache.get_from_scope(
-            self.user_function, scope=self.scope, default=UNSET
-        )
+        value = state.cache.get_key(self.cache_key, scope=self.scope, default=UNSET)
         if value is not UNSET:
             state.results[self.task_id] = value
             state.toplogical_sorter.done(self)
@@ -278,7 +276,7 @@ class Task:
         )
         state.results[self.task_id] = val
         state.toplogical_sorter.done(self)
-        state.cache.set(self.user_function, val, scope=self.scope)
+        state.cache.set(self.cache_key, val, scope=self.scope)
         return gather_new_tasks(state)
 
     def compute_sync_cm_no_cache(
@@ -303,9 +301,7 @@ class Task:
             state.toplogical_sorter.done(self)
             return gather_new_tasks(state)
 
-        value = state.cache.get_from_scope(
-            self.wrapped_call, scope=self.scope, default=UNSET
-        )
+        value = state.cache.get_key(self.cache_key, scope=self.scope, default=UNSET)
         if value is not UNSET:
             state.results[self.task_id] = value
             state.toplogical_sorter.done(self)
@@ -314,7 +310,7 @@ class Task:
         val = self.call_user_func_with_deps(self.wrapped_call, state.results)
         state.results[self.task_id] = val
         state.toplogical_sorter.done(self)
-        state.cache.set(self.user_function, val, scope=self.scope)
+        state.cache.set(self.cache_key, val, scope=self.scope)
         return gather_new_tasks(state)
 
     def compute_sync_func_no_cache(
