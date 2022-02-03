@@ -11,21 +11,27 @@ else:
 from di.api.dependencies import DependantBase
 
 
+class State:
+    __slots__ = ()
+
+
 class Task(Protocol):
     dependant: DependantBase[Any]
     is_async: bool
 
     def compute(
-        self, state: Any
+        self, state: State
     ) -> Union[Iterable[Union[None, Task]], Awaitable[Iterable[Union[None, Task]]]]:
         ...
 
 
 class SyncExecutorProtocol(Protocol):
-    def execute_sync(self, tasks: Iterable[Optional[Task]], state: Any) -> None:
+    def execute_sync(self, tasks: Iterable[Optional[Task]], state: State) -> None:
         raise NotImplementedError
 
 
 class AsyncExecutorProtocol(Protocol):
-    async def execute_async(self, tasks: Iterable[Optional[Task]], state: Any) -> None:
+    async def execute_async(
+        self, tasks: Iterable[Optional[Task]], state: State
+    ) -> None:
         raise NotImplementedError

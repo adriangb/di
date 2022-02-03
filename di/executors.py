@@ -34,7 +34,7 @@ class SyncExecutor(SyncExecutorProtocol):
                 return
             if task.is_async:
                 raise TypeError("Cannot execute async dependencies in execute_sync")
-            q.extend(task.compute(state))  # type: ignore[arg-type]  # mypy doesn't recognize inspect.isawaitable
+            q.extend(task.compute(state))  # type: ignore[arg-type]  # mypy doesn't recognize task.is_async
 
 
 class AsyncExecutor(AsyncExecutorProtocol):
@@ -59,7 +59,7 @@ class AsyncExecutor(AsyncExecutorProtocol):
                 res = await task.compute(state)  # type: ignore
             else:
                 res = task.compute(state)
-            q.extend(res)  # type: ignore[arg-type]  # mypy doesn't recognize inspect.isawaitable
+            q.extend(res)  # type: ignore[arg-type]  # mypy doesn't recognize task.is_async
 
 
 async def _async_worker(
