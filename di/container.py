@@ -216,16 +216,15 @@ class _ContainerCommon:
             cache_key = dep.cache_key
             if cache_key in dependants:
                 continue
-            else:
-                dependants[cache_key] = dep
-                params = get_params(dep)
-                param_graph[dep] = params
-                dep_dag[dep] = []
-                for param in params:
-                    predecessor_dep = param.dependency
-                    dep_dag[dep].append(predecessor_dep)
-                    if predecessor_dep not in dependants:
-                        q.append(predecessor_dep)
+            dependants[cache_key] = dep
+            params = get_params(dep)
+            param_graph[dep] = params
+            dep_dag[dep] = []
+            for param in params:
+                predecessor_dep = param.dependency
+                dep_dag[dep].append(predecessor_dep)
+                if predecessor_dep not in dependants:
+                    q.append(predecessor_dep)
         # Filter out any dependencies that do not have a call
         # These do not become tasks since they don't need to be computed
         computable_param_graph = {
@@ -296,6 +295,7 @@ class _ContainerCommon:
                 scope=dep.scope,
                 call=dep.call,
                 use_cache=dep.use_cache,
+                cache_key=dep.cache_key,
                 dependant=dep,
                 task_id=task_id,
                 positional_parameters=positional_parameters,

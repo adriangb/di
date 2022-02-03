@@ -132,24 +132,27 @@ class Dependant(DependantBase[T]):
                 maybe_sub_dependant = next(get_markers_from_parameter(param), None)
                 if maybe_sub_dependant is not None:
                     sub_dependant = maybe_sub_dependant
-                elif param.default is param.empty:
-                    # try to auto-wire
-                    sub_dependant = Dependant[Any](
-                        call=None,
-                        scope=self.scope,
-                        use_cache=self.use_cache,
-                    )
                 else:
-                    # has a default parameter but we create a dependency anyway just for binds
-                    # but do not wire it to make autowiring less brittle and less magic
-                    sub_dependant = Dependant[Any](
-                        call=None,
-                        scope=self.scope,
-                        use_cache=self.use_cache,
-                        wire=False,
-                    )
+                    sub_dependant = self.initialize_sub_dependant(param)
             res.append(DependencyParameter(dependency=sub_dependant, parameter=param))
         return res
+
+    def initialize_sub_dependant(self, param: inspect.Parameter) -> DependantBase[Any]:
+        if param.default is param.empty:
+            # try to auto-wire
+            return Dependant[Any](
+                call=None,
+                scope=self.scope,
+                use_cache=self.use_cache,
+            )
+        # has a default parameter but we create a dependency anyway just for binds
+        # but do not wire it to make autowiring less brittle and less magic
+        return Dependant[Any](
+            call=None,
+            scope=self.scope,
+            use_cache=self.use_cache,
+            wire=False,
+        )
 
     def __repr__(self) -> str:
         return (
