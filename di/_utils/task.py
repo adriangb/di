@@ -103,12 +103,9 @@ class Task:
         self.user_function = call
         self.dependant = dependant
         self.task_id = task_id
-        self.call_user_func_with_deps = self.generate_execute_fn(
-            positional_parameters, keyword_parameters
-        )
         if is_async_gen_callable(self.user_function):
             self.is_async = True
-            self.wrapped_call = contextlib.asynccontextmanager(self.user_function)  # type: ignore[arg-type]
+            self.wrapped_call = contextlib.asynccontextmanager(call)  # type: ignore[arg-type]
             if use_cache:
                 self.compute = self.compute_async_cm_cache
             else:
@@ -120,20 +117,24 @@ class Task:
                 self.compute = self.compute_async_coro_cache
             else:
                 self.compute = self.compute_async_coro_no_cache
-        elif is_gen_callable(self.user_function):
+        elif is_gen_callable(call):
             self.is_async = False
-            self.wrapped_call = contextlib.contextmanager(self.user_function)  # type: ignore[arg-type]
+            self.wrapped_call = contextlib.contextmanager(call)  # type: ignore[arg-type]
             if use_cache:
                 self.compute = self.compute_sync_cm_cache
             else:
                 self.compute = self.compute_sync_cm_no_cache
         else:
             self.is_async = False
-            self.wrapped_call = self.user_function
+            self.wrapped_call = call
             if use_cache:
                 self.compute = self.compute_sync_func_cache
             else:
                 self.compute = self.compute_sync_func_no_cache
+
+        self.call_user_func_with_deps = self.generate_execute_fn(
+            positional_parameters, keyword_parameters
+        )
 
     def generate_execute_fn(
         self,
@@ -192,7 +193,7 @@ class Task:
             return gather_new_tasks(state)
 
         dependency_value = await self.call_user_func_with_deps(
-            self.user_function, state.results
+            self.wrapped_call, state.results
         )
 
         state.results[self.task_id] = dependency_value
@@ -208,7 +209,7 @@ class Task:
             return gather_new_tasks(state)
 
         value = state.cache.get_from_scope(
-            self.user_function, scope=self.scope, default=UNSET
+            self.wrapped_call, scope=self.scope, default=UNSET
         )
         if value is not UNSET:
             state.results[self.task_id] = value
@@ -303,7 +304,7 @@ class Task:
             return gather_new_tasks(state)
 
         value = state.cache.get_from_scope(
-            self.user_function, scope=self.scope, default=UNSET
+            self.wrapped_call, scope=self.scope, default=UNSET
         )
         if value is not UNSET:
             state.results[self.task_id] = value
