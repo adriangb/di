@@ -67,17 +67,14 @@ def test_dissalow_depending_on_inner_scope():
 
 
 def test_dependency_with_multiple_scopes():
-
-    values = iter(range(2))
-
-    def A() -> int:
-        return next(values)
+    def A() -> None:
+        ...
 
     def B(
         a1: Annotated[None, Dependant(A, scope="app")],
         a2: Annotated[None, Dependant(A, scope="request")],
     ) -> None:
-        assert a1 != a2
+        ...
 
     container = Container(scopes=("app", "request"))
     with pytest.raises(ScopeViolationError, match="used with multiple scopes"):
