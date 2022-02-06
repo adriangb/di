@@ -211,8 +211,10 @@ class _ContainerCommon:
 
         # Do a DFS of the DAG checking constraints along the way
         q: _DependantQueue = deque((dependency,))
+        seen: Set[DependantBase[Any]] = set()
         while q:
             dep = q.popleft()
+            seen.add(dep)
             cache_key = dep.cache_key
             if cache_key in dependants:
                 continue
@@ -223,7 +225,7 @@ class _ContainerCommon:
             for param in params:
                 predecessor_dep = param.dependency
                 dep_dag[dep].append(predecessor_dep)
-                if predecessor_dep not in dependants:
+                if predecessor_dep not in seen:
                     q.append(predecessor_dep)
         # Filter out any dependencies that do not have a call
         # These do not become tasks since they don't need to be computed
