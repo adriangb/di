@@ -42,7 +42,7 @@ from di.api.executor import AsyncExecutorProtocol, SyncExecutorProtocol
 from di.api.providers import DependencyProvider
 from di.api.scopes import Scope
 from di.api.solved import SolvedDependant
-from di.exceptions import WiringError
+from di.exceptions import SolvingError, WiringError
 
 __all__ = ("BaseContainer", "Container")
 
@@ -217,6 +217,12 @@ class _ContainerCommon:
             seen.add(dep)
             cache_key = dep.cache_key
             if cache_key in dependants:
+                other = dependants[cache_key]
+                if other.scope != dep.scope:
+                    raise SolvingError(
+                        f"The dependency {dep.call} is used with multiple scopes"
+                        f" ({dep.scope} and {other.scope}); this is not allowed."
+                    )
                 continue
             dependants[cache_key] = dep
             params = get_params(dep)

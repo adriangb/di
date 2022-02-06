@@ -33,7 +33,6 @@ class DependantSubclass(Dependant[T]):
         ),
         (Dependant(func), DependantSubclass(func), False, False),
         (Dependant(func), Dependant(other_func), False, False),
-        (Dependant(func, scope=0), Dependant(func, scope=1), False, False),
         (Dependant(None), Dependant(None), False, False),
     ],
 )

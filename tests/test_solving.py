@@ -5,7 +5,12 @@ import pytest
 from di import Container, Dependant, SyncExecutor
 from di.api.dependencies import DependencyParameter
 from di.dependant import JoinedDependant
-from di.exceptions import ScopeViolationError, UnknownScopeError, WiringError
+from di.exceptions import (
+    ScopeViolationError,
+    SolvingError,
+    UnknownScopeError,
+    WiringError,
+)
 from di.typing import Annotated
 
 
@@ -67,23 +72,18 @@ def test_dissalow_depending_on_inner_scope():
 
 
 def test_dependency_with_multiple_scopes():
-
-    values = iter(range(2))
-
-    def A() -> int:
-        return next(values)
+    def A() -> None:
+        ...
 
     def B(
         a1: Annotated[None, Dependant(A, scope="app")],
         a2: Annotated[None, Dependant(A, scope="request")],
     ) -> None:
-        assert a1 != a2
+        ...
 
     container = Container(scopes=("app", "request"))
-    solved = container.solve(Dependant(B, scope="request"))
-    with container.enter_scope("app"):
-        with container.enter_scope("request"):
-            container.execute_sync(solved, executor=SyncExecutor())
+    with pytest.raises(SolvingError, match="used with multiple scopes"):
+        container.solve(Dependant(B, scope="request"))
 
 
 def test_siblings() -> None:
@@ -191,3 +191,22 @@ def test_unknown_scope():
     container = Container()
     with pytest.raises(UnknownScopeError):
         container.solve(Dependant(bad_dep))
+
+
+def test_re_used_dependant() -> None:
+    def dep1() -> None:
+        ...
+
+    Dep1 = Annotated[None, Dependant(dep1)]
+
+    def dep2(one: Dep1) -> None:
+        ...
+
+    def dep3(
+        one: Dep1,
+        two: Annotated[None, Dependant(dep2)],
+    ) -> None:
+        ...
+
+    container = Container(scopes=(None,))
+    container.solve(Dependant(dep3, scope=None))

@@ -97,7 +97,7 @@ class Dependant(DependantBase[T]):
     def cache_key(self) -> CacheKey:
         if self.use_cache is False or self.call is None:
             return (self.__class__, id(self))
-        return (self.__class__, self.call, self.scope)
+        return (self.__class__, self.call)
 
     def register_parameter(self, param: inspect.Parameter) -> DependantBase[Any]:
         """Hook to register the parameter this Dependant corresponds to.
