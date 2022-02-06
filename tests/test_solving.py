@@ -186,3 +186,22 @@ def test_unknown_scope():
     container = Container()
     with pytest.raises(UnknownScopeError):
         container.solve(Dependant(bad_dep))
+
+
+def test_re_used_dependant() -> None:
+    def dep1() -> None:
+        ...
+
+    Dep1 = Annotated[None, Dependant(dep1)]
+
+    def dep2(one: Dep1) -> None:
+        ...
+
+    def dep3(
+        one: Dep1,
+        two: Annotated[None, Dependant(dep2)],
+    ) -> None:
+        ...
+
+    container = Container(scopes=(None,))
+    container.solve(Dependant(dep3, scope=None))
