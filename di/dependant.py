@@ -24,8 +24,6 @@ T = TypeVar("T")
 
 
 class Dependant(DependantBase[T]):
-    __slots__ = ("wire", "sync_to_thread", "overrides")
-
     @overload
     def __init__(
         self,
