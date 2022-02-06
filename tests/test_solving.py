@@ -5,7 +5,12 @@ import pytest
 from di import Container, Dependant, SyncExecutor
 from di.api.dependencies import DependencyParameter
 from di.dependant import JoinedDependant
-from di.exceptions import ScopeViolationError, UnknownScopeError, WiringError
+from di.exceptions import (
+    ScopeViolationError,
+    SolvingError,
+    UnknownScopeError,
+    WiringError,
+)
 from di.typing import Annotated
 
 
@@ -77,7 +82,7 @@ def test_dependency_with_multiple_scopes():
         ...
 
     container = Container(scopes=("app", "request"))
-    with pytest.raises(ScopeViolationError, match="used with multiple scopes"):
+    with pytest.raises(SolvingError, match="used with multiple scopes"):
         container.solve(Dependant(B, scope="request"))
 
 
