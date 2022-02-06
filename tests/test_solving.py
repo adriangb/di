@@ -80,10 +80,8 @@ def test_dependency_with_multiple_scopes():
         assert a1 != a2
 
     container = Container(scopes=("app", "request"))
-    solved = container.solve(Dependant(B, scope="request"))
-    with container.enter_scope("app"):
-        with container.enter_scope("request"):
-            container.execute_sync(solved, executor=SyncExecutor())
+    with pytest.raises(ScopeViolationError, match="used with multiple scopes"):
+        container.solve(Dependant(B, scope="request"))
 
 
 def test_siblings() -> None:

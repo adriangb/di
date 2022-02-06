@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, Iterable, List, Mapping, Optional, TypeVar, overload
+from typing import Any, Iterable, List, Mapping, Optional, Type, TypeVar, overload
 
 from di._utils.inspect import get_parameters, get_type
 from di.api.dependencies import CacheKey, DependantBase, DependencyParameter
@@ -9,10 +9,12 @@ from di.api.providers import (
     AsyncGeneratorProvider,
     CallableProvider,
     CoroutineProvider,
+    DependencyProvider,
     DependencyProviderType,
     GeneratorProvider,
 )
 from di.api.scopes import Scope
+from di.exceptions import ScopeViolationError
 from di.typing import get_markers_from_parameter
 
 _VARIABLE_PARAMETER_KINDS = (
@@ -97,7 +99,7 @@ class Dependant(DependantBase[T]):
     def cache_key(self) -> CacheKey:
         if self.use_cache is False or self.call is None:
             return (self.__class__, id(self))
-        return (self.__class__, self.call, self.scope)
+        return _DependantCacheKey(cls=self.__class__, call=self.call, scope=self.scope)
 
     def register_parameter(self, param: inspect.Parameter) -> DependantBase[Any]:
         """Hook to register the parameter this Dependant corresponds to.
@@ -156,6 +158,37 @@ class Dependant(DependantBase[T]):
         return (
             f"{self.__class__.__name__}(call={self.call}, use_cache={self.use_cache})"
         )
+
+
+class _DependantCacheKey:
+    __slots__ = ("cls", "scope", "call", "hash")
+
+    def __init__(
+        self,
+        cls: Type[Dependant[Any]],
+        scope: Scope,
+        call: Optional[DependencyProvider],
+    ) -> None:
+        self.cls = cls
+        self.scope = scope
+        self.call = call
+        self.hash = hash((self.cls, self.call))
+
+    def __hash__(self) -> int:
+        return self.hash
+
+    def __eq__(self, __o: object) -> bool:
+        if __o is self:
+            return True
+        if not isinstance(__o, _DependantCacheKey):
+            return False
+        if __o.cls is not self.cls or __o.call is not self.call:
+            return False
+        if __o.scope != self.scope:
+            raise ScopeViolationError(
+                f"The dependency {self.call} is used with multiple scopes in the same dependency graph"
+            )
+        return True
 
 
 class JoinedDependant(DependantBase[T]):
