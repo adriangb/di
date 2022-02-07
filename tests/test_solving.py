@@ -176,7 +176,7 @@ def test_wiring_from_binds() -> None:
     # container.register_by_type(Dependant(CanBeWired), CannotBeWired)
     with pytest.raises(WiringError):
         container.solve(Dependant(CannotBeWired))
-    container.register_by_type(Dependant(CanBeWired), CannotBeWired)
+    container.bind_by_type(Dependant(CanBeWired), CannotBeWired)
     with container.enter_scope(None):
         c = container.execute_sync(
             container.solve(Dependant(CannotBeWired)), executor=SyncExecutor()
