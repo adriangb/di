@@ -20,7 +20,7 @@ In this example we register the `Postgres` class to `DBProtocol`, and we can see
 
 Binds can be used as a direct function call, in which case they are permanent, or as a context manager, in which case they are reversed when the context manager exits.
 
-## Bind hooks hooks
+## Bind hooks
 
 Binding is implemented as hooks / callbacks: when we solve a dependency graph, every hook is called with every dependant and if the hook "matches" the dependent it returns the substitute dependency (otherwise it just returns `None`).
 
