@@ -1,11 +1,9 @@
-# Registration and Binding
+# Binds
 
-Provider registration serves two important functions:
+Provider binding serves two important functions:
 
 - A way to tell the container how to assemble things that can't be auto-wired, for example interfaces.
 - A way to override dependencies in tests.
-
-We call a the result of registering a provider a **bind**.
 
 Every bind in `di` consists of:
 
@@ -20,4 +18,20 @@ This means that binds are themselves dependencies:
 
 In this example we register the `Postgres` class to `DBProtocol`, and we can see that `di` auto-wires `Postgres` as well!
 
-Registration can be used as a direct function call, in which case they are permanent, or as a context manager.
+Binds can be used as a direct function call, in which case they are permanent, or as a context manager, in which case they are reversed when the context manager exits.
+
+## Bind hooks hooks
+
+Binding is implemented as hooks / callbacks: when we solve a dependency graph, every hook is called with every dependant and if the hook "matches" the dependent it returns the substitute dependency (otherwise it just returns `None`).
+
+This means you can implement any sort of matching you want, including:
+
+- Matching by type (`Container.bind_by_type`)
+- Matching by any subclass (`Container.bind_by_type` using the `covariant=True` parameter)
+- Custom logic, in the form of a bind hook (`Container.register_bind_hook`)
+
+For example, to match by parameter name:
+
+```Python
+--8<-- "docs_src/bind_hooks.py"
+```

@@ -18,27 +18,28 @@ def endpoint(r: Request) -> int:
 def test_bind():
     container = Container()
 
-    def func() -> int:
-        return 1
+    class Test:
+        def __init__(self, v: int = 1) -> None:
+            self.v = v
 
-    dependant = Dependant(func)
+    dependant = Dependant(Test)
 
     with container.enter_scope(None):
         res = container.execute_sync(
             container.solve(dependant), executor=SyncExecutor()
         )
-        assert res == 1
-    with container.register_by_identity(Dependant(lambda: 2), func):
+        assert res.v == 1
+    with container.bind_by_type(Dependant(lambda: Test(2)), Test):
         with container.enter_scope(None):
             res = container.execute_sync(
                 container.solve(dependant), executor=SyncExecutor()
             )
-            assert res == 2
+            assert res.v == 2
     with container.enter_scope(None):
         res = container.execute_sync(
             container.solve(dependant), executor=SyncExecutor()
         )
-        assert res == 1
+        assert res.v == 1
 
 
 def test_bind_transitive_dependency_results_skips_subdpendencies():
@@ -69,7 +70,7 @@ def test_bind_transitive_dependency_results_skips_subdpendencies():
     def not_error() -> None:
         ...
 
-    with container.register_by_type(Dependant(not_error), transitive):
+    with container.bind_by_type(Dependant(not_error), transitive):
         with container.enter_scope(None):
             container.execute_sync(
                 container.solve(Dependant(dep)), executor=SyncExecutor()
@@ -104,12 +105,16 @@ def test_bind_with_dependencies():
                 container.solve(Dependant(return_four)), executor=SyncExecutor()
             )
         ) == 4
-    with container.register_by_identity(Dependant(return_three), return_two):
-        with container.enter_scope(None):
-            val = container.execute_sync(
-                container.solve(Dependant(return_four)), executor=SyncExecutor()
-            )
-        assert val == 5
+    container.register_bind_hook(
+        lambda param, dependant: None
+        if dependant.call is not return_two
+        else Dependant(return_three)
+    )
+    with container.enter_scope(None):
+        val = container.execute_sync(
+            container.solve(Dependant(return_four)), executor=SyncExecutor()
+        )
+    assert val == 5
 
 
 def test_bind_covariant() -> None:
@@ -120,7 +125,7 @@ def test_bind_covariant() -> None:
         pass
 
     container = Container()
-    container.register_by_type(
+    container.bind_by_type(
         Dependant(lambda: Dog()),
         Animal,
         covariant=True,

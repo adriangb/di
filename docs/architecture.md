@@ -41,7 +41,7 @@ classDiagram
       +execute()
     }
     class Container{
-      +register(Provider, Dependency)
+      +register_bind_hook()
       +enter_scope(Scope) Container
       +solve(Dependant) SolvedDependant
       +execute(SolvedDependant, Executor) Result
