@@ -24,6 +24,10 @@ T = TypeVar("T")
 
 
 class Dependant(DependantBase[T]):
+    wire: bool
+    sync_to_thread: bool
+    overrides: Mapping[str, DependantBase[Any]]
+
     @overload
     def __init__(
         self,
