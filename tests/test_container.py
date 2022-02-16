@@ -34,16 +34,23 @@ class ContainerSubclass(Container):
     pass
 
 
-@pytest.mark.parametrize("container_cls", [ContainerSubclass, BaseContainerSubclass])
-def test_enter_scope_subclass(
-    container_cls: Union[Type[ContainerSubclass], Type[BaseContainerSubclass]]
-) -> None:
-
-    container = container_cls(scopes=("test", "another"))
+def test_enter_scope_container_subclass() -> None:
+    container = ContainerSubclass(scopes=("test", "another"))
     assert list(container.current_scopes) == []
     with container.enter_scope("test") as container:
-        assert isinstance(container, container_cls)
+        assert isinstance(container, ContainerSubclass)
         assert list(container.current_scopes) == ["test"]
         with container.enter_scope("another") as container:
-            assert isinstance(container, container_cls)
+            assert isinstance(container, ContainerSubclass)
+            assert list(container.current_scopes) == ["test", "another"]
+
+
+def test_enter_scope_base_container_subclass() -> None:
+    container = BaseContainerSubclass(scopes=("test", "another"))
+    assert list(container.current_scopes) == []
+    with container.enter_scope("test") as container:
+        assert isinstance(container, BaseContainerSubclass)
+        assert list(container.current_scopes) == ["test"]
+        with container.enter_scope("another") as container:
+            assert isinstance(container, BaseContainerSubclass)
             assert list(container.current_scopes) == ["test", "another"]

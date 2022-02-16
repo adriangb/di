@@ -9,7 +9,7 @@ else:
     from typing import Protocol
 
 
-T = TypeVar("T")
+T = TypeVar("T", covariant=True)
 
 
 class CacheKey(Protocol):

@@ -47,9 +47,7 @@ from di.exceptions import SolvingError, WiringError
 __all__ = ("BaseContainer", "Container")
 
 
-_DependantTaskDag = Dict[Task, Set[Task]]
 _DependantQueue = Deque[DependantBase[Any]]
-
 
 DependencyType = TypeVar("DependencyType")
 
@@ -413,7 +411,7 @@ class _ContainerScopeContext(FusedContextManager[_BaseContainerType]):
         return await self.cm.__aexit__(exc_type, exc_value, traceback)
 
 
-class Container(_ContainerCommon):
+class Container(BaseContainer):
     """A container that manages it's own state via ContextVars"""
 
     __slots__ = "_context"
