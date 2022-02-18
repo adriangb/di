@@ -73,9 +73,27 @@ This is in contrast to FastAPIs use of markers as default values (`param: int = 
 When FastAPI was designed, PEP 593 did not exist, and there are several advantages to using PEP 593's Annotated:
 
 - Compatible with other uses of default values, like dataclass' `field` or Pydantic's `Field`.
-- Non-invasive modification of signatures: adding `Depends(...)` in `Annotated` should be ignored by anything except `di`.
+- Non-invasive modification of signatures: adding `Marker(...)` in `Annotated` should be ignored by anything except `di`.
 - Functions/classes can be called as normal outside of `di` and the default values (when present) will be used.
-- Multiple markers can be used. For example, something like `Annotated[T, SyncToThread(), Depends()]` is possible, or even `Annotated[Annotated[T, Dependant()], SyncToThread()]` (which is equivalent). With the aliases `Provide = Annotated[T, Depends()]` and `InThread = Annotated[T, SyncToThread()]` one can write `Provide[InThread[SomeClass]]`.
+- Multiple markers can be used. For example, something like `Annotated[T, PydanticField(), Marker()]`.
+
+This last point is important because of the composability it provides:
+
+```python
+from typing import TypeVar, Annotated
+
+from di import Marker
+from pydantic import Field
+
+T_int = TypeVar("T_int", bound=int)
+PositiveInt = Annotated[T_int, Field(ge=0)]
+
+T = TypeVar("T")
+Depends = Annotated[T, Marker()]
+
+def foo(v: Depends[PositiveInt[int]]) -> int:
+    return v
+```
 
 There are however some cons to the use of `Annotated`:
 
@@ -84,7 +102,7 @@ There are however some cons to the use of `Annotated`:
 
 ## Performance
 
-Reflection (inspecting function signatures for dependencies) *is* slow.
+Reflection (inspecting function signatures for dependencies) _is very slow_.
 For this reason, `di` tries to avoid it as much as possible.
 The best way to avoid extra introspection is to re-use [Solved Dependants].
 
