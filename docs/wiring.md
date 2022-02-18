@@ -39,7 +39,13 @@ In order to support constructing a class asynchronously, `di` will detect if you
 --8<-- "docs_src/async_constructor.py"
 ```
 
-This allows you to construct your class even if it depends on doing async work.
+This allows you to construct your class even if it depends on doing async work _and_ it needs to refer to the class itself.
+
+If you only need to do async work and don't need access to the class, you don't need to use this and can instead just make your field depend on an asynchronous function:
+
+```Python
+--8<-- "docs_src/async_init_dependency.py"
+```
 
 ## Manual wiring
 
