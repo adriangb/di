@@ -31,6 +31,16 @@ In this example we'll load a config from the environment:
 
 What makes this "auto-wiring" is that we didn't have to tell `di` how to construct `DBConn`: `di` detected that `controller` needed a `DBConn` and that `DBConn` in turn needs a `Config` instance.
 
+### Async class construction
+
+In order to support constructing a class asynchronously, `di` will detect if your class has an `@classmethod` `__call__`:
+
+```Python
+--8<-- "docs_src/async_constructor.py"
+```
+
+This allows you to construct your class even if it depends on doing async work.
+
 ## Manual wiring
 
 But what about situations where auto-wiring doesn't cut it?
