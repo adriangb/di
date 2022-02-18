@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, Mapping, Optional, TypeVar
+from typing import Mapping, Optional, TypeVar
 
-from di import AsyncExecutor, Container, Dependant
+from di import AsyncExecutor, Container, Dependant, Marker
 from di.typing import Annotated
 
 
@@ -12,31 +12,21 @@ class Request:
         self.headers = {k.lower(): v for k, v in headers.items()}
 
 
-class Header(Dependant[Any]):
+class Header(Marker):
     def __init__(self, alias: Optional[str]) -> None:
         self.alias = alias
         super().__init__(call=None, scope="request", use_cache=False)
 
-    def register_parameter(self, param: inspect.Parameter) -> Header:
+    def register_parameter(self, param: inspect.Parameter) -> Dependant[str]:
         if self.alias is not None:
             name = self.alias
         else:
             name = param.name.replace("_", "-")
 
-        def get_header(request: Annotated[Request, Dependant()]) -> str:
+        def get_header(request: Annotated[Request, Marker()]) -> str:
             return param.annotation(request.headers[name])
 
-        self.call = get_header
-        # We could return a copy here to allow the same Dependant
-        # to be used in multiple places like
-        # dep = HeaderDependant(...)
-        # def func1(abcd = dep): ...
-        # def func2(efgh = dep): ...
-        # In this scenario, `dep` would be modified in func2 to set
-        # the header name to "efgh", which leads to incorrect results in func1
-        # The solution is to return a copy here instead of self, so that
-        # the original instance is never modified in place
-        return self
+        return Dependant(get_header, scope="request")
 
 
 T = TypeVar("T")

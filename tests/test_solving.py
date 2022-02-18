@@ -2,7 +2,7 @@ from typing import Any, List
 
 import pytest
 
-from di import Container, Dependant, SyncExecutor
+from di import Container, Dependant, Marker, SyncExecutor
 from di.api.dependencies import DependencyParameter
 from di.dependant import JoinedDependant
 from di.exceptions import (
@@ -44,7 +44,7 @@ def test_default_argument():
 def test_marker():
     """No type annotations or default value are required if a marker is used"""
 
-    def marker_default_func(value: Annotated[Any, Dependant(lambda: 2)]) -> int:  # type: ignore # for Pylance
+    def marker_default_func(value: Annotated[Any, Marker(lambda: 2)]) -> int:  # type: ignore # for Pylance
         return value  # type: ignore # for Pylance
 
     container = Container()
@@ -60,7 +60,7 @@ def test_dissalow_depending_on_inner_scope():
     def A() -> None:
         ...
 
-    def B(a: Annotated[None, Dependant(A, scope="inner")]):
+    def B(a: Annotated[None, Marker(A, scope="inner")]):
         ...
 
     container = Container(scopes=("outer", "inner"))
@@ -76,8 +76,8 @@ def test_dependency_with_multiple_scopes():
         ...
 
     def B(
-        a1: Annotated[None, Dependant(A, scope="app")],
-        a2: Annotated[None, Dependant(A, scope="request")],
+        a1: Annotated[None, Marker(A, scope="app")],
+        a2: Annotated[None, Marker(A, scope="request")],
     ) -> None:
         ...
 
@@ -99,11 +99,11 @@ def test_siblings() -> None:
     class Sibling:
         called = False
 
-        def __call__(self, one: Annotated[int, Dependant(dep1)]) -> None:
+        def __call__(self, one: Annotated[int, Marker(dep1)]) -> None:
             assert one == 1
             self.called = True
 
-    def dep2(one: Annotated[int, Dependant(dep1)]) -> int:
+    def dep2(one: Annotated[int, Marker(dep1)]) -> int:
         return one + 1
 
     container = Container()
@@ -185,7 +185,7 @@ def test_wiring_from_binds() -> None:
 
 
 def test_unknown_scope():
-    def bad_dep(v: Annotated[int, Dependant(lambda: 1, scope="app")]) -> int:
+    def bad_dep(v: Annotated[int, Marker(lambda: 1, scope="app")]) -> int:
         return v
 
     container = Container()
@@ -197,14 +197,14 @@ def test_re_used_dependant() -> None:
     def dep1() -> None:
         ...
 
-    Dep1 = Annotated[None, Dependant(dep1)]
+    Dep1 = Annotated[None, Marker(dep1)]
 
     def dep2(one: Dep1) -> None:
         ...
 
     def dep3(
         one: Dep1,
-        two: Annotated[None, Dependant(dep2)],
+        two: Annotated[None, Marker(dep2)],
     ) -> None:
         ...
 

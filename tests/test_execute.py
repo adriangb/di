@@ -16,7 +16,7 @@ else:
 import anyio
 import pytest
 
-from di import AsyncExecutor, Container, Dependant
+from di import AsyncExecutor, Container, Dependant, Marker
 from di.exceptions import IncompatibleDependencyError, UnknownScopeError
 from di.typing import Annotated
 
@@ -38,7 +38,7 @@ v1 = vOne()
 
 
 class vTwo:
-    def __call__(self, one: Annotated[vOne, Dependant(v1)]) -> "vTwo":
+    def __call__(self, one: Annotated[vOne, Marker(v1)]) -> "vTwo":
         self.one = one
         return self
 
@@ -48,7 +48,7 @@ v2 = vTwo()
 
 class vThree:
     def __call__(
-        self, zero: Annotated[vZero, Dependant(v0)], one: Annotated[vOne, Dependant(v1)]
+        self, zero: Annotated[vZero, Marker(v0)], one: Annotated[vOne, Marker(v1)]
     ) -> "vThree":
         self.zero = zero
         self.one = one
@@ -59,7 +59,7 @@ v3 = vThree()
 
 
 class vFour:
-    def __call__(self, two: Annotated[vTwo, Dependant(v2)]) -> "vFour":
+    def __call__(self, two: Annotated[vTwo, Marker(v2)]) -> "vFour":
         self.two = two
         return self
 
@@ -70,9 +70,9 @@ v4 = vFour()
 class vFive:
     def __call__(
         self,
-        zero: Annotated[vZero, Dependant(v0)],
-        three: Annotated[vThree, Dependant(v3)],
-        four: Annotated[vFour, Dependant(v4)],
+        zero: Annotated[vZero, Marker(v0)],
+        three: Annotated[vThree, Marker(v3)],
+        four: Annotated[vFour, Marker(v4)],
     ) -> "vFive":
         self.zero = zero
         self.three = three
@@ -224,8 +224,8 @@ async def test_concurrency_async(dep1: Any, sync1: bool, dep2: Any, sync2: bool)
     container.bind_by_type(Dependant(lambda: counter), Counter)
 
     async def collector(
-        a: Annotated[None, Dependant(dep1, use_cache=False, sync_to_thread=sync1)],
-        b: Annotated[None, Dependant(dep2, use_cache=False, sync_to_thread=sync2)],
+        a: Annotated[None, Marker(dep1, use_cache=False, sync_to_thread=sync1)],
+        b: Annotated[None, Marker(dep2, use_cache=False, sync_to_thread=sync2)],
     ):
         ...
 
@@ -246,12 +246,12 @@ async def test_concurrent_executions_do_not_use_cache_results():
     def get_id() -> int:
         return ctx.get()
 
-    async def dep1(id: Annotated[int, Dependant(get_id)]) -> int:
+    async def dep1(id: Annotated[int, Marker(get_id)]) -> int:
         await anyio.sleep(delays[id])
         return id
 
     async def dep2(
-        id: Annotated[int, Dependant(get_id)], one: Annotated[int, Dependant(dep1)]
+        id: Annotated[int, Marker(get_id)], one: Annotated[int, Marker(dep1)]
     ) -> None:
         # let the other branch run
         await anyio.sleep(max(delays.values()))
@@ -288,10 +288,10 @@ async def test_concurrent_executions_use_cache(
     def get_obj() -> object:
         return object()
 
-    async def collect1(obj: Annotated[object, Dependant(get_obj, scope=scope)]) -> None:
+    async def collect1(obj: Annotated[object, Marker(get_obj, scope=scope)]) -> None:
         objects.append(obj)
 
-    async def collect2(obj: Annotated[object, Dependant(get_obj, scope=scope)]) -> None:
+    async def collect2(obj: Annotated[object, Marker(get_obj, scope=scope)]) -> None:
         objects.append(obj)
 
     container = Container(scopes=("app", None))
@@ -337,7 +337,7 @@ async def test_async_cm_de_in_sync_scope():
 
 
 def test_unknown_scope():
-    def bad_dep(v: Annotated[int, Dependant(lambda: 1, scope="request")]) -> int:
+    def bad_dep(v: Annotated[int, Marker(lambda: 1, scope="request")]) -> int:
         return v
 
     container = Container(scopes=("app", "request"))

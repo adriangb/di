@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Tuple
 
-from di import Container, Dependant, SyncExecutor
+from di import Container, Dependant, Marker, SyncExecutor
 from di.typing import Annotated
 
 
@@ -131,7 +131,7 @@ def test_sharing_within_execution_scope() -> None:
 
     def dep(
         one: Sentinel,
-        two: Annotated[Sentinel, Dependant(use_cache=False)],
+        two: Annotated[Sentinel, Marker(use_cache=False)],
         three: Sentinel,
     ) -> Tuple[Sentinel, Sentinel, Sentinel]:
         return (one, two, three)

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from di import AsyncExecutor, Container, Dependant
+from di import AsyncExecutor, Container, Dependant, Marker
 
 
 @dataclass
@@ -13,8 +13,11 @@ class B:
     msg: str
 
     @classmethod
-    async def __call__(cls, a: A) -> "B":
-        return B(msg=f"{a.greeting} {cls.__name__}")
+    def __di_dependency__(cls) -> Marker:
+        async def func(a: A) -> B:
+            return B(msg=f"{a.greeting} {cls.__name__}")
+
+        return Marker(func)
 
 
 async def main() -> None:

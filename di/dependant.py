@@ -1,16 +1,17 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, Iterable, List, Mapping, Optional, TypeVar, overload
+from typing import Any, Iterable, List, Optional, TypeVar, overload
 
 from di._utils.inspect import get_parameters, get_type
-from di.api.dependencies import CacheKey, DependantBase, DependencyParameter
+from di.api.dependencies import CacheKey, DependantBase, DependencyParameter, MarkerBase
 from di.api.providers import (
     AsyncGeneratorProvider,
     CallableProvider,
     CoroutineProvider,
     DependencyProviderType,
     GeneratorProvider,
+    InjectableClassProvider,
 )
 from di.api.scopes import Scope
 from di.typing import get_markers_from_parameter
@@ -23,11 +24,62 @@ _VARIABLE_PARAMETER_KINDS = (
 T = TypeVar("T")
 
 
-class Dependant(DependantBase[T]):
+class Marker(MarkerBase):
     wire: bool
     sync_to_thread: bool
-    overrides: Mapping[str, DependantBase[Any]]
 
+    def __init__(
+        self,
+        call: Optional[DependencyProviderType[Any]] = None,
+        *,
+        scope: Scope = None,
+        use_cache: bool = True,
+        wire: bool = True,
+        sync_to_thread: bool = False,
+    ) -> None:
+        self.call = call
+        self.scope = scope
+        self.use_cache = use_cache
+        self.wire = wire
+        self.sync_to_thread = sync_to_thread
+
+    def register_parameter(self, param: inspect.Parameter) -> DependantBase[Any]:
+        """Hook to register the parameter this Dependant corresponds to.
+
+        This can be used to inferr self.call from a type annotation (autowiring),
+        or to just register the type annotation.
+
+        This method can return the same or a new instance of a Dependant to avoid modifying itself.
+        """
+        if self.wire is False:
+            return Dependant[Any](
+                call=self.call,
+                scope=self.scope,
+                use_cache=self.use_cache,
+                wire=self.wire,
+                sync_to_thread=self.sync_to_thread,
+            )
+        call = self.call
+        if call is None:
+            annotation_type_option = get_type(param)
+            if annotation_type_option is not None:
+                if isinstance(annotation_type_option.value, InjectableClassProvider):
+                    return annotation_type_option.value.__di_dependency__().register_parameter(
+                        param
+                    )
+                else:
+                    # a class type, a callable class instance or a function
+                    call = annotation_type_option.value
+        return Dependant[Any](
+            call,
+            scope=self.scope,
+            use_cache=self.use_cache,
+            wire=self.wire,
+            sync_to_thread=self.sync_to_thread,
+        )
+
+
+class Dependant(DependantBase[T]):
     @overload
     def __init__(
         self,
@@ -36,7 +88,6 @@ class Dependant(DependantBase[T]):
         scope: Scope = None,
         use_cache: bool = True,
         wire: bool = True,
-        overrides: Optional[Mapping[str, DependantBase[Any]]] = None,
         sync_to_thread: bool = False,
     ) -> None:
         ...
@@ -49,7 +100,6 @@ class Dependant(DependantBase[T]):
         scope: Scope = None,
         use_cache: bool = True,
         wire: bool = True,
-        overrides: Optional[Mapping[str, DependantBase[Any]]] = None,
         sync_to_thread: bool = False,
     ) -> None:
         ...
@@ -62,7 +112,6 @@ class Dependant(DependantBase[T]):
         scope: Scope = None,
         use_cache: bool = True,
         wire: bool = True,
-        overrides: Optional[Mapping[str, DependantBase[Any]]] = None,
         sync_to_thread: bool = False,
     ) -> None:
         ...
@@ -75,7 +124,6 @@ class Dependant(DependantBase[T]):
         scope: Scope = None,
         use_cache: bool = True,
         wire: bool = True,
-        overrides: Optional[Mapping[str, DependantBase[Any]]] = None,
         sync_to_thread: bool = False,
     ) -> None:
         ...
@@ -87,14 +135,12 @@ class Dependant(DependantBase[T]):
         scope: Scope = None,
         use_cache: bool = True,
         wire: bool = True,
-        overrides: Optional[Mapping[str, DependantBase[Any]]] = None,
         sync_to_thread: bool = False,
     ) -> None:
         self.call = call
         self.scope = scope
         self.use_cache = use_cache
         self.wire = wire
-        self.overrides = overrides or {}
         self.sync_to_thread = sync_to_thread
 
     @property
@@ -103,38 +149,6 @@ class Dependant(DependantBase[T]):
             return (self.__class__, id(self))
         return (self.__class__, self.call)
 
-    def register_parameter(self, param: inspect.Parameter) -> DependantBase[Any]:
-        """Hook to register the parameter this Dependant corresponds to.
-
-        This can be used to inferr self.call from a type annotation (autowiring),
-        or to just register the type annotation.
-
-        This method can return the same or a new instance of a Dependant to avoid modifying itself.
-        """
-        if self.wire is False:
-            return self
-        if self.call is None:
-            annotation_type_option = get_type(param)
-            if annotation_type_option is not None:
-                call = annotation_type_option.value
-                is_class = inspect.isclass(call)
-                dunder_call = getattr(call, "__call__")
-                dunder_call_is_method = (
-                    inspect.ismethod(dunder_call) if dunder_call is not None else False
-                )
-                if (
-                    is_class
-                    and dunder_call is not None
-                    and dunder_call_is_method
-                    and dunder_call.__self__ is call
-                ):
-                    # a class type with an @classmethod __call__
-                    self.call = dunder_call
-                else:
-                    # a class type, a callable class instance or a function
-                    self.call = annotation_type_option.value
-        return self
-
     def get_dependencies(self) -> List[DependencyParameter]:
         """Collect all of our sub-dependencies as parameters"""
         if self.wire is False or self.call is None:
@@ -142,14 +156,14 @@ class Dependant(DependantBase[T]):
         res: List[DependencyParameter] = []
         for param in get_parameters(self.call).values():
             sub_dependant: DependantBase[Any]
-            if param.name in self.overrides:
-                sub_dependant = self.overrides[param.name]
-            elif param.kind in _VARIABLE_PARAMETER_KINDS:
+            if param.kind in _VARIABLE_PARAMETER_KINDS:
                 continue
             else:
-                maybe_sub_dependant = next(get_markers_from_parameter(param), None)
-                if maybe_sub_dependant is not None:
-                    sub_dependant = maybe_sub_dependant
+                maybe_sub_dependant_marker = next(
+                    get_markers_from_parameter(param), None
+                )
+                if maybe_sub_dependant_marker is not None:
+                    sub_dependant = maybe_sub_dependant_marker.register_parameter(param)
                 else:
                     sub_dependant = self.initialize_sub_dependant(param)
             res.append(DependencyParameter(dependency=sub_dependant, parameter=param))
@@ -158,19 +172,19 @@ class Dependant(DependantBase[T]):
     def initialize_sub_dependant(self, param: inspect.Parameter) -> DependantBase[Any]:
         if param.default is param.empty:
             # try to auto-wire
-            return Dependant[Any](
+            return Marker(
                 call=None,
                 scope=self.scope,
                 use_cache=self.use_cache,
-            )
+            ).register_parameter(param)
         # has a default parameter but we create a dependency anyway just for binds
         # but do not wire it to make autowiring less brittle and less magic
-        return Dependant[Any](
+        return Marker(
             call=None,
             scope=self.scope,
             use_cache=self.use_cache,
             wire=False,
-        )
+        ).register_parameter(param)
 
     def __repr__(self) -> str:
         return (
@@ -201,10 +215,6 @@ class JoinedDependant(DependantBase[T]):
             *self.dependant.get_dependencies(),
             *(DependencyParameter(dep, None) for dep in self.siblings),
         ]
-
-    def register_parameter(self, param: inspect.Parameter) -> DependantBase[T]:
-        self.dependant = self.dependant.register_parameter(param)
-        return self
 
     @property
     def cache_key(self) -> CacheKey:

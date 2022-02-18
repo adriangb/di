@@ -2,7 +2,7 @@ from typing import Any, List
 
 import pytest
 
-from di import Container, Dependant
+from di import Container, Dependant, Marker
 from di.api.dependencies import DependantBase
 from di.api.providers import DependencyProvider
 from di.typing import Annotated
@@ -12,7 +12,7 @@ def call1():
     ...
 
 
-def call2(c1: Annotated[None, Dependant(call1)]):
+def call2(c1: Annotated[None, Marker(call1)]):
     ...
 
 
@@ -20,21 +20,19 @@ def call3():
     ...
 
 
-def call4(
-    c2: Annotated[None, Dependant(call2)], *, c3: Annotated[None, Dependant(call3)]
-):
+def call4(c2: Annotated[None, Marker(call2)], *, c3: Annotated[None, Marker(call3)]):
     ...
 
 
-def call5(*, c4: Annotated[None, Dependant(call4)]):
+def call5(*, c4: Annotated[None, Marker(call4)]):
     ...
 
 
-def call6(c4: Annotated[None, Dependant(call4)]):
+def call6(c4: Annotated[None, Marker(call4)]):
     ...
 
 
-def call7(c6: Annotated[None, Dependant(call6)]):
+def call7(c6: Annotated[None, Marker(call6)]):
     ...
 
 

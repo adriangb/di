@@ -1,23 +1,13 @@
-from typing import Any, AsyncGenerator, Callable, Coroutine, Generator, TypeVar, Union
-
-T = TypeVar("T")
-
-CallableProvider = Callable[..., T]
-CoroutineProvider = Callable[..., Coroutine[Any, Any, T]]
-GeneratorProvider = Callable[..., Generator[T, None, None]]
-AsyncGeneratorProvider = Callable[..., AsyncGenerator[T, None]]
-
-DependencyProviderType = Union[
-    CallableProvider[T],
-    CoroutineProvider[T],
-    GeneratorProvider[T],
-    AsyncGeneratorProvider[T],
-]
-
-
-DependencyProvider = Union[
-    AsyncGeneratorProvider[Any],
-    CoroutineProvider[Any],
-    GeneratorProvider[Any],
-    CallableProvider[Any],
-]
+from di.api._dependencies import (  # noqa: F401
+    InjectableClassProvider as InjectableClassProvider,
+)
+from di.api._providers import (  # noqa: F401
+    AsyncGeneratorProvider as AsyncGeneratorProvider,
+)
+from di.api._providers import CallableProvider as CallableProvider  # noqa: F401
+from di.api._providers import CoroutineProvider as CoroutineProvider  # noqa: F401
+from di.api._providers import DependencyProvider as DependencyProvider  # noqa: F401
+from di.api._providers import (  # noqa: F401
+    DependencyProviderType as DependencyProviderType,
+)
+from di.api._providers import GeneratorProvider as GeneratorProvider  # noqa: F401

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from di import AsyncExecutor, Container, Dependant
+from di import AsyncExecutor, Container, Dependant, Marker
 from di.typing import Annotated
 
 
@@ -15,7 +15,7 @@ async def get_greeting(a: A) -> str:
 
 @dataclass
 class B:
-    msg: Annotated[str, Dependant(get_greeting)]
+    msg: Annotated[str, Marker(get_greeting)]
 
 
 async def main() -> None:

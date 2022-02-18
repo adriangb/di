@@ -8,8 +8,8 @@ from graphlib2 import TopologicalSorter
 from di._utils.scope_map import ScopeMap
 from di._utils.task import ExecutionState, Task, gather_new_tasks
 from di._utils.types import CacheKey
+from di.api._providers import DependencyProvider
 from di.api.executor import Task as ExecutorTask
-from di.api.providers import DependencyProvider
 from di.api.scopes import Scope
 from di.api.solved import SolvedDependant
 
