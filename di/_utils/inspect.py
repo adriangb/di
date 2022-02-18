@@ -47,13 +47,14 @@ def is_gen_callable(call: Any) -> bool:
 
 def get_annotations(call: Callable[..., Any]) -> Dict[str, Any]:
     types_from: Callable[..., Any]
-    if not (
-        inspect.isclass(call) or inspect.isfunction(call) or inspect.ismethod(call)
-    ) and hasattr(call, "__call__"):
-        # callable class
-        types_from = call.__call__  # type: ignore[misc,operator] # accessing __init__ directly
+    is_class = inspect.isclass(call)
+    is_function = inspect.isfunction(call)
+    dunder_call = getattr(call, "__call__")
+    if dunder_call is not None and not is_function and not is_class:
+        # a callable class _instance_
+        types_from = dunder_call
     else:
-        # method
+        # a function or a class
         types_from = call
     hints = get_type_hints(types_from, include_extras=True)
     # for no apparent reason, Annotated[Optional[T]] comes back as Optional[Annotated[Optional[T]]]

@@ -116,7 +116,23 @@ class Dependant(DependantBase[T]):
         if self.call is None:
             annotation_type_option = get_type(param)
             if annotation_type_option is not None:
-                self.call = annotation_type_option.value
+                call = annotation_type_option.value
+                is_class = inspect.isclass(call)
+                dunder_call = getattr(call, "__call__")
+                dunder_call_is_method = (
+                    inspect.ismethod(dunder_call) if dunder_call is not None else False
+                )
+                if (
+                    is_class
+                    and dunder_call is not None
+                    and dunder_call_is_method
+                    and dunder_call.__self__ is call
+                ):
+                    # a class type with an @classmethod __call__
+                    self.call = dunder_call
+                else:
+                    # a class type, a callable class instance or a function
+                    self.call = annotation_type_option.value
         return self
 
     def get_dependencies(self) -> List[DependencyParameter]:

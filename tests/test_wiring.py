@@ -1,5 +1,10 @@
 import sys
+from dataclasses import dataclass
 from typing import Optional
+
+import pytest
+
+from di.executors import AsyncExecutor
 
 if sys.version_info < (3, 9):
     from typing_extensions import Annotated
@@ -103,3 +108,30 @@ def test_autowiring_class_with_default_class_from_bind() -> None:
         injected_value = container.execute_sync(solved, SyncExecutor())
 
     assert injected_value == "bound"
+
+
+@dataclass
+class A:
+    foo: str = "foo"
+
+
+@dataclass
+class B:
+    a: A
+
+    @classmethod
+    async def __call__(cls) -> "B":
+        return B(a=A(foo="bar"))
+
+
+@pytest.mark.anyio
+async def test_wiring_class_with_async_initialization() -> None:
+    def dep(b: B) -> str:
+        return b.a.foo
+
+    container = Container()
+    executor = AsyncExecutor()
+    solved = container.solve(Dependant(dep))
+    async with container.enter_scope(None):
+        res = await container.execute_async(solved, executor=executor)
+        assert res == "bar"
