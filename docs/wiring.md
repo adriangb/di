@@ -18,7 +18,7 @@ This makes auto-wiring compatible with a broad range of things, including:
 - `def` functions
 - Classes
 - `functools.partial` binds
-- Callable class classes or class instances (classes implementing `__call__`)
+- Callable class classes or class instances (instances of classes implementing `__call__`)
 
 Here is an example showing auto-wiring in action.
 
@@ -33,7 +33,7 @@ What makes this "auto-wiring" is that we didn't have to tell `di` how to constru
 
 ### Async class construction
 
-In order to support constructing a class asynchronously, `di` will detect if your class has an `@classmethod` `__call__`:
+In order to support constructing a class asynchronously, `di` will detect if your class has an `@classmethod` `__di_dependant__`:
 
 ```Python
 --8<-- "docs_src/async_constructor.py"
