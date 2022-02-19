@@ -18,7 +18,7 @@ This makes auto-wiring compatible with a broad range of things, including:
 - `def` functions
 - Classes
 - `functools.partial` binds
-- Callable class classes or class instances (classes implementing `__call__`)
+- Callable class classes or class instances (instances of classes implementing `__call__`)
 
 Here is an example showing auto-wiring in action.
 
@@ -30,6 +30,22 @@ In this example we'll load a config from the environment:
 ```
 
 What makes this "auto-wiring" is that we didn't have to tell `di` how to construct `DBConn`: `di` detected that `controller` needed a `DBConn` and that `DBConn` in turn needs a `Config` instance.
+
+### Async class construction
+
+In order to support constructing a class asynchronously, `di` will detect if your class has an `@classmethod` `__di_dependant__`:
+
+```Python
+--8<-- "docs_src/async_constructor.py"
+```
+
+This allows you to construct your class even if it depends on doing async work _and_ it needs to refer to the class itself.
+
+If you only need to do async work and don't need access to the class, you don't need to use this and can instead just make your field depend on an asynchronous function:
+
+```Python
+--8<-- "docs_src/async_init_dependency.py"
+```
 
 ## Manual wiring
 
@@ -57,9 +73,27 @@ This is in contrast to FastAPIs use of markers as default values (`param: int = 
 When FastAPI was designed, PEP 593 did not exist, and there are several advantages to using PEP 593's Annotated:
 
 - Compatible with other uses of default values, like dataclass' `field` or Pydantic's `Field`.
-- Non-invasive modification of signatures: adding `Depends(...)` in `Annotated` should be ignored by anything except `di`.
+- Non-invasive modification of signatures: adding `Marker(...)` in `Annotated` should be ignored by anything except `di`.
 - Functions/classes can be called as normal outside of `di` and the default values (when present) will be used.
-- Multiple markers can be used. For example, something like `Annotated[T, SyncToThread(), Depends()]` is possible, or even `Annotated[Annotated[T, Dependant()], SyncToThread()]` (which is equivalent). With the aliases `Provide = Annotated[T, Depends()]` and `InThread = Annotated[T, SyncToThread()]` one can write `Provide[InThread[SomeClass]]`.
+- Multiple markers can be used. For example, something like `Annotated[T, PydanticField(), Marker()]`.
+
+This last point is important because of the composability it provides:
+
+```python
+from typing import TypeVar, Annotated
+
+from di import Marker
+from pydantic import Field
+
+T_int = TypeVar("T_int", bound=int)
+PositiveInt = Annotated[T_int, Field(ge=0)]
+
+T = TypeVar("T")
+Depends = Annotated[T, Marker()]
+
+def foo(v: Depends[PositiveInt[int]]) -> int:
+    return v
+```
 
 There are however some cons to the use of `Annotated`:
 
@@ -68,7 +102,7 @@ There are however some cons to the use of `Annotated`:
 
 ## Performance
 
-Reflection (inspecting function signatures for dependencies) *is* slow.
+Reflection (inspecting function signatures for dependencies) _is very slow_.
 For this reason, `di` tries to avoid it as much as possible.
 The best way to avoid extra introspection is to re-use [Solved Dependants].
 

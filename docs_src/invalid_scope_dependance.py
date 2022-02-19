@@ -1,4 +1,4 @@
-from di import Container, Dependant, SyncExecutor
+from di import Container, Dependant, Marker, SyncExecutor
 from di.typing import Annotated
 
 
@@ -11,7 +11,7 @@ class DBConnection:
         ...
 
 
-def controller(conn: Annotated[DBConnection, Dependant(scope="app")]) -> None:
+def controller(conn: Annotated[DBConnection, Marker(scope="app")]) -> None:
     ...
 
 

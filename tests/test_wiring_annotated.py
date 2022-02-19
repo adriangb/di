@@ -6,7 +6,7 @@ if sys.version_info < (3, 9):
 else:
     from typing import Annotated
 
-from di import Container, Dependant, SyncExecutor
+from di import Container, Dependant, Marker, SyncExecutor
 
 
 def test_wiring_based_from_annotation() -> None:
@@ -16,10 +16,10 @@ def test_wiring_based_from_annotation() -> None:
     class G:
         pass
 
-    dep_a = Dependant(g)
+    dep_a = Marker(g)
     dep_b = "foo bar baz!"
-    dep_c = Dependant(g, use_cache=False)
-    dep_d = Dependant(g)
+    dep_c = Marker(g, use_cache=False)
+    dep_d = Marker(g)
 
     def f(
         a: Annotated[int, dep_a],
@@ -31,15 +31,7 @@ def test_wiring_based_from_annotation() -> None:
 
     dep = Dependant(f)
     subdeps = dep.get_dependencies()
-    for subdep in subdeps:
-        if subdep.parameter:
-            subdep.dependency.register_parameter(subdep.parameter)
     assert [d.dependency.call for d in subdeps] == [g, G, g, g]
-    assert (subdeps[0].dependency, subdeps[2].dependency, subdeps[3].dependency) == (
-        dep_a,
-        dep_c,
-        dep_d,
-    )
 
 
 def test_autowiring_class_with_default_builtin() -> None:

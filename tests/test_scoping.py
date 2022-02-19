@@ -3,7 +3,7 @@ import typing
 import anyio
 import pytest
 
-from di import Container, Dependant, SyncExecutor
+from di import Container, Dependant, Marker, SyncExecutor
 from di.api.scopes import Scope
 from di.exceptions import DuplicateScopeError
 from di.typing import Annotated
@@ -21,11 +21,11 @@ dep1 = Dep()
 dep2 = Dep()
 
 
-def use_cache(v: Annotated[int, Dependant(dep1, scope="scope")]):
+def use_cache(v: Annotated[int, Marker(dep1, scope="scope")]):
     return v
 
 
-def not_use_cache(v: Annotated[int, Dependant(dep1, scope="scope", use_cache=False)]):
+def not_use_cache(v: Annotated[int, Marker(dep1, scope="scope", use_cache=False)]):
     return v
 
 
@@ -80,19 +80,22 @@ def test_nested_caching():
     def A() -> str:
         return holder[0]
 
-    DepA = Dependant(A, scope="app")
+    MarkerA = Marker(A, scope="app")
+    DepA = Dependant(A, scope="request")
 
-    def B(a: Annotated[str, DepA]) -> str:
+    def B(a: Annotated[str, MarkerA]) -> str:
         return a + holder[1]
 
+    MarkerB = Marker(B, scope="request")
     DepB = Dependant(B, scope="request")
 
-    def C(b: Annotated[str, DepB]) -> str:
+    def C(b: Annotated[str, MarkerB]) -> str:
         return b + holder[2]
 
+    MarkerC = Marker(C, scope="request")
     DepC = Dependant(C, scope="request")
 
-    def endpoint(c: Annotated[str, DepC]) -> str:
+    def endpoint(c: Annotated[str, MarkerC]) -> str:
         return c
 
     DepEndpoint = Dependant(endpoint, scope="request")
@@ -146,20 +149,20 @@ def test_nested_lifecycle():
         state["A"] = "destroyed"
 
     def B(
-        a: Annotated[None, Dependant(A, scope="lifespan")]
+        a: Annotated[None, Marker(A, scope="lifespan")]
     ) -> typing.Generator[None, None, None]:
         state["B"] = "initialized"
         yield
         state["B"] = "destroyed"
 
     def C(
-        b: Annotated[None, Dependant(B, scope="request")]
+        b: Annotated[None, Marker(B, scope="request")]
     ) -> typing.Generator[None, None, None]:
         state["C"] = "initialized"
         yield
         state["C"] = "destroyed"
 
-    def endpoint(c: Annotated[None, Dependant(C, scope="request")]) -> None:
+    def endpoint(c: Annotated[None, Marker(C, scope="request")]) -> None:
         return
 
     container = Container(scopes=("lifespan", "request", "endpoint"))

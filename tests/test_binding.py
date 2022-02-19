@@ -2,7 +2,7 @@ from typing import List
 
 import pytest
 
-from di import Container, Dependant, SyncExecutor
+from di import Container, Dependant, Marker, SyncExecutor
 from di.typing import Annotated
 
 
@@ -50,10 +50,11 @@ def test_bind_transitive_dependency_results_skips_subdpendencies():
     def raises_exception() -> None:
         raise ValueError
 
-    def transitive(_: Annotated[None, Dependant(raises_exception)]) -> None:
-        ...
+    class Transitive:
+        def __init__(self, _: Annotated[None, Marker(raises_exception)]) -> None:
+            ...
 
-    def dep(t: Annotated[None, Dependant(transitive)]) -> None:
+    def dep(t: Annotated[None, Marker(Transitive)]) -> None:
         ...
 
     container = Container()
@@ -70,7 +71,7 @@ def test_bind_transitive_dependency_results_skips_subdpendencies():
     def not_error() -> None:
         ...
 
-    with container.bind_by_type(Dependant(not_error), transitive):
+    with container.bind_by_type(Dependant(not_error), Transitive):
         with container.enter_scope(None):
             container.execute_sync(
                 container.solve(Dependant(dep)), executor=SyncExecutor()
@@ -89,13 +90,13 @@ def test_bind_with_dependencies():
     def return_one() -> int:
         return 1
 
-    def return_two(one: Annotated[int, Dependant(return_one)]) -> int:
+    def return_two(one: Annotated[int, Marker(return_one)]) -> int:
         return one + 1
 
-    def return_three(one: Annotated[int, Dependant(return_one)]) -> int:
+    def return_three(one: Annotated[int, Marker(return_one)]) -> int:
         return one + 2
 
-    def return_four(two: Annotated[int, Dependant(return_two)]) -> int:
+    def return_four(two: Annotated[int, Marker(return_two)]) -> int:
         return two + 2
 
     container = Container()
@@ -133,7 +134,7 @@ def test_bind_covariant() -> None:
 
     # include a generic to make sure we are safe with
     # isisntance checks and MRO checks
-    def dep(animal: Animal, generic: Annotated[List[int], Dependant(list)]) -> Animal:
+    def dep(animal: Animal, generic: Annotated[List[int], Marker(list)]) -> Animal:
         return animal
 
     solved = container.solve(Dependant(dep))

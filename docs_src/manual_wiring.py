@@ -7,7 +7,7 @@ if sys.version_info < (3, 9):
 else:
     from typing import Annotated
 
-from di import AsyncExecutor, Container, Dependant
+from di import AsyncExecutor, Container, Dependant, Marker
 
 
 class AbstractDBConn:
@@ -37,9 +37,9 @@ def get_user(db: AbstractDBConn) -> str:
 
 async def controller(
     # markers can be added via Annotated
-    user1: Annotated[str, Dependant(get_user, scope="request")],
+    user1: Annotated[str, Marker(get_user, scope="request")],
     # or as the default value, in which case types can be checked by MyPy/Pylance
-    user2: Annotated[str, Dependant(get_user, scope="request")],
+    user2: Annotated[str, Marker(get_user, scope="request")],
 ) -> None:
     assert user1 == user2 == "executed SELECT name from Users LIMIT 1"
 

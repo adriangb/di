@@ -8,7 +8,7 @@ The fundamental design principle of `di` is to split up the complexity of depend
 
 We map these responsibilities to well-defined classes/interfaces:
 
-- Wiring: this is handled by [Dependant]
+- Wiring: this is handled by [Dependant] and [Marker]
 - Solving: this is handled by [Container]
 - Execution: this is handled by [Executor]s
 
@@ -50,6 +50,7 @@ classDiagram
 </details>
 
 [Dependant]: https://github.com/adriangb/di/blob/main/di/api/dependencies.py
+[Marker]: https://github.com/adriangb/di/blob/main/di/api/dependencies.py
 [Container]: https://github.com/adriangb/di/blob/main/di/api/container.py
 [Executor]: https://github.com/adriangb/di/blob/main/di/api/executor.py
 [SolvedDependant]: https://github.com/adriangb/di/blob/main/di/api/solved.py

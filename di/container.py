@@ -47,7 +47,6 @@ from di.exceptions import SolvingError, WiringError
 __all__ = ("BaseContainer", "Container")
 
 
-_DependantTaskDag = Dict[Task, Set[Task]]
 _DependantQueue = Deque[DependantBase[Any]]
 
 
@@ -165,10 +164,6 @@ class _ContainerCommon:
             # exist as a bound value
             params = dep.get_dependencies().copy()
             for idx, param in enumerate(params):
-                if param.parameter is not None:
-                    param = param._replace(
-                        dependency=param.dependency.register_parameter(param.parameter)
-                    )
                 for hook in self._register_hooks:
                     match = hook(param.parameter, param.dependency)
                     if match is not None:

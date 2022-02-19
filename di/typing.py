@@ -1,6 +1,6 @@
 import inspect
 import sys
-from typing import Any, Generator, cast
+from typing import Generator
 
 if sys.version_info < (3, 9):
     from typing_extensions import Annotated, get_args, get_origin
@@ -8,14 +8,14 @@ else:
     from typing import Annotated, get_args, get_origin
 
 from di._utils.inspect import get_parameters
-from di.api.dependencies import DependantBase
+from di.api.dependencies import MarkerBase
 
 __all__ = ("get_parameters", "get_markers_from_parameter")
 
 
 def get_markers_from_parameter(
     param: inspect.Parameter,
-) -> Generator[DependantBase[Any], None, None]:
+) -> Generator[MarkerBase, None, None]:
     """Infer a sub-dependant from a parameter of this Dependant's .call
 
 
@@ -30,5 +30,5 @@ def get_markers_from_parameter(
         # This is a somewhat arbitrary choice, but it is the convention we'll go with
         # See https://www.python.org/dev/peps/pep-0593/#id18 for more details
         for arg in reversed(get_args(param.annotation)):
-            if isinstance(arg, DependantBase):
-                yield cast(DependantBase[Any], arg)
+            if isinstance(arg, MarkerBase):
+                yield arg
