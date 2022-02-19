@@ -9,6 +9,7 @@ from di.api.providers import (
     AsyncGeneratorProvider,
     CallableProvider,
     CoroutineProvider,
+    DependencyProvider,
     DependencyProviderType,
     GeneratorProvider,
     InjectableClassProvider,
@@ -25,6 +26,9 @@ T = TypeVar("T")
 
 
 class Marker(MarkerBase):
+    call: Optional[DependencyProvider]
+    scope: Scope
+    use_cache: bool
     wire: bool
     sync_to_thread: bool
 
@@ -43,6 +47,17 @@ class Marker(MarkerBase):
         self.wire = wire
         self.sync_to_thread = sync_to_thread
 
+    def from_callable(
+        self, call: Optional[DependencyProviderType[Any]]
+    ) -> DependantBase[Any]:
+        return Dependant[Any](
+            call=call,
+            scope=self.scope,
+            use_cache=self.use_cache,
+            wire=self.wire,
+            sync_to_thread=self.sync_to_thread,
+        )
+
     def register_parameter(self, param: inspect.Parameter) -> DependantBase[Any]:
         """Hook to register the parameter this Dependant corresponds to.
 
@@ -52,13 +67,7 @@ class Marker(MarkerBase):
         This method can return the same or a new instance of a Dependant to avoid modifying itself.
         """
         if self.wire is False:
-            return Dependant[Any](
-                call=self.call,
-                scope=self.scope,
-                use_cache=self.use_cache,
-                wire=self.wire,
-                sync_to_thread=self.sync_to_thread,
-            )
+            return self.from_callable(self.call)
         call = self.call
         if call is None:
             annotation_type_option = get_type(param)
@@ -70,16 +79,13 @@ class Marker(MarkerBase):
                 else:
                     # a class type, a callable class instance or a function
                     call = annotation_type_option.value
-        return Dependant[Any](
-            call,
-            scope=self.scope,
-            use_cache=self.use_cache,
-            wire=self.wire,
-            sync_to_thread=self.sync_to_thread,
-        )
+        return self.from_callable(call)
 
 
 class Dependant(DependantBase[T]):
+    wire: bool
+    sync_to_thread: bool
+
     @overload
     def __init__(
         self,
