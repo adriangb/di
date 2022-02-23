@@ -228,3 +228,20 @@ class JoinedDependant(DependantBase[T]):
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(dependant={self.dependant}, siblings={self.siblings})"
+
+
+class InjectableClass:
+    __slots__ = ()
+
+    def __init_subclass__(
+        cls,
+        scope: Scope = None,
+        use_cache: bool = True,
+        **kwargs: Any,
+    ) -> None:
+        super().__init_subclass__(**kwargs)
+
+        def call(cls_: Any) -> Marker:
+            return Marker(cls_, scope=scope, use_cache=use_cache)
+
+        cls.__di_dependency__ = classmethod(call)  # type: ignore
