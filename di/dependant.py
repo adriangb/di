@@ -235,13 +235,14 @@ class InjectableClass:
 
     def __init_subclass__(
         cls,
+        call: Optional[DependencyProvider] = None,
         scope: Scope = None,
         use_cache: bool = True,
         **kwargs: Any,
     ) -> None:
         super().__init_subclass__(**kwargs)
 
-        def call(cls_: Any) -> Marker:
-            return Marker(cls_, scope=scope, use_cache=use_cache)
+        def create_marker(cls_: Any) -> Marker:
+            return Marker(call or cls_, scope=scope, use_cache=use_cache)
 
-        cls.__di_dependency__ = classmethod(call)  # type: ignore
+        cls.__di_dependency__ = classmethod(create_marker)  # type: ignore
