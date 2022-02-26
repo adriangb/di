@@ -14,12 +14,12 @@ class DBConn:
         self.host = config.host
 
 
-async def controller(conn: DBConn) -> None:
+async def endpoint(conn: DBConn) -> None:
     assert isinstance(conn, DBConn)
 
 
 async def framework():
     container = Container(scopes=["request"])
-    solved = container.solve(Dependant(controller, scope="request"))
+    solved = container.solve(Dependant(endpoint, scope="request"))
     async with container.enter_scope("request"):
         await container.execute_async(solved, executor=AsyncExecutor())

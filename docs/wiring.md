@@ -1,24 +1,20 @@
 # Wiring
 
 Wiring is the act of "connecting" together dependencies.
-There are generally two types of wiring that a DI container can do:
 
-- Auto-wiring: where the container inspects the dependencies and automatically deduces their sub-dependencies.
-- Manual wiring: where the user needs to register each sub-dependency with the container.
+In `di`, wiring is handled by the `Dependant` API.
+The general idea is that `Container` accepts a `Dependant` and then asks it for it's sub-dependencies.
+These sub-dependencies are themselves `Dependant`s, and so the `Container` keeps asking them for _their_ sub-dependenices until there are none.
 
-Auto-wiring is generally preferable: it reduces boilerplate and decouples your application from the Container's API.
-But auto-wiring is not always possible: sometimes the value is produced by a function (`value: int = some_function()`) or the type to inject is not the type in the annotation (when using interfaces / protocols).
+But how does `Dependant` know what it's dependencies are?
+Every `Dependant` has a `call` attribute which is a callable (a class, a function, etc.) that which can be introspected (usually with `inpsect.signature`) to find it's parameters.
+The from these parameters the `Dependant` determine's what it's dependencies are.
+But how do we go from a parameter `param: Foo` to a `Dependant`?
+There are actually several different mechanisms available:
 
-## Auto-wiring in `di`
+## Autowiring
 
-Auto-wiring in `di` relies on inspecting function signatures and class constructors.
-The primary means of inspection are the standard library's `inspect.signature` and `typing.get_type_hints`.
-This makes auto-wiring compatible with a broad range of things, including:
-
-- `def` functions
-- Classes
-- `functools.partial` binds
-- Callable class classes or class instances (instances of classes implementing `__call__`)
+Autowiring is available when the parameter's type annotation is a well-behaved type/class. Well behaved in this case means just means that it's parameters can be understood by `di`, for example that they are type annotated and are uniquely identifiable (`param: int` won't work properly).
 
 Here is an example showing auto-wiring in action.
 
@@ -31,42 +27,33 @@ In this example we'll load a config from the environment:
 
 What makes this "auto-wiring" is that we didn't have to tell `di` how to construct `DBConn`: `di` detected that `controller` needed a `DBConn` and that `DBConn` in turn needs a `Config` instance.
 
-### Async class construction
+This is the simplest option because you don't have to do anything, but it' relatively limited in terms of what can be injected.
 
-In order to support constructing a class asynchronously, `di` will detect if your class has an `@classmethod` `__di_dependant__`:
+!!! note Dependant metadata inheritence
+    You'll notice that we gave our root dependency a `scope` but did not do the smae with our other dependencies.
+    When `Dependant` auto-wires it's sub-dependants, they'll inherit it's scope.
+    So every dependendency in this example ends up with the `"request"` scope.
 
-```Python
---8<-- "docs_src/async_constructor.py"
-```
+## Dependency markers
 
-This allows you to construct your class even if it depends on doing async work _and_ it needs to refer to the class itself.
+Dependency markers, in the form of `di.dependant.Marker` serve to hold information about a dependency, for example how to construct it or it's scope.
 
-If you only need to do async work and don't need access to the class, you don't need to use this and can instead just make your field depend on an asynchronous function:
+Markers are generally useful when:
 
-```Python
---8<-- "docs_src/async_init_dependency.py"
-```
+- Injecting a non-identifiabletype, like a `list[str]`
+- Injecting the result of a function (`param: some_function` is not valid in Python)
+- The type being injected is not well-behaved and you need to tell `di` how to construct it
 
-## Manual wiring
-
-But what about situations where auto-wiring doesn't cut it?
-A common scenario for this is when type annotations are interfaces / protocols / ABCs, not concrete implementations. This is a good general practice and is very common in larger projects.
-It is also common for a dependency to come from a function, in which case we don't just want an instance of the type annotation, we want the value returned by a specific function.
-
-In these scenarios, some manual input from the user is required.
-There are two important concepts in `di` to handle this input:
-
-- Binds: are used to swap out one dependency for another, which can be used to swap out an interface / protocol / ABC for a concrete implementation.
-- Markers: usually `Dependant(...)` which tell `di` how to construct the dependency (e.g. calling a function) as well as carrying other metadata (like the scope, which you will see more about later on).
-
-Here is an example that makes use of both:
+Let's take our previous example and look at how we would have used markers if `DBConn` accepted a `host: str` paramter instead of our `Config` class directly:
 
 ```Python
---8<-- "docs_src/manual_wiring.py"
+--8<-- "docs_src/markers.py"
 ```
 
-Binds in `di` are particularly powerful because the bound providers can themselves have dependencies, and those dependencies can even be auto-wired.
-For more information on binds in `di`, see our [Binds] docs.
+All we had to do was tell `di` how to construct `DBConn` (by assigning the parameter a `Marker`) and `di` can do the rest.
+Note that we are still using autowiring for `endpoint` and `Config`, it's not all or nothing and you can mix and match styles.
+
+### A note on Annotated / PEP 593
 
 Markers are set via [PEP 593's Annotated].
 This is in contrast to FastAPIs use of markers as default values (`param: int = Depends(...)`).
@@ -95,16 +82,63 @@ def foo(v: Depends[PositiveInt[int]]) -> int:
     return v
 ```
 
-There are however some cons to the use of `Annotated`:
+Note how we used [type aliases] to create stackable, reusable types.
+This means that while `Annotated` can sometimes be verbose, it can also be made very convenient with type aliases.
 
-- `Annotated` requires Python 3.9 (although it is available via the [typing_extensions backport])
-- Using `Annotated` is more verbose, and can easily cause your function signature to spill into multiple lines.
+[type aliases]: https://www.python.org/dev/peps/pep-0593/#aliases-concerns-over-verbosity
+
+## Custom types
+
+If you are writing and injecting your own classes, you also have the option of putting the dependency injection metadata into the class itself, via the `__di_dependency__(cls) -> Marker` protocol. This obviously doesn't work if you are injecting a 3rd party class you are importing (unless you subclass it).
+
+The main advantage of this method is that the consumers of this class (wich may be your own codebase) don't have to apply markers everywhere or worry about inconsistent scopes (see [scopes]).
+
+For example, we can tell `di` constructing a class asynchronously`:
+
+```Python
+--8<-- "docs_src/async_constructor.py"
+```
+
+This allows you to construct your class even if it depends on doing async work _and_ it needs to refer to the class itself.
+
+If you only need to do async work and don't need access to the class, you don't need to use this and can instead just make your field depend on an asynchronous function:
+
+```Python
+--8<-- "docs_src/async_init_dependency.py"
+```
+
+Another way this is useful is to pre-declare scopes for a class.
+For example, you may only want to have one `UserRepo` for you entire app:
+
+```Python
+--8<-- "docs_src/singleton.py"
+```
+
+[scopes]: scopes.md
+
+### InjectableClass
+
+As a convenience, `di` provides an `InjectableClass` type that you can inherit from so that you can easily pass parameters to `Marker` without implementing `__di_dependant__`:
+
+```Python
+--8<-- "docs_src/injectable_class.py"
+```
+
+## Binds
+
+Binds, which will be covered in depth in the [binds] section offer a way of swapping out dependencies imperatively (when you encounter type "X", use function "y" to build it).
+They can be used with any of the methods described above.
 
 ## Performance
 
 Reflection (inspecting function signatures for dependencies) _is very slow_.
 For this reason, `di` tries to avoid it as much as possible.
 The best way to avoid extra introspection is to re-use [Solved Dependants].
+
+## Conclusion
+
+There are several ways to declare dependencies in `di`.
+Which one makes sense for each use case depends on several factors, but ultimately they all achieve the same outcome.
 
 [Solved Dependants]: solving.md#SolvedDependant
 [binds]: binds.md
