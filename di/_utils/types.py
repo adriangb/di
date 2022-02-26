@@ -3,9 +3,9 @@ from dataclasses import dataclass
 from types import TracebackType
 from typing import Any, Generic, Optional, Type, TypeVar, Union
 
-if sys.version_info < (3, 8):
+if sys.version_info < (3, 8):  # pragma: no cover
     from typing_extensions import Protocol
-else:
+else:  # pragma: no cover
     from typing import Protocol
 
 

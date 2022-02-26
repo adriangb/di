@@ -173,7 +173,7 @@ class ContainerCommon:
                         f"The dependency {dep.call} is used with multiple scopes"
                         f" ({dep.scope} and {other.scope}); this is not allowed."
                     )
-                continue
+                continue  # pragma: no cover
             dependants[cache_key] = dep
             params = get_params(dep)
             param_graph[dep] = params
@@ -281,8 +281,7 @@ class ContainerCommon:
             solved=solved,
             values=values,
         )
-        if root_task.task_id not in results:
-            executor.execute_sync(leaf_tasks, execution_state)  # type: ignore[union-attr]
+        executor.execute_sync(leaf_tasks, execution_state)  # type: ignore[union-attr]
         return results[root_task.task_id]  # type: ignore[no-any-return]
 
     async def execute_async(
@@ -299,6 +298,5 @@ class ContainerCommon:
             solved=solved,
             values=values,
         )
-        if root_task.task_id not in results:
-            await executor.execute_async(leaf_tasks, execution_state)  # type: ignore[union-attr]
+        await executor.execute_async(leaf_tasks, execution_state)  # type: ignore[union-attr]
         return results[root_task.task_id]  # type: ignore[no-any-return]
