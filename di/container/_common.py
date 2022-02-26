@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-import contextvars
 import inspect
-import sys
 from collections import deque
 from contextlib import contextmanager
-from types import TracebackType
 from typing import (
     Any,
     ContextManager,
@@ -18,15 +15,8 @@ from typing import (
     Optional,
     Sequence,
     Set,
-    Type,
     TypeVar,
-    Union,
 )
-
-if sys.version_info < (3, 8):
-    from typing_extensions import Protocol
-else:
-    from typing import Protocol
 
 from graphlib2 import TopologicalSorter
 
@@ -36,35 +26,22 @@ from di._utils.scope_validation import validate_scopes
 from di._utils.state import ContainerState
 from di._utils.task import Task
 from di._utils.topsort import topsort
-from di._utils.types import FusedContextManager
 from di.api.dependencies import CacheKey, DependantBase, DependencyParameter
 from di.api.executor import AsyncExecutorProtocol, SyncExecutorProtocol
 from di.api.providers import DependencyProvider
 from di.api.scopes import Scope
 from di.api.solved import SolvedDependant
+from di.container._bind_hook import BindHook
 from di.exceptions import SolvingError, WiringError
-
-__all__ = ("BaseContainer", "Container")
-
-
-_DependantQueue = Deque[DependantBase[Any]]
-
 
 DependencyType = TypeVar("DependencyType")
 
 
-class RegisterHook(Protocol):
-    def __call__(
-        self, param: Optional[inspect.Parameter], dependant: DependantBase[Any]
-    ) -> Optional[DependantBase[Any]]:
-        ...
-
-
-class _ContainerCommon:
+class ContainerCommon:
     __slots__ = ("_scopes", "_register_hooks")
 
     _scopes: Sequence[Scope]
-    _register_hooks: List[RegisterHook]
+    _register_hooks: List[BindHook]
 
     def __init__(
         self,
@@ -87,7 +64,7 @@ class _ContainerCommon:
 
     def register_bind_hook(
         self,
-        hook: RegisterHook,
+        hook: BindHook,
     ) -> ContextManager[None]:
         """Replace a dependency provider with a new one.
 
@@ -183,7 +160,7 @@ class _ContainerCommon:
             return params
 
         # Do a DFS of the DAG checking constraints along the way
-        q: _DependantQueue = deque((dependency,))
+        q: Deque[DependantBase[Any]] = deque((dependency,))
         seen: Set[DependantBase[Any]] = set()
         while q:
             dep = q.popleft()
@@ -325,173 +302,3 @@ class _ContainerCommon:
         if root_task.task_id not in results:
             await executor.execute_async(leaf_tasks, execution_state)  # type: ignore[union-attr]
         return results[root_task.task_id]  # type: ignore[no-any-return]
-
-
-class BaseContainer(_ContainerCommon):
-    """Basic container that lets you manage it's state yourself"""
-
-    __slots__ = ("__state",)
-    __state: ContainerState
-
-    def __init__(
-        self,
-        *,
-        scopes: Sequence[Scope] = (None,),
-    ) -> None:
-        super().__init__(
-            scopes=scopes,
-        )
-        self.__state = ContainerState.initialize()
-
-    @property
-    def _state(self) -> ContainerState:
-        return self.__state
-
-    def copy(self: _BaseContainerType) -> _BaseContainerType:
-        new = object.__new__(self.__class__)
-        new._scopes = self._scopes
-        # binds are use_cached
-        new._register_hooks = self._register_hooks
-        # cached values and scopes are not use_cached
-        new.__state = self.__state.copy()
-        return new  # type: ignore[no-any-return]
-
-    def enter_scope(
-        self: _BaseContainerType, scope: Scope
-    ) -> FusedContextManager[_BaseContainerType]:
-        """Enter a scope and get back a new BaseContainer in that scope"""
-        new = self.copy()
-        return _ContainerScopeContext(scope, new, new.__state)
-
-
-_BaseContainerType = TypeVar("_BaseContainerType", bound=BaseContainer)
-
-
-class _ContainerScopeContext(FusedContextManager[_BaseContainerType]):
-    __slots__ = ("scope", "container", "state", "cm")
-    cm: FusedContextManager[None]
-
-    def __init__(
-        self,
-        scope: Scope,
-        container: _BaseContainerType,
-        state: ContainerState,
-    ) -> None:
-        self.scope = scope
-        self.container = container
-        self.state = state
-
-    def __enter__(self) -> _BaseContainerType:
-        self.cm = self.state.enter_scope(self.scope)
-        self.cm.__enter__()
-        return self.container
-
-    def __exit__(
-        self,
-        exc_type: Optional[Type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
-    ) -> Union[None, bool]:
-        return self.cm.__exit__(exc_type, exc_value, traceback)
-
-    async def __aenter__(self) -> _BaseContainerType:
-        self.cm = self.state.enter_scope(self.scope)
-        await self.cm.__aenter__()
-        return self.container
-
-    async def __aexit__(
-        self,
-        exc_type: Optional[Type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
-    ) -> Union[None, bool]:
-        return await self.cm.__aexit__(exc_type, exc_value, traceback)
-
-
-class Container(_ContainerCommon):
-    """A container that manages it's own state via ContextVars"""
-
-    __slots__ = "_context"
-
-    _context: contextvars.ContextVar[ContainerState]
-
-    def __init__(
-        self,
-        *,
-        scopes: Sequence[Scope] = (None,),
-    ) -> None:
-        super().__init__(
-            scopes=scopes,
-        )
-        self._context = contextvars.ContextVar(f"{self}._context")
-        self._context.set(ContainerState.initialize())
-
-    @property
-    def _state(self) -> ContainerState:
-        return self._context.get()
-
-    def copy(self: _ContainerType) -> _ContainerType:
-        new = object.__new__(self.__class__)
-        new._scopes = self._scopes
-        new._register_hooks = self._register_hooks
-        new._context = self._context
-        return new  # type: ignore[no-any-return]
-
-    def enter_scope(
-        self: _ContainerType, scope: Scope
-    ) -> FusedContextManager[_ContainerType]:
-        new = self.copy()
-        return _ContextVarStateManager(
-            self._context, scope, new  # type: ignore[attr-defined]
-        )
-
-
-_ContainerType = TypeVar("_ContainerType", bound=Container)
-
-
-class _ContextVarStateManager(FusedContextManager[_ContainerType]):
-    __slots__ = ("scope", "container", "context", "cm", "token")
-
-    cm: FusedContextManager[None]
-
-    def __init__(
-        self,
-        context: contextvars.ContextVar[ContainerState],
-        scope: Scope,
-        container: _ContainerType,
-    ) -> None:
-        self.context = context
-        self.scope = scope
-        self.container = container
-
-    def __enter__(self) -> _ContainerType:
-        new_state = self.context.get().copy()
-        self.cm = new_state.enter_scope(self.scope)
-        self.cm.__enter__()
-        self.token = self.context.set(new_state)
-        return self.container
-
-    def __exit__(
-        self,
-        exc_type: Optional[Type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
-    ) -> Union[None, bool]:
-        self.context.reset(self.token)
-        return self.cm.__exit__(exc_type, exc_value, traceback)
-
-    async def __aenter__(self) -> _ContainerType:
-        new_state = self.context.get().copy()
-        self.cm = new_state.enter_scope(self.scope)
-        await self.cm.__aenter__()
-        self.token = self.context.set(new_state)
-        return self.container
-
-    async def __aexit__(
-        self,
-        exc_type: Optional[Type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
-    ) -> Union[None, bool]:
-        self.context.reset(self.token)
-        return await self.cm.__aexit__(exc_type, exc_value, traceback)

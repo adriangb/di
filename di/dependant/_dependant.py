@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, Iterable, List, Optional, TypeVar, overload
+from typing import Any, List, Optional, TypeVar, overload
 
 from di._utils.inspect import get_parameters, get_type
 from di.api.dependencies import (
@@ -94,8 +94,10 @@ class Marker:
 
 
 class Dependant(DependantBase[T]):
+    call: Optional[DependencyProviderType[T]]
     wire: bool
     sync_to_thread: bool
+    scope: Scope
 
     @overload
     def __init__(
@@ -193,53 +195,3 @@ class Dependant(DependantBase[T]):
         return (
             f"{self.__class__.__name__}(call={self.call}, use_cache={self.use_cache})"
         )
-
-
-class JoinedDependant(DependantBase[T]):
-    """A Dependant that aggregates other dependants without directly depending on them"""
-
-    __slots__ = ("dependant", "siblings")
-
-    def __init__(
-        self,
-        dependant: DependantBase[T],
-        *,
-        siblings: Iterable[DependantBase[Any]],
-    ) -> None:
-        self.call = dependant.call
-        self.dependant = dependant
-        self.siblings = siblings
-        self.scope = dependant.scope
-        self.use_cache = dependant.use_cache
-
-    def get_dependencies(self) -> List[DependencyParameter]:
-        """Get the dependencies of our main dependant and all siblings"""
-        return [
-            *self.dependant.get_dependencies(),
-            *(DependencyParameter(dep, None) for dep in self.siblings),
-        ]
-
-    @property
-    def cache_key(self) -> CacheKey:
-        return (self.dependant.cache_key, tuple((s.cache_key for s in self.siblings)))
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(dependant={self.dependant}, siblings={self.siblings})"
-
-
-class Injectable:
-    __slots__ = ()
-
-    def __init_subclass__(
-        cls,
-        call: Optional[DependencyProvider] = None,
-        scope: Scope = None,
-        use_cache: bool = True,
-        **kwargs: Any,
-    ) -> None:
-        super().__init_subclass__(**kwargs)
-
-        def create_dependant(cls_: Any, param: inspect.Parameter) -> Dependant[Any]:
-            return Dependant(call or cls_, scope=scope, use_cache=use_cache)
-
-        cls.__di_dependency__ = classmethod(create_dependant)  # type: ignore
