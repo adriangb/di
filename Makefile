@@ -6,7 +6,7 @@ PACKAGE_VERSION = $(shell poetry version -s | cut -d+ -f1)
 .install-poetry:
 	@echo "---- 👷 Installing build dependencies ----"
 	deactivate > /dev/null 2>&1 || true
-	pip install -U wheel
+	pip install -U wheel wheel setuptools pip
 	poetry -V || pip install -U poetry
 	touch .install-poetry
 
