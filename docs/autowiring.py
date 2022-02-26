@@ -1,11 +1,12 @@
-from dataclasses import dataclass
+import os
+from dataclasses import dataclass, field
 
 from di import AsyncExecutor, Container, Dependant
 
 
 @dataclass
 class Config:
-    host: str = "localhost"
+    host: str = field(default_factory=lambda: os.getenv("HOST", "localhost"))
 
 
 class DBConn:

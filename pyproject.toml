@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "di"
-version = "0.59.1"
+version = "0.59.2"
 description = "Autowiring dependency injection"
 authors = ["Adrian Garcia Badaracco <adrian@adriangb.com>"]
 readme = "README.md"
@@ -55,7 +55,7 @@ profile = "black"
 
 [tool.coverage.run]
 branch = true
-source = ["di", "tests", "docs"]
+source = ["di", "tests", "docs_src"]
 dynamic_context = "test_function"
 
 [tool.coverage.report]

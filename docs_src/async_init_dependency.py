@@ -4,18 +4,14 @@ from di import AsyncExecutor, Container, Dependant, Marker
 from di.typing import Annotated
 
 
-@dataclass
-class A:
-    greeting = "👋"
-
-
-async def get_greeting(a: A) -> str:
-    return a.greeting
+async def get_msg() -> str:
+    # make an http request or something
+    return "👋"
 
 
 @dataclass
 class B:
-    msg: Annotated[str, Marker(get_greeting)]
+    msg: Annotated[str, Marker(get_msg)]
 
 
 async def main() -> None:

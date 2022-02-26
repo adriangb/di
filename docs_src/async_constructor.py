@@ -3,9 +3,8 @@ from dataclasses import dataclass
 from di import AsyncExecutor, Container, Dependant, Marker
 
 
-@dataclass
-class A:
-    greeting = "👋"
+class HTTPClient:
+    pass
 
 
 @dataclass
@@ -14,8 +13,10 @@ class B:
 
     @classmethod
     def __di_dependency__(cls) -> Marker:
-        async def func(a: A) -> B:
-            return B(msg=f"{a.greeting} {cls.__name__}")
+        # note that client is injected by di!
+        async def func(client: HTTPClient) -> B:
+            # do an http rquest or something
+            return B(msg="👋")
 
         return Marker(func)
 
@@ -29,4 +30,4 @@ async def main() -> None:
     solved = container.solve(Dependant(endpoint))
     async with container.enter_scope(None):
         res = await container.execute_async(solved, executor=executor)
-        assert res == "👋 B"
+        assert res == "👋"

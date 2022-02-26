@@ -29,10 +29,12 @@ What makes this "auto-wiring" is that we didn't have to tell `di` how to constru
 
 This is the simplest option because you don't have to do anything, but it' relatively limited in terms of what can be injected.
 
-!!! note Dependant metadata inheritence
-    You'll notice that we gave our root dependency a `scope` but did not do the smae with our other dependencies.
-    When `Dependant` auto-wires it's sub-dependants, they'll inherit it's scope.
-    So every dependendency in this example ends up with the `"request"` scope.
+### Autowiring metadata
+
+To execute a dependency, `di` needs both a callable target (a class, function, etc.) _and_ some metadata, namely `scope` and `use_cache`.
+
+Autowiring can discover the callable target from type annotations, but it cannot infer the metadata.
+So metadata is just inherited from the parent dependency: in the example above, we declared `endpoint` as having a `"request"` scope, so all of the sub-dependencies that get auto-wired end up having the `"request"` scope.
 
 ## Dependency markers
 
@@ -43,6 +45,7 @@ Markers are generally useful when:
 - Injecting a non-identifiabletype, like a `list[str]`
 - Injecting the result of a function (`param: some_function` is not valid in Python)
 - The type being injected is not well-behaved and you need to tell `di` how to construct it
+- You want to attach metadata to the target (like explicitly setting the `scope`)
 
 Let's take our previous example and look at how we would have used markers if `DBConn` accepted a `host: str` paramter instead of our `Config` class directly:
 
