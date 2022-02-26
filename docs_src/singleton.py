@@ -1,10 +1,12 @@
-from di import Container, Dependant, Marker, SyncExecutor
+import inspect
+
+from di import Container, Dependant, SyncExecutor
 
 
 class UsersRepo:
     @classmethod
-    def __di_dependency__(cls) -> Marker:
-        return Marker(UsersRepo, scope="singleton")
+    def __di_dependency__(cls, param: inspect.Parameter) -> "Dependant[UsersRepo]":
+        return Dependant(UsersRepo, scope="singleton")
 
 
 def endpoint(repo: UsersRepo) -> UsersRepo:

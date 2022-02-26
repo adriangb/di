@@ -1,8 +1,8 @@
 from di import Container, Dependant, SyncExecutor
-from di.dependant import InjectableClass
+from di.dependant import Injectable
 
 
-class UsersRepo(InjectableClass, scope="singleton"):
+class UsersRepo(Injectable, scope="singleton"):
     pass
 
 

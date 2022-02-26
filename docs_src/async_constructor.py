@@ -1,6 +1,7 @@
+import inspect
 from dataclasses import dataclass
 
-from di import AsyncExecutor, Container, Dependant, Marker
+from di import AsyncExecutor, Container, Dependant
 
 
 class HTTPClient:
@@ -12,13 +13,13 @@ class B:
     msg: str
 
     @classmethod
-    def __di_dependency__(cls) -> Marker:
+    def __di_dependency__(cls, param: inspect.Parameter) -> "Dependant[B]":
         # note that client is injected by di!
         async def func(client: HTTPClient) -> B:
             # do an http rquest or something
-            return B(msg="👋")
+            return B(msg=f"👋 from {param.name}")
 
-        return Marker(func)
+        return Dependant(func)
 
 
 async def main() -> None:
@@ -30,4 +31,4 @@ async def main() -> None:
     solved = container.solve(Dependant(endpoint))
     async with container.enter_scope(None):
         res = await container.execute_async(solved, executor=executor)
-        assert res == "👋"
+        assert res == "👋 from b"

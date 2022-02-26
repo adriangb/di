@@ -4,7 +4,12 @@ import inspect
 from typing import Any, Iterable, List, Optional, TypeVar, overload
 
 from di._utils.inspect import get_parameters, get_type
-from di.api.dependencies import CacheKey, DependantBase, DependencyParameter, MarkerBase
+from di.api.dependencies import (
+    CacheKey,
+    DependantBase,
+    DependencyParameter,
+    InjectableClassProvider,
+)
 from di.api.providers import (
     AsyncGeneratorProvider,
     CallableProvider,
@@ -12,7 +17,6 @@ from di.api.providers import (
     DependencyProvider,
     DependencyProviderType,
     GeneratorProvider,
-    InjectableClassProvider,
 )
 from di.api.scopes import Scope
 from di.typing import get_markers_from_parameter
@@ -25,7 +29,7 @@ _VARIABLE_PARAMETER_KINDS = (
 T = TypeVar("T")
 
 
-class Marker(MarkerBase):
+class Marker:
     call: Optional[DependencyProvider]
     scope: Scope
     use_cache: bool
@@ -47,17 +51,6 @@ class Marker(MarkerBase):
         self.wire = wire
         self.sync_to_thread = sync_to_thread
 
-    def from_callable(
-        self, call: Optional[DependencyProviderType[Any]]
-    ) -> DependantBase[Any]:
-        return Dependant[Any](
-            call=call,
-            scope=self.scope,
-            use_cache=self.use_cache,
-            wire=self.wire,
-            sync_to_thread=self.sync_to_thread,
-        )
-
     def register_parameter(self, param: inspect.Parameter) -> DependantBase[Any]:
         """Hook to register the parameter this Dependant corresponds to.
 
@@ -67,19 +60,37 @@ class Marker(MarkerBase):
         This method can return the same or a new instance of a Dependant to avoid modifying itself.
         """
         if self.wire is False:
-            return self.from_callable(self.call)
+            return Dependant[Any](
+                call=self.call,
+                scope=self.scope,
+                use_cache=self.use_cache,
+                wire=self.wire,
+                sync_to_thread=self.sync_to_thread,
+            )
         call = self.call
+        if call is None and param.default is not param.empty:
+
+            def inject_default_value() -> Any:
+                return param.default
+
+            call = inject_default_value
         if call is None:
             annotation_type_option = get_type(param)
-            if annotation_type_option is not None:
-                if isinstance(annotation_type_option.value, InjectableClassProvider):
-                    return annotation_type_option.value.__di_dependency__().register_parameter(
-                        param
-                    )
+            if annotation_type_option is not None and inspect.isclass(
+                annotation_type_option.value
+            ):
+                if issubclass(annotation_type_option.value, InjectableClassProvider):
+                    return annotation_type_option.value.__di_dependency__(param)
                 else:
                     # a class type, a callable class instance or a function
                     call = annotation_type_option.value
-        return self.from_callable(call)
+        return Dependant[Any](
+            call=call,
+            scope=self.scope,
+            use_cache=self.use_cache,
+            wire=self.wire,
+            sync_to_thread=self.sync_to_thread,
+        )
 
 
 class Dependant(DependantBase[T]):
@@ -89,36 +100,36 @@ class Dependant(DependantBase[T]):
     @overload
     def __init__(
         self,
-        call: Optional[AsyncGeneratorProvider[T]] = None,
+        call: Optional[AsyncGeneratorProvider[T]] = ...,
         *,
-        scope: Scope = None,
-        use_cache: bool = True,
-        wire: bool = True,
-        sync_to_thread: bool = False,
+        scope: Scope = ...,
+        use_cache: bool = ...,
+        wire: bool = ...,
+        sync_to_thread: bool = ...,
     ) -> None:
         ...
 
     @overload
     def __init__(
         self,
-        call: Optional[CoroutineProvider[T]] = None,
+        call: Optional[CoroutineProvider[T]] = ...,
         *,
-        scope: Scope = None,
-        use_cache: bool = True,
-        wire: bool = True,
-        sync_to_thread: bool = False,
+        scope: Scope = ...,
+        use_cache: bool = ...,
+        wire: bool = ...,
+        sync_to_thread: bool = ...,
     ) -> None:
         ...
 
     @overload
     def __init__(
         self,
-        call: Optional[GeneratorProvider[T]] = None,
+        call: Optional[GeneratorProvider[T]] = ...,
         *,
-        scope: Scope = None,
-        use_cache: bool = True,
-        wire: bool = True,
-        sync_to_thread: bool = False,
+        scope: Scope = ...,
+        use_cache: bool = ...,
+        wire: bool = ...,
+        sync_to_thread: bool = ...,
     ) -> None:
         ...
 
@@ -127,10 +138,10 @@ class Dependant(DependantBase[T]):
         self,
         call: Optional[CallableProvider[T]] = None,
         *,
-        scope: Scope = None,
-        use_cache: bool = True,
-        wire: bool = True,
-        sync_to_thread: bool = False,
+        scope: Scope = ...,
+        use_cache: bool = ...,
+        wire: bool = ...,
+        sync_to_thread: bool = ...,
     ) -> None:
         ...
 
@@ -166,31 +177,17 @@ class Dependant(DependantBase[T]):
                 continue
             else:
                 maybe_sub_dependant_marker = next(
-                    get_markers_from_parameter(param), None
+                    get_markers_from_parameter(param, Marker), None
                 )
                 if maybe_sub_dependant_marker is not None:
                     sub_dependant = maybe_sub_dependant_marker.register_parameter(param)
                 else:
-                    sub_dependant = self.initialize_sub_dependant(param)
+                    sub_dependant = self.get_default_marker().register_parameter(param)
             res.append(DependencyParameter(dependency=sub_dependant, parameter=param))
         return res
 
-    def initialize_sub_dependant(self, param: inspect.Parameter) -> DependantBase[Any]:
-        if param.default is param.empty:
-            # try to auto-wire
-            return Marker(
-                call=None,
-                scope=self.scope,
-                use_cache=self.use_cache,
-            ).register_parameter(param)
-        # has a default parameter but we create a dependency anyway just for binds
-        # but do not wire it to make autowiring less brittle and less magic
-        return Marker(
-            call=None,
-            scope=self.scope,
-            use_cache=self.use_cache,
-            wire=False,
-        ).register_parameter(param)
+    def get_default_marker(self) -> Marker:
+        return Marker(scope=self.scope, use_cache=self.use_cache)
 
     def __repr__(self) -> str:
         return (
@@ -230,7 +227,7 @@ class JoinedDependant(DependantBase[T]):
         return f"{self.__class__.__name__}(dependant={self.dependant}, siblings={self.siblings})"
 
 
-class InjectableClass:
+class Injectable:
     __slots__ = ()
 
     def __init_subclass__(
@@ -242,7 +239,7 @@ class InjectableClass:
     ) -> None:
         super().__init_subclass__(**kwargs)
 
-        def create_marker(cls_: Any) -> Marker:
-            return Marker(call or cls_, scope=scope, use_cache=use_cache)
+        def create_dependant(cls_: Any, param: inspect.Parameter) -> Dependant[Any]:
+            return Dependant(call or cls_, scope=scope, use_cache=use_cache)
 
-        cls.__di_dependency__ = classmethod(create_marker)  # type: ignore
+        cls.__di_dependency__ = classmethod(create_dependant)  # type: ignore

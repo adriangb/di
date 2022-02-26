@@ -25,10 +25,10 @@ from di._utils.inspect import (
 )
 from di._utils.scope_map import ScopeMap
 from di._utils.types import CacheKey
-from di.api._providers import DependencyProvider
 from di.api.dependencies import DependantBase
 from di.api.executor import State as ExecutorState
 from di.api.executor import Task as ExecutorTask
+from di.api.providers import DependencyProvider
 from di.api.scopes import Scope
 from di.exceptions import IncompatibleDependencyError
 
