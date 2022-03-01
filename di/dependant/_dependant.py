@@ -19,7 +19,7 @@ from di.api.providers import (
     GeneratorProvider,
 )
 from di.api.scopes import Scope
-from di.typing import get_markers_from_parameter
+from di.typing import get_markers_from_annotation
 
 _VARIABLE_PARAMETER_KINDS = (
     inspect.Parameter.VAR_POSITIONAL,
@@ -179,7 +179,7 @@ class Dependant(DependantBase[T]):
                 continue
             else:
                 maybe_sub_dependant_marker = next(
-                    get_markers_from_parameter(param, Marker), None
+                    get_markers_from_annotation(param.annotation, Marker), None
                 )
                 if maybe_sub_dependant_marker is not None:
                     sub_dependant = maybe_sub_dependant_marker.register_parameter(param)
