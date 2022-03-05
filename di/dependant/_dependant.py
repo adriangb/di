@@ -98,12 +98,14 @@ class Dependant(DependantBase[T]):
     wire: bool
     sync_to_thread: bool
     scope: Scope
+    Optional[Marker]
 
     @overload
     def __init__(
         self,
         call: Optional[AsyncGeneratorProvider[T]] = ...,
         *,
+        marker: Optional[Marker] = ...,
         scope: Scope = ...,
         use_cache: bool = ...,
         wire: bool = ...,
@@ -116,6 +118,7 @@ class Dependant(DependantBase[T]):
         self,
         call: Optional[CoroutineProvider[T]] = ...,
         *,
+        marker: Optional[Marker] = ...,
         scope: Scope = ...,
         use_cache: bool = ...,
         wire: bool = ...,
@@ -128,6 +131,7 @@ class Dependant(DependantBase[T]):
         self,
         call: Optional[GeneratorProvider[T]] = ...,
         *,
+        marker: Optional[Marker] = ...,
         scope: Scope = ...,
         use_cache: bool = ...,
         wire: bool = ...,
@@ -140,6 +144,7 @@ class Dependant(DependantBase[T]):
         self,
         call: Optional[CallableProvider[T]] = None,
         *,
+        marker: Optional[Marker] = ...,
         scope: Scope = ...,
         use_cache: bool = ...,
         wire: bool = ...,
@@ -151,6 +156,7 @@ class Dependant(DependantBase[T]):
         self,
         call: Optional[DependencyProviderType[T]] = None,
         *,
+        marker: Optional[Marker] = None,
         scope: Scope = None,
         use_cache: bool = True,
         wire: bool = True,
@@ -161,6 +167,7 @@ class Dependant(DependantBase[T]):
         self.use_cache = use_cache
         self.wire = wire
         self.sync_to_thread = sync_to_thread
+        self.marker = marker
 
     @property
     def cache_key(self) -> CacheKey:
