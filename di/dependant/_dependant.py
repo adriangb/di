@@ -98,7 +98,7 @@ class Dependant(DependantBase[T]):
     wire: bool
     sync_to_thread: bool
     scope: Scope
-    Optional[Marker]
+    marker: Optional[Marker]
 
     @overload
     def __init__(
