@@ -16,13 +16,15 @@ def controller(conn: Annotated[DBConnection, Marker(scope="app")]) -> None:
 
 
 def framework() -> None:
-    container = Container(scopes=("app", "request"))
-    with container.enter_scope("app"):
-        with container.enter_scope("request"):
+    container = Container()
+    with container.bind_by_type(Dependant(lambda: request, scope="request"), Request):
+        solved = container.solve(Dependant(controller), scopes=["app", "request"])
+    with container.enter_scope("app") as app_state:
+        with container.enter_scope("request", state=app_state) as request_state:
             request = Request()
             with container.bind_by_type(
                 Dependant(lambda: request, scope="request"), Request
             ):
                 container.execute_sync(
-                    container.solve(Dependant(controller)), executor=SyncExecutor()
+                    solved, executor=SyncExecutor(), state=request_state
                 )

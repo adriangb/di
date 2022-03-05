@@ -6,7 +6,7 @@ from di import Container, Dependant, SyncExecutor
 class UsersRepo:
     @classmethod
     def __di_dependency__(cls, param: inspect.Parameter) -> "Dependant[UsersRepo]":
-        return Dependant(UsersRepo, scope="singleton")
+        return Dependant(UsersRepo, scope="app")
 
 
 def endpoint(repo: UsersRepo) -> UsersRepo:
@@ -14,12 +14,14 @@ def endpoint(repo: UsersRepo) -> UsersRepo:
 
 
 def framework():
-    container = Container(scopes=["singleton", "request"])
-    solved = container.solve(Dependant(endpoint, scope="request"))
+    container = Container()
+    solved = container.solve(
+        Dependant(endpoint, scope="request"), scopes=["app", "request"]
+    )
     executor = SyncExecutor()
-    with container.enter_scope("singleton"):
-        with container.enter_scope("request"):
-            repo1 = container.execute_sync(solved, executor=executor)
-        with container.enter_scope("request"):
-            repo2 = container.execute_sync(solved, executor=executor)
+    with container.enter_scope("app") as app_state:
+        with container.enter_scope("request", state=app_state) as req_state:
+            repo1 = container.execute_sync(solved, executor=executor, state=req_state)
+        with container.enter_scope("request", state=app_state) as req_state:
+            repo2 = container.execute_sync(solved, executor=executor, state=req_state)
         assert repo1 is repo2

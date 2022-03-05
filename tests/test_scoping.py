@@ -4,7 +4,6 @@ import anyio
 import pytest
 
 from di import Container, Dependant, Marker, SyncExecutor
-from di.api.scopes import Scope
 from di.exceptions import DuplicateScopeError
 from di.typing import Annotated
 
@@ -21,55 +20,60 @@ dep1 = Dep()
 dep2 = Dep()
 
 
-def use_cache(v: Annotated[int, Marker(dep1, scope="scope")]):
+def use_cache(v: Annotated[int, Marker(dep1, scope="outer")]):
     return v
 
 
-def not_use_cache(v: Annotated[int, Marker(dep1, scope="scope", use_cache=False)]):
+def not_use_cache(v: Annotated[int, Marker(dep1, scope="outer", use_cache=False)]):
     return v
 
 
 def test_scoped_execute():
-    container = Container(scopes=("scope", None))
-    use_cache_solved = container.solve(Dependant(use_cache))
-    not_use_cache_solved = container.solve(Dependant(not_use_cache))
-    with container.enter_scope("scope"):
+    container = Container()
+    use_cache_solved = container.solve(Dependant(use_cache), scopes=["outer", "inner"])
+    not_use_cache_solved = container.solve(
+        Dependant(not_use_cache), scopes=["outer", "inner"]
+    )
+    with container.enter_scope("outer") as outer_state:
         dep1.value = 1
-        with container.enter_scope(None):
-            r = container.execute_sync(use_cache_solved, executor=SyncExecutor())
+        with container.enter_scope(None, state=outer_state) as state:
+            r = container.execute_sync(
+                use_cache_solved, executor=SyncExecutor(), state=state
+            )
         assert r == 1, r
         # we change the value to 2, but we should still get back 1
         # since the value is cached
         dep1.value = 2
-        with container.enter_scope(None):
-            r = container.execute_sync(use_cache_solved, executor=SyncExecutor())
+        with container.enter_scope(None, state=outer_state) as state:
+            r = container.execute_sync(
+                use_cache_solved, executor=SyncExecutor(), state=state
+            )
         assert r == 1, r
         # but if we execute a non-use_cache dependency, we get the current value
-        with container.enter_scope(None):
-            r = container.execute_sync(not_use_cache_solved, executor=SyncExecutor())
+        with container.enter_scope(None, state=outer_state) as state:
+            r = container.execute_sync(
+                not_use_cache_solved, executor=SyncExecutor(), state=state
+            )
         assert r == 2, r
-    with container.enter_scope("scope"):
+    with container.enter_scope("outer") as outer_state:
         # now that we exited and re-entered the scope the cache was cleared
-        with container.enter_scope(None):
-            r = container.execute_sync(use_cache_solved, executor=SyncExecutor())
+        with container.enter_scope(None, state=outer_state) as state:
+            r = container.execute_sync(
+                use_cache_solved, executor=SyncExecutor(), state=state
+            )
         assert r == 2, r
 
 
 @pytest.mark.parametrize("outer", ("global", "local"))
 @pytest.mark.parametrize("inner", ("global", "local"))
-def test_duplicate_global_scope(outer: Scope, inner: Scope):
-    """Cannot enter the same global scope twice"""
+def test_duplicate_global_scope(outer: str, inner: str):
+    """Cannot enter the same scope twice"""
 
     container = Container()
 
-    fn = {
-        typing.cast(Scope, "global"): container.enter_scope,
-        typing.cast(Scope, "local"): container.enter_scope,
-    }
-
-    with fn[outer]("app"):
+    with container.enter_scope("app") as outer_state:
         with pytest.raises(DuplicateScopeError):
-            with fn[inner]("app"):
+            with container.enter_scope("app", state=outer_state):
                 ...
 
 
@@ -100,42 +104,56 @@ def test_nested_caching():
 
     DepEndpoint = Dependant(endpoint, scope="request")
 
-    container = Container(scopes=("app", "request", "endpoint"))
-    with container.enter_scope("app"):
-        with container.enter_scope("request"):
+    container = Container()
+    scopes = ["app", "request", "endpoint"]
+    endpoint_solved = container.solve(DepEndpoint, scopes=scopes)
+    a_solved = container.solve(DepA, scopes=scopes)
+    b_solved = container.solve(DepB, scopes=scopes)
+    c_solved = container.solve(DepC, scopes=scopes)
+
+    with container.enter_scope("app") as app_state:
+        with container.enter_scope("request", state=app_state) as request_state:
             res = container.execute_sync(
-                container.solve(DepEndpoint), executor=SyncExecutor()
+                endpoint_solved, executor=SyncExecutor(), state=request_state
             )
             assert res == "ABC"
             # values should be cached as long as we're within the request scope
             holder[:] = "DEF"
-            with container.enter_scope("endpoint"):
+            with container.enter_scope(
+                "endpoint", state=request_state
+            ) as endpoint_state:
                 assert (
                     container.execute_sync(
-                        container.solve(DepEndpoint), executor=SyncExecutor()
+                        endpoint_solved,
+                        executor=SyncExecutor(),
+                        state=endpoint_state,
+                    )
+                ) == "ABC"
+            with container.enter_scope(
+                "endpoint", state=request_state
+            ) as endpoint_state:
+                assert (
+                    container.execute_sync(
+                        c_solved, executor=SyncExecutor(), state=endpoint_state
                     )
                 ) == "ABC"
             with container.enter_scope("endpoint"):
                 assert (
                     container.execute_sync(
-                        container.solve(DepC), executor=SyncExecutor()
-                    )
-                ) == "ABC"
-            with container.enter_scope("endpoint"):
-                assert (
-                    container.execute_sync(
-                        container.solve(DepB), executor=SyncExecutor()
+                        b_solved, executor=SyncExecutor(), state=endpoint_state
                     )
                 ) == "AB"
             with container.enter_scope("endpoint"):
                 assert (
                     container.execute_sync(
-                        container.solve(DepA), executor=SyncExecutor()
+                        a_solved, executor=SyncExecutor(), state=endpoint_state
                     )
                 ) == "A"
         # A is still cached because it is lifespan scoped
         assert (
-            container.execute_sync(container.solve(DepA), executor=SyncExecutor())
+            container.execute_sync(
+                a_solved, executor=SyncExecutor(), state=endpoint_state
+            )
         ) == "A"
 
 
@@ -165,14 +183,21 @@ def test_nested_lifecycle():
     def endpoint(c: Annotated[None, Marker(C, scope="request")]) -> None:
         return
 
-    container = Container(scopes=("lifespan", "request", "endpoint"))
-    with container.enter_scope("lifespan"):
-        with container.enter_scope("request"):
+    container = Container()
+    solved = container.solve(
+        Dependant(endpoint, scope="endpoint"),
+        scopes=["lifespan", "request", "endpoint"],
+    )
+    with container.enter_scope("lifespan") as app_state:
+        with container.enter_scope("request", state=app_state) as request_state:
             assert list(state.values()) == ["uninitialized"] * 3
-            with container.enter_scope("endpoint"):
+            with container.enter_scope(
+                "endpoint", state=request_state
+            ) as endpoint_state:
                 container.execute_sync(
-                    container.solve(Dependant(endpoint, scope="endpoint")),
+                    solved,
                     executor=SyncExecutor(),
+                    state=endpoint_state,
                 )
             assert list(state.values()) == ["initialized"] * 3
         assert list(state.values()) == ["initialized", "destroyed", "destroyed"]
@@ -183,7 +208,7 @@ def test_nested_lifecycle():
 async def test_enter_scope_concurrently():
     """We can enter the same scope from two different concurrent tasks"""
 
-    container = Container(scopes=("request",))
+    container = Container()
 
     async def endpoint() -> None:
         async with container.enter_scope("request"):

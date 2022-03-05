@@ -13,18 +13,18 @@ def test_test_caching_within_execution_scope_use_cache_true() -> None:
 
     container = Container()
     executor = SyncExecutor()
-    solved = container.solve(Dependant(dep))
+    solved = container.solve(Dependant(dep), scopes=[None])
 
-    with container.enter_scope(None):
-        val = container.execute_sync(solved, executor=executor)
+    with container.enter_scope(None) as state:
+        val = container.execute_sync(solved, executor=executor, state=state)
         assert val == 0
-        val = container.execute_sync(solved, executor=executor)
+        val = container.execute_sync(solved, executor=executor, state=state)
         assert val == 0
 
-    with container.enter_scope(None):
-        val = container.execute_sync(solved, executor=executor)
+    with container.enter_scope(None) as state:
+        val = container.execute_sync(solved, executor=executor, state=state)
         assert val == 1
-        val = container.execute_sync(solved, executor=executor)
+        val = container.execute_sync(solved, executor=executor, state=state)
         assert val == 1
 
 
@@ -36,18 +36,18 @@ def test_test_caching_within_execution_scope_use_cache_false() -> None:
 
     container = Container()
     executor = SyncExecutor()
-    solved = container.solve(Dependant(dep, use_cache=False))
+    solved = container.solve(Dependant(dep, use_cache=False), scopes=[None])
 
-    with container.enter_scope(None):
-        val = container.execute_sync(solved, executor=executor)
+    with container.enter_scope(None) as state:
+        val = container.execute_sync(solved, executor=executor, state=state)
         assert val == 0
-        val = container.execute_sync(solved, executor=executor)
+        val = container.execute_sync(solved, executor=executor, state=state)
         assert val == 1
 
-    with container.enter_scope(None):
-        val = container.execute_sync(solved, executor=executor)
+    with container.enter_scope(None) as state:
+        val = container.execute_sync(solved, executor=executor, state=state)
         assert val == 2
-        val = container.execute_sync(solved, executor=executor)
+        val = container.execute_sync(solved, executor=executor, state=state)
         assert val == 3
 
 
@@ -57,34 +57,34 @@ def test_test_caching_above_execution_scope_use_cache_true() -> None:
     def dep() -> int:
         return next(values)
 
-    container = Container(scopes=("outer", "inner"))
+    container = Container()
     executor = SyncExecutor()
-    solved = container.solve(Dependant(dep, scope="outer"))
+    solved = container.solve(Dependant(dep, scope="outer"), scopes=["outer", "inner"])
 
-    with container.enter_scope("outer"):
-        with container.enter_scope("inner"):
-            val = container.execute_sync(solved, executor=executor)
+    with container.enter_scope("outer") as outer_state:
+        with container.enter_scope("inner", state=outer_state) as inner_state:
+            val = container.execute_sync(solved, executor=executor, state=inner_state)
             assert val == 0
-            val = container.execute_sync(solved, executor=executor)
-            assert val == 0
-
-        with container.enter_scope("inner"):
-            val = container.execute_sync(solved, executor=executor)
-            assert val == 0
-            val = container.execute_sync(solved, executor=executor)
+            val = container.execute_sync(solved, executor=executor, state=inner_state)
             assert val == 0
 
-    with container.enter_scope("outer"):
-        with container.enter_scope("inner"):
-            val = container.execute_sync(solved, executor=executor)
+        with container.enter_scope("inner", state=outer_state) as inner_state:
+            val = container.execute_sync(solved, executor=executor, state=inner_state)
+            assert val == 0
+            val = container.execute_sync(solved, executor=executor, state=inner_state)
+            assert val == 0
+
+    with container.enter_scope("outer") as outer_state:
+        with container.enter_scope("inner", state=outer_state) as inner_state:
+            val = container.execute_sync(solved, executor=executor, state=inner_state)
             assert val == 1
-            val = container.execute_sync(solved, executor=executor)
+            val = container.execute_sync(solved, executor=executor, state=inner_state)
             assert val == 1
 
-        with container.enter_scope("inner"):
-            val = container.execute_sync(solved, executor=executor)
+        with container.enter_scope("inner", state=outer_state) as inner_state:
+            val = container.execute_sync(solved, executor=executor, state=inner_state)
             assert val == 1
-            val = container.execute_sync(solved, executor=executor)
+            val = container.execute_sync(solved, executor=executor, state=inner_state)
             assert val == 1
 
 
@@ -94,34 +94,36 @@ def test_test_caching_above_execution_scope_use_cache_false() -> None:
     def dep() -> int:
         return next(values)
 
-    container = Container(scopes=("outer", "inner"))
+    container = Container()
     executor = SyncExecutor()
-    solved = container.solve(Dependant(dep, scope="outer", use_cache=False))
+    solved = container.solve(
+        Dependant(dep, scope="outer", use_cache=False), scopes=["outer", "inner"]
+    )
 
-    with container.enter_scope("outer"):
-        with container.enter_scope("inner"):
-            val = container.execute_sync(solved, executor=executor)
+    with container.enter_scope("outer") as outer_state:
+        with container.enter_scope("inner", state=outer_state) as inner_state:
+            val = container.execute_sync(solved, executor=executor, state=inner_state)
             assert val == 0
-            val = container.execute_sync(solved, executor=executor)
+            val = container.execute_sync(solved, executor=executor, state=inner_state)
             assert val == 1
 
-        with container.enter_scope("inner"):
-            val = container.execute_sync(solved, executor=executor)
+        with container.enter_scope("inner", state=outer_state) as inner_state:
+            val = container.execute_sync(solved, executor=executor, state=inner_state)
             assert val == 2
-            val = container.execute_sync(solved, executor=executor)
+            val = container.execute_sync(solved, executor=executor, state=inner_state)
             assert val == 3
 
-    with container.enter_scope("outer"):
-        with container.enter_scope("inner"):
-            val = container.execute_sync(solved, executor=executor)
+    with container.enter_scope("outer") as outer_state:
+        with container.enter_scope("inner", state=outer_state) as inner_state:
+            val = container.execute_sync(solved, executor=executor, state=inner_state)
             assert val == 4
-            val = container.execute_sync(solved, executor=executor)
+            val = container.execute_sync(solved, executor=executor, state=inner_state)
             assert val == 5
 
-        with container.enter_scope("inner"):
-            val = container.execute_sync(solved, executor=executor)
+        with container.enter_scope("inner", state=outer_state) as inner_state:
+            val = container.execute_sync(solved, executor=executor, state=inner_state)
             assert val == 6
-            val = container.execute_sync(solved, executor=executor)
+            val = container.execute_sync(solved, executor=executor, state=inner_state)
             assert val == 7
 
 
@@ -138,9 +140,9 @@ def test_sharing_within_execution_scope() -> None:
 
     container = Container()
     executor = SyncExecutor()
-    solved = container.solve(Dependant(dep))
-    with container.enter_scope(None):
-        one, two, three = container.execute_sync(solved, executor=executor)
+    solved = container.solve(Dependant(dep), scopes=[None])
+    with container.enter_scope(None) as state:
+        one, two, three = container.execute_sync(solved, executor=executor, state=state)
         assert one is three
         assert two is not one
 
@@ -158,19 +160,23 @@ def test_dependant_custom_cache_key() -> None:
     class State:
         foo: str = "bar"
 
-    container = Container(scopes=("app", "request"))
+    container = Container()
     app_scoped_state_dep = CustomDependant(State, scope="app")
-    app_scoped_state_solved = container.solve(app_scoped_state_dep)
+    app_scoped_state_solved = container.solve(app_scoped_state_dep, scopes=["app"])
     request_scoped_state_dep = CustomDependant(State, scope="request")
-    request_scoped_state_solved = container.solve(request_scoped_state_dep)
+    request_scoped_state_solved = container.solve(
+        request_scoped_state_dep, scopes=["app", "request"]
+    )
 
-    with container.enter_scope("app"):
+    with container.enter_scope("app") as app_state:
         instance_1 = container.execute_sync(
-            app_scoped_state_solved, executor=SyncExecutor()
+            app_scoped_state_solved, executor=SyncExecutor(), state=app_state
         )
-        with container.enter_scope("request"):
+        with container.enter_scope("request", state=app_state) as request_state:
             instance_2 = container.execute_sync(
-                request_scoped_state_solved, executor=SyncExecutor()
+                request_scoped_state_solved,
+                executor=SyncExecutor(),
+                state=request_state,
             )
 
         assert instance_2 is instance_1

@@ -17,7 +17,7 @@ def controller(
 
 
 def main() -> None:
-    container = Container(scopes=["request"])
-    solved = container.solve(Dependant(controller, scope="request"))
-    with container.enter_scope("request"):
-        container.execute_sync(solved, executor=SyncExecutor())
+    container = Container()
+    solved = container.solve(Dependant(controller, scope="request"), scopes=["request"])
+    with container.enter_scope("request") as state:
+        container.execute_sync(solved, executor=SyncExecutor(), state=state)

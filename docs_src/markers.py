@@ -23,7 +23,7 @@ def endpoint(conn: Annotated[DBConn, Marker(inject_db, scope="request")]) -> Non
 
 
 def framework():
-    container = Container(scopes=["request"])
-    solved = container.solve(Dependant(endpoint, scope="request"))
-    with container.enter_scope("request"):
-        container.execute_sync(solved, executor=SyncExecutor())
+    container = Container()
+    solved = container.solve(Dependant(endpoint, scope="request"), scopes=["request"])
+    with container.enter_scope("request") as state:
+        container.execute_sync(solved, executor=SyncExecutor(), state=state)

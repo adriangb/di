@@ -32,16 +32,18 @@ class Postgres(DBProtocol):
 
 
 async def framework() -> None:
-    container = Container(scopes=("request",))
+    container = Container()
     container.bind_by_type(Dependant(Postgres, scope="request"), DBProtocol)
-    solved = container.solve(Dependant(controller, scope="request"))
+    solved = container.solve(Dependant(controller, scope="request"), scopes=["request"])
     # this next line would fail without the bind
-    async with container.enter_scope("request"):
-        await container.execute_async(solved, executor=AsyncExecutor())
+    async with container.enter_scope("request") as state:
+        await container.execute_async(solved, executor=AsyncExecutor(), state=state)
     # and we can double check that the bind worked
     # by requesting the instance directly
-    async with container.enter_scope("request"):
+    async with container.enter_scope("request") as state:
         db = await container.execute_async(
-            container.solve(Dependant(DBProtocol)), executor=AsyncExecutor()
+            container.solve(Dependant(DBProtocol), scopes=["request"]),
+            executor=AsyncExecutor(),
+            state=state,
         )
     assert isinstance(db, Postgres)

@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from typing import Any, AsyncGenerator, Generator, List
 
 from di import ConcurrentAsyncExecutor, SyncExecutor
+from di.container import ContainerState
 
 if sys.version_info < (3, 8):
     from typing_extensions import Literal
@@ -85,9 +86,11 @@ v5 = vFive()
 
 def test_execute():
     container = Container()
-    with container.enter_scope(None):
+    with container.enter_scope(None) as state:
         res = container.execute_sync(
-            container.solve(Dependant(v5)), executor=SyncExecutor()
+            container.solve(Dependant(v5), scopes=[None]),
+            executor=SyncExecutor(),
+            state=state,
         )
     assert res.three.zero is res.zero
 
@@ -229,9 +232,11 @@ async def test_concurrency_async(dep1: Any, sync1: bool, dep2: Any, sync2: bool)
     ):
         ...
 
-    async with container.enter_scope(None):
+    async with container.enter_scope(None) as state:
         await container.execute_async(
-            container.solve(Dependant(collector)), executor=ConcurrentAsyncExecutor()
+            container.solve(Dependant(collector), scopes=[None]),
+            executor=ConcurrentAsyncExecutor(),
+            state=state,
         )
 
 
@@ -263,13 +268,15 @@ async def test_concurrent_executions_do_not_use_cache_results():
         assert id == expected  # replaced via caching
         assert one == expected  # replaced in results state
 
-    container = Container(scopes=("app", None))
-    solved = container.solve(Dependant(dep2))
+    container = Container()
+    solved = container.solve(Dependant(dep2), scopes=[None])
 
     async def execute_in_ctx(id: int) -> None:
         ctx.set(id)
-        async with container.enter_scope(None):
-            await container.execute_async(solved, executor=ConcurrentAsyncExecutor())
+        async with container.enter_scope(None) as state:
+            await container.execute_async(
+                solved, executor=ConcurrentAsyncExecutor(), state=state
+            )
 
     async with anyio.create_task_group() as tg:
         async with container.enter_scope("app"):
@@ -288,35 +295,40 @@ async def test_concurrent_executions_use_cache(
     def get_obj() -> object:
         return object()
 
-    async def collect1(obj: Annotated[object, Marker(get_obj, scope=scope)]) -> None:
+    async def collect1(
+        obj: Annotated[object, Marker(get_obj, scope=scope, use_cache=use_cache)]
+    ) -> None:
+        objects.append(obj)
+        await anyio.sleep(0.01)
+
+    async def collect2(
+        obj: Annotated[object, Marker(get_obj, scope=scope, use_cache=use_cache)]
+    ) -> None:
         objects.append(obj)
 
-    async def collect2(obj: Annotated[object, Marker(get_obj, scope=scope)]) -> None:
-        objects.append(obj)
+    container = Container()
+    solved1 = container.solve(Dependant(collect1), scopes=["app", None])
+    solved2 = container.solve(Dependant(collect2), scopes=["app", None])
 
-    container = Container(scopes=("app", None))
-    solved1 = container.solve(Dependant(collect1))
-    solved2 = container.solve(Dependant(collect2))
-
-    async def execute_1():
-        async with container.enter_scope(None):
+    async def execute_1(state: ContainerState):
+        async with container.enter_scope(None, state=state) as state:
             return await container.execute_async(
-                solved1, executor=ConcurrentAsyncExecutor()
+                solved1, executor=ConcurrentAsyncExecutor(), state=state
             )
 
-    async def execute_2():
-        async with container.enter_scope(None):
+    async def execute_2(state: ContainerState):
+        async with container.enter_scope(None, state=state) as state:
             return await container.execute_async(
-                solved2, executor=ConcurrentAsyncExecutor()
+                solved2, executor=ConcurrentAsyncExecutor(), state=state
             )
 
-    async with container.enter_scope("app"):
+    async with container.enter_scope("app") as state:
         async with anyio.create_task_group() as tg:
-            tg.start_soon(execute_1)
-            await anyio.sleep(0.05)
-            tg.start_soon(execute_2)
+            tg.start_soon(execute_1, state)
+            await anyio.sleep(0.005)
+            tg.start_soon(execute_2, state)
 
-    assert (objects[0] is objects[1]) is use_cache
+    assert (objects[0] is objects[1]) is (use_cache and scope == "app")
 
 
 @pytest.mark.anyio
@@ -326,13 +338,15 @@ async def test_async_cm_de_in_sync_scope():
     async def dep() -> AsyncGenerator[None, None]:
         yield
 
-    container = Container(scopes=("scope",))
-    with container.enter_scope("scope"):
+    container = Container()
+    with container.enter_scope(None) as state:
         with pytest.raises(
             IncompatibleDependencyError, match="canot be used in the sync scope"
         ):
             await container.execute_async(
-                container.solve(Dependant(dep, scope="scope")), executor=AsyncExecutor()
+                container.solve(Dependant(dep, scope=None), scopes=[None]),
+                executor=AsyncExecutor(),
+                state=state,
             )
 
 
@@ -340,8 +354,8 @@ def test_unknown_scope():
     def bad_dep(v: Annotated[int, Marker(lambda: 1, scope="request")]) -> int:
         return v
 
-    container = Container(scopes=("app", "request"))
-    solved = container.solve(Dependant(bad_dep))
-    with container.enter_scope("app"):
+    container = Container()
+    solved = container.solve(Dependant(bad_dep), scopes=["app", "request"])
+    with container.enter_scope("app") as state:
         with pytest.raises(UnknownScopeError):
-            container.execute_sync(solved, executor=SyncExecutor())
+            container.execute_sync(solved, executor=SyncExecutor(), state=state)

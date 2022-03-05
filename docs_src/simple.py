@@ -18,10 +18,10 @@ class C:
 
 
 def main():
-    container = Container(scopes=["request"])
-    solved = container.solve(Dependant(C, scope="request"))
-    with container.enter_scope("request"):
-        c = container.execute_sync(solved, executor=SyncExecutor())
+    container = Container()
+    solved = container.solve(Dependant(C, scope="request"), scopes=["request"])
+    with container.enter_scope("request") as state:
+        c = container.execute_sync(solved, executor=SyncExecutor(), state=state)
     assert isinstance(c, C)
     assert isinstance(c.a, A)
     assert isinstance(c.b, B)

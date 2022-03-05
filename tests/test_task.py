@@ -87,14 +87,16 @@ async def test_dependency_types(
 ):
     dep = wrapper(dep)
     container = Container()
-    solved = container.solve(Dependant(dep, use_cache=use_cache))  # type: ignore
+    solved = container.solve(Dependant(dep, use_cache=use_cache), scopes=[None])  # type: ignore
     executor = ConcurrentAsyncExecutor()
-    async with container.enter_scope(None):
-        res = await container.execute_async(solved, executor=executor)
+    async with container.enter_scope(None) as state:
+        res = await container.execute_async(solved, executor=executor, state=state)
         assert res == 1
         # test the cached execution paths
-        res = await container.execute_async(solved, executor=executor)
+        res = await container.execute_async(solved, executor=executor, state=state)
         assert res == 1
         # test the by value exeuction paths
-        res = await container.execute_async(solved, executor=executor, values={dep: 2})
+        res = await container.execute_async(
+            solved, executor=executor, values={dep: 2}, state=state
+        )
         assert res == 2

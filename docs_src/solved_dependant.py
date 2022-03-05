@@ -8,13 +8,13 @@ class Request:
 
 
 def web_framework():
-    container = Container(scopes=["request"])
-    solved = container.solve(Dependant(controller, scope="request"))
+    container = Container()
+    solved = container.solve(Dependant(controller, scope="request"), scopes=["request"])
     assert isinstance(solved, SolvedDependant)
 
-    with container.enter_scope("request"):
+    with container.enter_scope("request") as state:
         container.execute_sync(
-            solved, values={Request: Request()}, executor=SyncExecutor()
+            solved, values={Request: Request()}, executor=SyncExecutor(), state=state
         )
 
     dependencies = solved.get_flat_subdependants()

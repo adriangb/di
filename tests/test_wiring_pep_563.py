@@ -10,8 +10,10 @@ class Test:
 
 def test_postponed_evaluation_solving():
     container = Container()
-    with container.enter_scope(None):
+    with container.enter_scope(None) as state:
         res = container.execute_sync(
-            container.solve(Dependant(Test.__call__)), executor=SyncExecutor()
+            container.solve(Dependant(Test.__call__), scopes=[None]),
+            executor=SyncExecutor(),
+            state=state,
         )
     assert isinstance(res, Test)

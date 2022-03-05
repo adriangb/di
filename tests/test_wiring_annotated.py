@@ -45,10 +45,10 @@ def test_autowiring_class_with_default_builtin() -> None:
 
     dep = Dependant(func)
     container = Container()
-    solved = container.solve(dep)
+    solved = container.solve(dep, scopes=[None])
 
-    with container.enter_scope(None):
-        injected_values = container.execute_sync(solved, SyncExecutor())
+    with container.enter_scope(None) as state:
+        injected_values = container.execute_sync(solved, SyncExecutor(), state=state)
 
     assert injected_values == ("default", 1)
 
@@ -67,10 +67,10 @@ def test_autowiring_class_with_default_class() -> None:
 
     dep = Dependant(func)
     container = Container()
-    solved = container.solve(dep)
+    solved = container.solve(dep, scopes=[None])
 
-    with container.enter_scope(None):
-        injected_value = container.execute_sync(solved, SyncExecutor())
+    with container.enter_scope(None) as state:
+        injected_value = container.execute_sync(solved, SyncExecutor(), state=state)
 
     assert injected_value == "default"
 
@@ -90,9 +90,9 @@ def test_autowiring_class_with_default_class_from_bind() -> None:
     dep = Dependant(func)
     container = Container()
     container.bind_by_type(Dependant(lambda: A("bound")), A)
-    solved = container.solve(dep)
+    solved = container.solve(dep, scopes=[None])
 
-    with container.enter_scope(None):
-        injected_value = container.execute_sync(solved, SyncExecutor())
+    with container.enter_scope(None) as state:
+        injected_value = container.execute_sync(solved, SyncExecutor(), state=state)
 
     assert injected_value == "bound"

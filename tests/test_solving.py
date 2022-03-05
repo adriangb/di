@@ -24,8 +24,8 @@ def test_no_annotations_no_default_value_no_marker():
         WiringError,
         match="You must either provide a dependency marker, a type annotation or a default value",
     ):
-        with container.enter_scope(None):
-            container.execute_sync(container.solve(Dependant(badfunc)), executor=SyncExecutor())  # type: ignore # for Pylance
+        with container.enter_scope(None) as state:
+            container.execute_sync(container.solve(Dependant(badfunc), scopes=[None]), executor=SyncExecutor(), state=state)  # type: ignore # for Pylance
 
 
 def test_default_argument():
@@ -36,8 +36,8 @@ def test_default_argument():
 
     container = Container()
 
-    with container.enter_scope(None):
-        res = container.execute_sync(container.solve(Dependant(default_func)), executor=SyncExecutor())  # type: ignore # for Pylance
+    with container.enter_scope(None) as state:
+        res = container.execute_sync(container.solve(Dependant(default_func), scopes=[None]), executor=SyncExecutor(), state=state)  # type: ignore # for Pylance
     assert res == 2
 
 
@@ -49,8 +49,8 @@ def test_marker():
 
     container = Container()
 
-    with container.enter_scope(None):
-        res = container.execute_sync(container.solve(Dependant(marker_default_func)), executor=SyncExecutor())  # type: ignore # for Pylance
+    with container.enter_scope(None) as state:
+        res = container.execute_sync(container.solve(Dependant(marker_default_func), scopes=[None]), executor=SyncExecutor(), state=state)  # type: ignore # for Pylance
     assert res == 2
 
 
@@ -63,12 +63,11 @@ def test_dissalow_depending_on_inner_scope():
     def B(a: Annotated[None, Marker(A, scope="inner")]):
         ...
 
-    container = Container(scopes=("outer", "inner"))
-    with container.enter_scope("outer"):
-        with container.enter_scope("inner"):
-            match = r"scope \(inner\) is narrower than .+'s scope \(outer\)"
-            with pytest.raises(ScopeViolationError, match=match):
-                container.solve(Dependant(B, scope="outer"))
+    container = Container()
+
+    match = r"scope \(inner\) is narrower than .+'s scope \(outer\)"
+    with pytest.raises(ScopeViolationError, match=match):
+        container.solve(Dependant(B, scope="outer"), scopes=["outer", "inner"])
 
 
 def test_dependency_with_multiple_scopes():
@@ -81,9 +80,9 @@ def test_dependency_with_multiple_scopes():
     ) -> None:
         ...
 
-    container = Container(scopes=("app", "request"))
+    container = Container()
     with pytest.raises(SolvingError, match="used with multiple scopes"):
-        container.solve(Dependant(B, scope="request"))
+        container.solve(Dependant(B, scope="request"), scopes=[None])
 
 
 def test_siblings() -> None:
@@ -110,9 +109,9 @@ def test_siblings() -> None:
 
     siblings = [Sibling(), Sibling()]
     dep = JoinedDependant(Dependant(dep2), siblings=[Dependant(s) for s in siblings])
-    solved = container.solve(dep)
-    with container.enter_scope(None):
-        container.execute_sync(solved, executor=SyncExecutor())
+    solved = container.solve(dep, scopes=[None])
+    with container.enter_scope(None) as state:
+        container.execute_sync(solved, executor=SyncExecutor(), state=state)
     assert all(s.called for s in siblings)
     assert dep1.calls == 1  # they all use_cached the dependency
 
@@ -141,12 +140,15 @@ def test_non_parameter_dependency():
     def takes_no_parameters() -> None:
         pass
 
+    solved = container.solve(CustomDependant(takes_no_parameters), scopes=[None])
+
     # should_be_called is called, but it's return value is not passed into
     # takes_no_parameters since the DependencyParameter has parameter=None
-    with container.enter_scope(None):
+    with container.enter_scope(None) as state:
         container.execute_sync(
-            container.solve(CustomDependant(takes_no_parameters)),
+            solved,
             executor=SyncExecutor(),
+            state=state,
         )
     assert calls == 1
 
@@ -161,8 +163,8 @@ def test_no_wire() -> None:
 
     container = Container()
     with pytest.raises(WiringError):
-        container.solve(Dependant(CannotBeWired))
-    container.solve(Dependant(CannotBeWired, wire=False))
+        container.solve(Dependant(CannotBeWired), scopes=[None])
+    container.solve(Dependant(CannotBeWired, wire=False), scopes=[None])
 
 
 def test_wiring_from_binds() -> None:
@@ -175,11 +177,13 @@ def test_wiring_from_binds() -> None:
     container = Container()
     # container.register_by_type(Dependant(CanBeWired), CannotBeWired)
     with pytest.raises(WiringError):
-        container.solve(Dependant(CannotBeWired))
+        container.solve(Dependant(CannotBeWired), scopes=[None])
     container.bind_by_type(Dependant(CanBeWired), CannotBeWired)
-    with container.enter_scope(None):
+    with container.enter_scope(None) as state:
         c = container.execute_sync(
-            container.solve(Dependant(CannotBeWired)), executor=SyncExecutor()
+            container.solve(Dependant(CannotBeWired), scopes=[None]),
+            executor=SyncExecutor(),
+            state=state,
         )
     assert isinstance(c, CanBeWired)
 
@@ -190,7 +194,7 @@ def test_unknown_scope():
 
     container = Container()
     with pytest.raises(UnknownScopeError):
-        container.solve(Dependant(bad_dep))
+        container.solve(Dependant(bad_dep), scopes=[None])
 
 
 def test_re_used_dependant() -> None:
@@ -208,5 +212,5 @@ def test_re_used_dependant() -> None:
     ) -> None:
         ...
 
-    container = Container(scopes=(None,))
-    container.solve(Dependant(dep3, scope=None))
+    container = Container()
+    container.solve(Dependant(dep3, scope=None), scopes=[None])

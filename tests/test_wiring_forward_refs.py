@@ -11,9 +11,11 @@ class Foo:
 
 def test_forward_ref_evalutation():
     container = Container()
-    with container.enter_scope(None):
+    with container.enter_scope(None) as state:
         res = container.execute_sync(
-            container.solve(Dependant(Foo.foo)), executor=SyncExecutor()
+            container.solve(Dependant(Foo.foo), scopes=[None]),
+            executor=SyncExecutor(),
+            state=state,
         )
     assert isinstance(res, Foo)
     assert res.called

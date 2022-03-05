@@ -20,7 +20,7 @@ async def main() -> None:
 
     container = Container()
     executor = AsyncExecutor()
-    solved = container.solve(Dependant(endpoint))
-    async with container.enter_scope(None):
-        res = await container.execute_async(solved, executor=executor)
+    solved = container.solve(Dependant(endpoint), scopes=(None,))
+    async with container.enter_scope(None) as state:
+        res = await container.execute_async(solved, executor=executor, state=state)
         assert res == "👋"

@@ -45,9 +45,9 @@ async def controller(
 
 
 async def framework():
-    container = Container(scopes=["request"])
+    container = Container()
     # note that di will also autowire the bind, in this case to inject Config
     container.bind_by_type(Dependant(ConcreteDBConn, scope="request"), AbstractDBConn)
-    solved = container.solve(Dependant(controller, scope="request"))
-    async with container.enter_scope("request"):
-        await container.execute_async(solved, executor=AsyncExecutor())
+    solved = container.solve(Dependant(controller, scope="request"), scopes=["request"])
+    async with container.enter_scope("request") as state:
+        await container.execute_async(solved, executor=AsyncExecutor(), state=state)

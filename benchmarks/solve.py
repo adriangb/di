@@ -14,15 +14,17 @@ INTERVAL = 10e-6  # 10 us
 
 async def async_bench(sleep: SleepTimes, graph: GraphSize, iters: int) -> None:
     container = Container()
-    solved = container.solve(Dependant(generate_dag(graph, sync=False, sleep=sleep)))
+    solved = container.solve(
+        Dependant(generate_dag(graph, sync=False, sleep=sleep)), scopes=[None]
+    )
     executor = ConcurrentAsyncExecutor()
     p = Profiler()
-    async with container.enter_scope(None):
-        await container.execute_async(solved, executor=executor)
+    async with container.enter_scope(None) as state:
+        await container.execute_async(solved, executor=executor, state=state)
     p.start()
     for _ in range(iters):
-        async with container.enter_scope(None):
-            await container.execute_async(solved, executor=executor)
+        async with container.enter_scope(None) as state:
+            await container.execute_async(solved, executor=executor, state=state)
     p.stop()
     p.print()
     p.open_in_browser()
@@ -30,15 +32,17 @@ async def async_bench(sleep: SleepTimes, graph: GraphSize, iters: int) -> None:
 
 def sync_bench(sleep: SleepTimes, graph: GraphSize, iters: int) -> None:
     container = Container()
-    solved = container.solve(Dependant(generate_dag(graph, sync=True, sleep=sleep)))
+    solved = container.solve(
+        Dependant(generate_dag(graph, sync=True, sleep=sleep)), scopes=[None]
+    )
     executor = SyncExecutor()
     p = Profiler()
-    with container.enter_scope(None):
-        container.execute_sync(solved, executor=executor)
+    with container.enter_scope(None) as state:
+        container.execute_sync(solved, executor=executor, state=state)
     p.start()
     for _ in range(iters):
-        with container.enter_scope(None):
-            container.execute_sync(solved, executor=executor)
+        with container.enter_scope(None) as state:
+            container.execute_sync(solved, executor=executor, state=state)
     p.stop()
     p.print()
     p.open_in_browser()

@@ -19,14 +19,14 @@ def match_by_parameter_name(
     return None
 
 
-container = Container(scopes=(None,))
+container = Container()
 
 container.register_bind_hook(match_by_parameter_name)
 
-solved = container.solve(Dependant(Foo, scope=None))
+solved = container.solve(Dependant(Foo, scope=None), scopes=[None])
 
 
 def main():
-    with container.enter_scope(None):
-        foo = container.execute_sync(solved, executor=SyncExecutor())
+    with container.enter_scope(None) as state:
+        foo = container.execute_sync(solved, executor=SyncExecutor(), state=state)
     assert foo.bar == "baz"

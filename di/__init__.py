@@ -16,7 +16,7 @@ except PackageNotFoundError:
 
 
 import di.api as api  # noqa: E402
-from di.container import BaseContainer, Container  # noqa: E402
+from di.container import Container  # noqa: E402
 from di.dependant import Dependant, JoinedDependant, Marker  # noqa: E402
 from di.executors import (  # noqa: E402
     AsyncExecutor,
@@ -26,7 +26,6 @@ from di.executors import (  # noqa: E402
 
 __all__ = (
     "api",
-    "BaseContainer",
     "Container",
     "Dependant",
     "JoinedDependant",

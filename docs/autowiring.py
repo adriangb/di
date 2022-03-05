@@ -19,7 +19,7 @@ async def endpoint(conn: DBConn) -> None:
 
 
 async def framework():
-    container = Container(scopes=["request"])
-    solved = container.solve(Dependant(endpoint, scope="request"))
-    async with container.enter_scope("request"):
-        await container.execute_async(solved, executor=AsyncExecutor())
+    container = Container()
+    solved = container.solve(Dependant(endpoint, scope="request"), scopes=["request"])
+    async with container.enter_scope("request") as state:
+        await container.execute_async(solved, executor=AsyncExecutor(), state=state)
