@@ -31,6 +31,7 @@ T = TypeVar("T")
 
 class Marker:
     call: Optional[DependencyProvider]
+    dependency: Optional[Any]
     scope: Scope
     use_cache: bool
     wire: bool
@@ -45,7 +46,11 @@ class Marker:
         wire: bool = True,
         sync_to_thread: bool = False,
     ) -> None:
-        self.call = call
+        # by default we assume that call and dependency are the same thing
+        # but we don't enforce this on subclasses so that they can assign
+        # arbitrary meaning to dependency, e.g. a class that implements some API
+        # to produce a callable
+        self.call = self.dependency = call
         self.scope = scope
         self.use_cache = use_cache
         self.wire = wire
