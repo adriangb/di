@@ -21,18 +21,11 @@ class ContainerState:
 
     def __init__(
         self,
-        cached_values: ScopeMap[CacheKey, Any],
-        stacks: Dict[Scope, Union[AsyncExitStack, ExitStack]],
+        cached_values: Optional[ScopeMap[CacheKey, Any]] = None,
+        stacks: Optional[Dict[Scope, Union[AsyncExitStack, ExitStack]]] = None,
     ) -> None:
-        self.cached_values = cached_values
-        self.stacks = stacks
-
-    @staticmethod
-    def initialize() -> ContainerState:
-        return ContainerState(
-            cached_values=ScopeMap(),
-            stacks={},
-        )
+        self.cached_values = cached_values or ScopeMap()
+        self.stacks = stacks or {}
 
     @property
     def scopes(self) -> Iterable[Scope]:

@@ -288,5 +288,5 @@ class Container:
     def enter_scope(
         self, scope: Scope, state: Optional[ContainerState] = None
     ) -> FusedContextManager[ContainerState]:
-        state = state or ContainerState.initialize()
+        state = state or ContainerState()
         return state.enter_scope(scope)
