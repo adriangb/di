@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from types import TracebackType
-from typing import Optional, Sequence, Type, TypeVar, Union
+from typing import Optional, Type, TypeVar, Union
 
-from di._utils.state import ContainerState
 from di._utils.types import FusedContextManager
 from di.api.scopes import Scope
 from di.container._common import ContainerCommon
+from di.container._state import ContainerState, SupportsScopes
 
 
 class BaseContainer(ContainerCommon):
@@ -15,15 +15,13 @@ class BaseContainer(ContainerCommon):
     __slots__ = ("__state",)
     __state: ContainerState
 
-    def __init__(
-        self,
-        *,
-        scopes: Sequence[Scope] = (None,),
-    ) -> None:
-        super().__init__(
-            scopes=scopes,
-        )
+    def __init__(self) -> None:
+        super().__init__()
         self.__state = ContainerState.initialize()
+
+    @property
+    def state(self) -> SupportsScopes:
+        return self.__state
 
     @property
     def _state(self) -> ContainerState:
@@ -31,7 +29,6 @@ class BaseContainer(ContainerCommon):
 
     def copy(self: _BaseContainerType) -> _BaseContainerType:
         new = object.__new__(self.__class__)
-        new._scopes = self._scopes
         # binds are use_cached
         new._register_hooks = self._register_hooks
         # cached values and scopes are not use_cached
@@ -43,7 +40,7 @@ class BaseContainer(ContainerCommon):
     ) -> FusedContextManager[_BaseContainerType]:
         """Enter a scope and get back a new BaseContainer in that scope"""
         new = self.copy()
-        return _ContainerScopeContext(scope, new, new.__state)
+        return _ContainerScopeContext(scope, new, new._state)
 
 
 _BaseContainerType = TypeVar("_BaseContainerType", bound=BaseContainer)

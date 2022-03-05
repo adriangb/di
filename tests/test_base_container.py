@@ -12,7 +12,7 @@ async def test_base_container_async() -> None:
     executor = AsyncExecutor()
     container = BaseContainer()
 
-    solved = container.solve(dep)
+    solved = container.solve(dep, scopes=(None,))
 
     async with container.enter_scope(None) as container:
         res = await container.execute_async(solved, executor=executor)

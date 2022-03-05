@@ -23,7 +23,6 @@ from graphlib2 import TopologicalSorter
 from di._utils.execution_planning import SolvedDependantCache, plan_execution
 from di._utils.inspect import get_type
 from di._utils.scope_validation import validate_scopes
-from di._utils.state import ContainerState
 from di._utils.task import Task
 from di._utils.topsort import topsort
 from di.api.dependencies import CacheKey, DependantBase, DependencyParameter
@@ -32,35 +31,27 @@ from di.api.providers import DependencyProvider
 from di.api.scopes import Scope
 from di.api.solved import SolvedDependant
 from di.container._bind_hook import BindHook
+from di.container._state import ContainerState, SupportsScopes
 from di.exceptions import SolvingError, WiringError
 
 DependencyType = TypeVar("DependencyType")
 
 
 class ContainerCommon:
-    __slots__ = ("_scopes", "_register_hooks")
+    __slots__ = "_register_hooks"
 
-    _scopes: Sequence[Scope]
     _register_hooks: List[BindHook]
 
-    def __init__(
-        self,
-        scopes: Sequence[Scope],
-    ):
-        self._scopes = tuple(scopes)
+    def __init__(self) -> None:
         self._register_hooks = []
-
-    @property
-    def scopes(self) -> Sequence[Scope]:
-        return self._scopes
-
-    @property
-    def current_scopes(self) -> Sequence[Scope]:
-        return tuple(self._state.stacks.keys())
 
     @property
     def _state(self) -> ContainerState:
         raise NotImplementedError
+
+    @property
+    def state(self) -> SupportsScopes:
+        return self._state
 
     def register_bind_hook(
         self,
@@ -117,6 +108,7 @@ class ContainerCommon:
     def solve(
         self,
         dependency: DependantBase[DependencyType],
+        scopes: Sequence[Scope],
     ) -> SolvedDependant[DependencyType]:
         """Solve a dependency.
 
@@ -212,10 +204,7 @@ class ContainerCommon:
             root_task=tasks[dependency.cache_key],
             topological_sorter=ts,
         )
-        validate_scopes(
-            self._scopes,
-            dep_dag,
-        )
+        validate_scopes(scopes, dep_dag)
         solved = SolvedDependant(
             dependency=dependency,
             dag=param_graph,

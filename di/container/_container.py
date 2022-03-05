@@ -4,16 +4,20 @@ import contextvars
 from types import TracebackType
 from typing import Optional, Sequence, Type, TypeVar, Union
 
-from di._utils.state import ContainerState
 from di._utils.types import FusedContextManager
+from di.api.dependencies import DependantBase
 from di.api.scopes import Scope
+from di.api.solved import SolvedDependant
 from di.container._common import ContainerCommon
+from di.container._state import ContainerState
+
+T = TypeVar("T")
 
 
 class Container(ContainerCommon):
     """A container that manages it's own state via ContextVars"""
 
-    __slots__ = "_context"
+    __slots__ = ("_scopes", "_context")
 
     _context: contextvars.ContextVar[ContainerState]
 
@@ -22,9 +26,8 @@ class Container(ContainerCommon):
         *,
         scopes: Sequence[Scope] = (None,),
     ) -> None:
-        super().__init__(
-            scopes=scopes,
-        )
+        super().__init__()
+        self._scopes = scopes
         self._context = contextvars.ContextVar(f"{self}._context")
         self._context.set(ContainerState.initialize())
 
@@ -38,6 +41,11 @@ class Container(ContainerCommon):
         new._register_hooks = self._register_hooks
         new._context = self._context
         return new  # type: ignore[no-any-return]
+
+    def solve(
+        self, dependency: DependantBase[T], scopes: Optional[Sequence[Scope]] = None
+    ) -> SolvedDependant[T]:
+        return super().solve(dependency=dependency, scopes=scopes or self._scopes)
 
     def enter_scope(
         self: _ContainerType, scope: Scope
