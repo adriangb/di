@@ -70,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#di-pythonic-dependency-injection" class="md-skip">
+        <a href="#di-dependency-injection-toolkit" class="md-skip">
           Skip to content
         </a>
       
@@ -539,7 +539,7 @@
 
 
 
-<h1 id="di-pythonic-dependency-injection"><code>di</code>: pythonic dependency injection</h1>
+<h1 id="di-dependency-injection-toolkit"><code>di</code>: dependency injection toolkit</h1>
 <p align="center">
 <a href="https://github.com/adriangb/di/actions?query=workflow%3ACI%2FCD+event%3Apush+branch%3Amain" target="_blank">
     <img src="https://github.com/adriangb/di/actions/workflows/workflow.yaml/badge.svg?event=push&branch=main" alt="Test">
@@ -555,13 +555,13 @@
 </a>
 </p>
 
-<p><code>di</code> is a modern dependency injection system, modeled around the simplicity of FastAPI's dependency injection.</p>
+<p><code>di</code> is a modern dependency injection toolkit, modeled around the simplicity of FastAPI's dependency injection.</p>
 <p>Key features:</p>
 <ul>
 <li><strong>Intuitive</strong>: simple API, inspired by <a href="https://fastapi.tiangolo.com/tutorial/dependencies/">FastAPI</a>.</li>
-<li><strong>Succinct</strong>: declare what you want, and <code>di</code> figures out how to assemble it using type annotations.</li>
+<li><strong>Auto-wiring</strong>: <code>di</code> supports auto-wiring using type annotations.</li>
 <li><strong>Scopes</strong>: inspired by <a href="https://docs.pytest.org/en/6.2.x/fixture.html#scope-sharing-fixtures-across-classes-modules-packages-or-session">pytest scopes</a>, but defined by users (no fixed "request" or "session" scopes).</li>
-<li><strong>Customizable</strong>: decoupled internal APIs give you the flexibility to customize wiring and execution.</li>
+<li><strong>Composable</strong>: decoupled internal APIs give you the flexibility to customize wiring, execution and binding.</li>
 <li><strong>Performant</strong>: <code>di</code> can execute dependencies in parallel, move sync dependencies to threads and cache results. Performance critical parts are written in <a href="https://www.rust-lang.org">🦀</a> via <a href="https://github.com/adriangb/graphlib2">graphlib2</a>.</li>
 </ul>
 <h2 id="installation">Installation</h2>
@@ -592,7 +592,7 @@
 <span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
     <span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
     <span class="n">executor</span> <span class="o">=</span> <span class="n">SyncExecutor</span><span class="p">()</span>
-    <span class="n">solved</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">C</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">&quot;request&quot;</span><span class="p">)</span><span class="o">.</span> <span class="n">scopes</span><span class="o">=</span><span class="s2">&quot;request&quot;</span><span class="p">)</span>
+    <span class="n">solved</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">C</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">&quot;request&quot;</span><span class="p">),</span> <span class="n">scopes</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;request&quot;</span><span class="p">])</span>
     <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">enter_scope</span><span class="p">(</span><span class="s2">&quot;request&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">state</span><span class="p">:</span>
         <span class="n">c</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">execute_sync</span><span class="p">(</span><span class="n">solved</span><span class="p">,</span> <span class="n">executor</span><span class="o">=</span><span class="n">executor</span><span class="p">,</span> <span class="n">state</span><span class="o">=</span><span class="n">state</span><span class="p">)</span>
     <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">C</span><span class="p">)</span>
@@ -608,7 +608,7 @@ As a matter of fact, you are probably using a lot of these techniques already!</
 <p>Most web frameworks employ inversion of control: when you define a view / controller, the web framework calls you! The same thing applies to CLIs (like <a href="https://click.palletsprojects.com/en/8.0.x/">click</a>) or TUIs (like <a href="https://github.com/willmcgugan/textual">Textual</a>). This is especially true for many newer web frameworks that not only use inversion of control but also dependency injection. Two great examples of this are <a href="https://fastapi.tiangolo.com/tutorial/dependencies/">FastAPI</a> and <a href="https://www.neoteroi.dev/blacksheep/dependency-injection/">BlackSheep</a>.</p>
 <p>For a more comprehensive overview of Python projects related to dependency injection, see <a href="https://github.com/sfermigier/awesome-dependency-injection-in-python">Awesome Dependency Injection in Python</a>.</p>
 <h2 id="project-aims">Project Aims</h2>
-<p>This project aims to be a general dependency injection system, with a focus on providing the underlying dependency injection functionality for other libraries.</p>
+<p>This project aims to be a dependency injection toolkit, with a focus on providing the underlying dependency injection functionality for other libraries.</p>
 <p>In other words, while you could use this as a standalone dependency injection framework, you may find it to be a bit terse and verbose. There are also much more mature standalone dependency injection frameworks; I would recommend at least looking into <a href="https://github.com/ets-labs/python-dependency-injector">python-dependency-injector</a> since it is currently the most popular / widely used of the bunch.</p>
 <p>For more background, see our <a href="https://www.adriangb.com/di/">docs</a>.</p>
 
