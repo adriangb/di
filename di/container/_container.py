@@ -78,13 +78,13 @@ class Container:
         This method is synchronous and uses a synchronous executor,
         but the executor may still be able to execute async dependencies.
         """
-        results, leaf_tasks, execution_state, root_task = plan_execution(
+        results, ts, execution_state, root_task = plan_execution(
             stacks=state.stacks,
             cache=state.cached_values,
             solved=solved,
             values=values,
         )
-        executor.execute_sync(leaf_tasks, execution_state)  # type: ignore[union-attr]
+        executor.execute_sync(ts, execution_state)  # type: ignore[union-attr]
         return results[root_task.task_id]  # type: ignore[no-any-return]
 
     async def execute_async(
@@ -96,13 +96,13 @@ class Container:
         values: Optional[Mapping[DependencyProvider, Any]] = None,
     ) -> DependencyType:
         """Execute an already solved dependency."""
-        results, leaf_tasks, execution_state, root_task = plan_execution(
+        results, ts, execution_state, root_task = plan_execution(
             stacks=state.stacks,
             cache=state.cached_values,
             solved=solved,
             values=values,
         )
-        await executor.execute_async(leaf_tasks, execution_state)  # type: ignore[union-attr]
+        await executor.execute_async(ts, execution_state)  # type: ignore[union-attr]
         return results[root_task.task_id]  # type: ignore[no-any-return]
 
     def enter_scope(

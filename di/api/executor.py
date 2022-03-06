@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from typing import Any, Awaitable, Iterable, Optional, Union
+from typing import Any, Callable, Coroutine, Hashable, Iterable, Union
 
 if sys.version_info < (3, 8):
     from typing_extensions import Protocol
@@ -15,23 +15,32 @@ class State:
     __slots__ = ()
 
 
-class Task(Protocol):
+class Task(Hashable, Protocol):
     dependant: DependantBase[Any]
-    is_async: bool
+    compute: Union[
+        Callable[[State], None], Callable[[State], Coroutine[Any, Any, None]]
+    ]
 
-    def compute(
-        self, state: State
-    ) -> Union[Iterable[Union[None, Task]], Awaitable[Iterable[Union[None, Task]]]]:
+
+class TaskGraph(Protocol):
+    def done(self, task: Task) -> None:
+        ...
+
+    def get_ready(self) -> Iterable[Task]:
+        ...
+
+    def is_active(self) -> bool:
+        ...
+
+    def static_order(self) -> Iterable[Task]:
         ...
 
 
 class SyncExecutorProtocol(Protocol):
-    def execute_sync(self, tasks: Iterable[Optional[Task]], state: State) -> None:
+    def execute_sync(self, tasks: TaskGraph, state: State) -> None:
         raise NotImplementedError
 
 
 class AsyncExecutorProtocol(Protocol):
-    async def execute_async(
-        self, tasks: Iterable[Optional[Task]], state: State
-    ) -> None:
+    async def execute_async(self, tasks: TaskGraph, state: State) -> None:
         raise NotImplementedError

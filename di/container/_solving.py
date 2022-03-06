@@ -108,10 +108,12 @@ def solve(
         (dependants[key] for key_group in dep_topsort for key in key_group),
         ts,
     )
+    static_order = tuple(ts.copy().static_order())
     ts.prepare()
     container_cache = SolvedDependantCache(
         root_task=tasks[dependency.cache_key],
         topological_sorter=ts,
+        static_order=static_order,
     )
     validate_scopes(scopes, dep_dag)
     solved = SolvedDependant(
