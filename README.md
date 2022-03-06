@@ -1,4 +1,4 @@
-# `di`: pythonic dependency injection
+# `di`: dependency injection toolkit
 
 <p align="center">
 <a href="https://github.com/adriangb/di/actions?query=workflow%3ACI%2FCD+event%3Apush+branch%3Amain" target="_blank">
@@ -15,14 +15,14 @@
 </a>
 </p>
 
-`di` is a modern dependency injection system, modeled around the simplicity of FastAPI's dependency injection.
+`di` is a modern dependency injection toolkit, modeled around the simplicity of FastAPI's dependency injection.
 
 Key features:
 
 - **Intuitive**: simple API, inspired by [FastAPI].
-- **Succinct**: declare what you want, and `di` figures out how to assemble it using type annotations.
+- **Auto-wiring**: `di` supports auto-wiring using type annotations.
 - **Scopes**: inspired by [pytest scopes], but defined by users (no fixed "request" or "session" scopes).
-- **Customizable**: decoupled internal APIs give you the flexibility to customize wiring and execution.
+- **Composable**: decoupled internal APIs give you the flexibility to customize wiring, execution and binding.
 - **Performant**: `di` can execute dependencies in parallel, move sync dependencies to threads and cache results. Performance critical parts are written in [🦀] via [graphlib2].
 
 ## Installation
@@ -60,7 +60,7 @@ class C:
 def main():
     container = Container()
     executor = SyncExecutor()
-    solved = container.solve(Dependant(C, scope="request"). scopes="request")
+    solved = container.solve(Dependant(C, scope="request"), scopes=["request"])
     with container.enter_scope("request") as state:
         c = container.execute_sync(solved, executor=executor, state=state)
     assert isinstance(c, C)
@@ -85,7 +85,7 @@ For a more comprehensive overview of Python projects related to dependency injec
 
 ## Project Aims
 
-This project aims to be a general dependency injection system, with a focus on providing the underlying dependency injection functionality for other libraries.
+This project aims to be a dependency injection toolkit, with a focus on providing the underlying dependency injection functionality for other libraries.
 
 In other words, while you could use this as a standalone dependency injection framework, you may find it to be a bit terse and verbose. There are also much more mature standalone dependency injection frameworks; I would recommend at least looking into [python-dependency-injector] since it is currently the most popular / widely used of the bunch.
 
