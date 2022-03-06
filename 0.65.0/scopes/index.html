@@ -460,7 +460,7 @@ Some dependency injection frameworks provide fixes scopes, for example:</p>
 <p>Every dependency is linked to a scope.
 When a scope exits, all dependencies linked to it are destroyed (if they have teardown, the teardown is run) and their value is removed from the cache.
 This means that dependencies scoped to an outer scope cannot depend on dependencies scoped to an inner scope:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">di</span> <span class="kn">import</span> <span class="n">Container</span><span class="p">,</span> <span class="n">Dependant</span><span class="p">,</span> <span class="n">Marker</span><span class="p">,</span> <span class="n">SyncExecutor</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">di</span> <span class="kn">import</span> <span class="n">Container</span><span class="p">,</span> <span class="n">Dependant</span><span class="p">,</span> <span class="n">Marker</span>
 <span class="kn">from</span> <span class="nn">di.typing</span> <span class="kn">import</span> <span class="n">Annotated</span>
 
 
@@ -468,32 +468,29 @@ This means that dependencies scoped to an outer scope cannot depend on dependenc
     <span class="o">...</span>
 
 
+<span class="n">RequestDep</span> <span class="o">=</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Request</span><span class="p">,</span> <span class="n">Marker</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s2">&quot;request&quot;</span><span class="p">)]</span>
+
+
 <span class="k">class</span> <span class="nc">DBConnection</span><span class="p">:</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">RequestDep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="o">...</span>
 
 
-<span class="hll"><span class="k">def</span> <span class="nf">controller</span><span class="p">(</span><span class="n">conn</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">DBConnection</span><span class="p">,</span> <span class="n">Marker</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s2">&quot;app&quot;</span><span class="p">)])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span>    <span class="o">...</span>
+<span class="n">DBConnDep</span> <span class="o">=</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">DBConnection</span><span class="p">,</span> <span class="n">Marker</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s2">&quot;app&quot;</span><span class="p">)]</span>
+
+
+<span class="k">def</span> <span class="nf">controller</span><span class="p">(</span><span class="n">conn</span><span class="p">:</span> <span class="n">DBConnDep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="o">...</span>
 
 
 <span class="k">def</span> <span class="nf">framework</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
-    <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">bind_by_type</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">&quot;request&quot;</span><span class="p">),</span> <span class="n">Request</span><span class="p">):</span>
-        <span class="n">solved</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">),</span> <span class="n">scopes</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;app&quot;</span><span class="p">,</span> <span class="s2">&quot;request&quot;</span><span class="p">])</span>
-    <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">enter_scope</span><span class="p">(</span><span class="s2">&quot;app&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">app_state</span><span class="p">:</span>
-        <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">enter_scope</span><span class="p">(</span><span class="s2">&quot;request&quot;</span><span class="p">,</span> <span class="n">state</span><span class="o">=</span><span class="n">app_state</span><span class="p">)</span> <span class="k">as</span> <span class="n">request_state</span><span class="p">:</span>
-<span class="hll">            <span class="n">request</span> <span class="o">=</span> <span class="n">Request</span><span class="p">()</span>
-</span>            <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">bind_by_type</span><span class="p">(</span>
-                <span class="n">Dependant</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">&quot;request&quot;</span><span class="p">),</span> <span class="n">Request</span>
-            <span class="p">):</span>
-                <span class="n">container</span><span class="o">.</span><span class="n">execute_sync</span><span class="p">(</span>
-                    <span class="n">solved</span><span class="p">,</span> <span class="n">executor</span><span class="o">=</span><span class="n">SyncExecutor</span><span class="p">(),</span> <span class="n">state</span><span class="o">=</span><span class="n">request_state</span>
-                <span class="p">)</span>
+    <span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">),</span> <span class="n">scopes</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;app&quot;</span><span class="p">,</span> <span class="s2">&quot;request&quot;</span><span class="p">])</span>
 </code></pre></div>
-<p>This example will fail with <code>di.exceptions.ScopeViolationError</code> because an <code>"app"</code> scoped dependency (<code>conn</code>, as requested by <code>controller</code> via <code>Dependant(scope="app")</code>) depends on a request scope dependency (in <code>framework</code>, we specify <code>Dependant(..., scope="request"</code>).
-This is because dependencies and scopes behave much a stack and references in general purpose languages: you can't reference a function local once you exit that function.
-Even if we could hold onto the value once we exit the scope, that value could be a reference to an object that already had its destructor run, for example a database connection that was closed.</p>
+<p>This example will fail with <code>di.exceptions.ScopeViolationError</code> because an <code>DBConnection</code> is scoped to <code>"app"</code> so it cannot depend on <code>Request</code> which is scoped to <code>"request"</code>.
+The order of the scopes is determined by the <code>scopes</code> parameter to <code>Container.solve</code>.
+If you've used Pytest fixtures before, you're already familiar with these rules.
+In Pytest, a <code>"session"</code> scoped fixtrue cannot depend on a <code>"function"</code> scoped fixture.</p>
 
               
             </article>
