@@ -7,8 +7,8 @@ from collections import deque
 import anyio
 import anyio.abc
 
-from di._utils.concurrency import callable_in_thread_pool
 from di.api.executor import AsyncExecutorProtocol, State, Task
+from di.executors._concurrency import callable_in_thread_pool
 
 TaskQueue = typing.Deque[typing.Optional[Task]]
 TaskResult = typing.Iterable[typing.Union[None, Task]]
