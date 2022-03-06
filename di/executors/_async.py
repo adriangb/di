@@ -1,5 +1,3 @@
-import inspect
-
 import anyio
 import anyio.abc
 
@@ -11,7 +9,7 @@ class AsyncExecutor(AsyncExecutorProtocol):
     async def execute_async(self, tasks: TaskGraph, state: State) -> None:
         for task in tasks.static_order():
             maybe_aw = task.compute(state)
-            if inspect.isawaitable(maybe_aw):
+            if maybe_aw is not None:
                 await maybe_aw
 
 
@@ -25,7 +23,7 @@ async def _async_worker(
         await callable_in_thread_pool(task.compute)(state)
     else:
         maybe_aw = task.compute(state)
-        if inspect.isawaitable(maybe_aw):
+        if maybe_aw is not None:
             await maybe_aw
     tasks.done(task)
     for task in tasks.get_ready():

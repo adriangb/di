@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from typing import Any, Callable, Coroutine, Hashable, Iterable, Union
+from typing import Any, Awaitable, Callable, Hashable, Iterable, Union
 
 if sys.version_info < (3, 8):
     from typing_extensions import Protocol
@@ -17,9 +17,7 @@ class State:
 
 class Task(Hashable, Protocol):
     dependant: DependantBase[Any]
-    compute: Union[
-        Callable[[State], None], Callable[[State], Coroutine[Any, Any, None]]
-    ]
+    compute: Union[Callable[[State], None], Callable[[State], Awaitable[None]]]
 
 
 class TaskGraph(Protocol):
