@@ -6,9 +6,15 @@ authors = ["Adrian Garcia Badaracco <adrian@adriangb.com>"]
 readme = "README.md"
 repository = "https://github.com/adriangb/di"
 documentation = "https://www.adriangb.com/di"
-keywords = ["dependency-injection", "inversion-of-control", "SOLID", "IoC", "DI"]
+keywords = [
+    "dependency-injection",
+    "inversion-of-control",
+    "SOLID",
+    "IoC",
+    "DI",
+]
 license = "MIT"
-classifiers=[
+classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
@@ -22,8 +28,8 @@ classifiers=[
 [tool.poetry.dependencies]
 python = ">=3.7,<4"
 anyio = "~3"
-importlib-metadata = {version = ">=3", python = "<3.8"}
-typing-extensions = {version = ">=3", python = "<3.9"}
+importlib-metadata = { version = ">=3", python = "<3.8" }
+typing-extensions = { version = ">=3", python = "<3.9" }
 graphlib2 = ">=0.2.13"
 
 [tool.poetry.dev-dependencies]
@@ -35,10 +41,10 @@ mypy = "v0.930"
 pre-commit = "~2"
 # testing
 pytest = "~6"
-pytest-cov = { version = "~2"}
+pytest-cov = { version = "~2" }
 pytest-sugar = "~0"
 trio = "~0"
-coverage = {extras = ["toml"], version = "^6.0"}
+coverage = { extras = ["toml"], version = "^6.0" }
 # docs
 mkdocs = "~1"
 mkdocs-material = "~8,!=8.1.3"
@@ -59,7 +65,13 @@ source = ["di", "tests", "docs_src"]
 dynamic_context = "test_function"
 
 [tool.coverage.report]
-exclude_lines = ["pragma: no cover", '\.\.\.', "raise NotImplementedError", "TYPE_CHECKING", "__repr__"]
+exclude_lines = [
+    "pragma: no cover",
+    '\.\.\.',
+    "raise NotImplementedError",
+    "TYPE_CHECKING",
+    "__repr__",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
