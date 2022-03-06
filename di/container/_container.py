@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import inspect
 from contextlib import contextmanager
 from typing import (
     Any,
@@ -13,7 +12,6 @@ from typing import (
     TypeVar,
 )
 
-from di._utils.inspect import get_type
 from di._utils.types import FusedContextManager
 from di.api.dependencies import DependantBase
 from di.api.executor import AsyncExecutorProtocol, SyncExecutorProtocol
@@ -36,7 +34,7 @@ class Container:
     def __init__(self) -> None:
         self._register_hooks = []
 
-    def register_bind_hook(
+    def bind(
         self,
         hook: BindHook,
     ) -> ContextManager[None]:
@@ -59,34 +57,6 @@ class Container:
                 self._register_hooks.remove(hook)
 
         return unbind()
-
-    def bind_by_type(
-        self,
-        provider: DependantBase[Any],
-        dependency: type,
-        *,
-        covariant: bool = False,
-    ) -> ContextManager[None]:
-        def hook(
-            param: Optional[inspect.Parameter], dependant: DependantBase[Any]
-        ) -> Optional[DependantBase[Any]]:
-            if dependant.call is dependency:
-                return provider
-            if param is None:
-                return None
-            type_annotation_option = get_type(param)
-            if type_annotation_option is None:
-                return None
-            type_annotation = type_annotation_option.value
-            if type_annotation is dependency:
-                return provider
-            if covariant:
-                if inspect.isclass(type_annotation) and inspect.isclass(dependency):
-                    if dependency in type_annotation.__mro__:
-                        return provider
-            return None
-
-        return self.register_bind_hook(hook)
 
     def solve(
         self,

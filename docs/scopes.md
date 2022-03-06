@@ -24,12 +24,13 @@ Every dependency is linked to a scope.
 When a scope exits, all dependencies linked to it are destroyed (if they have teardown, the teardown is run) and their value is removed from the cache.
 This means that dependencies scoped to an outer scope cannot depend on dependencies scoped to an inner scope:
 
-```Python hl_lines="14 24"
+```Python
 --8<-- "docs_src/invalid_scope_dependance.py"
 ```
 
-This example will fail with `di.exceptions.ScopeViolationError` because an `"app"` scoped dependency (`conn`, as requested by `controller` via `Dependant(scope="app")`) depends on a request scope dependency (in `framework`, we specify `Dependant(..., scope="request"`).
-This is because dependencies and scopes behave much a stack and references in general purpose languages: you can't reference a function local once you exit that function.
-Even if we could hold onto the value once we exit the scope, that value could be a reference to an object that already had its destructor run, for example a database connection that was closed.
+This example will fail with `di.exceptions.ScopeViolationError` because an `DBConnection` is scoped to `"app"` so it cannot depend on `Request` which is scoped to `"request"`.
+The order of the scopes is determined by the `scopes` parameter to `Container.solve`.
+If you've used Pytest fixtures before, you're already familiar with these rules.
+In Pytest, a `"session"` scoped fixtrue cannot depend on a `"function"` scoped fixture.
 
 [contextvars]: https://docs.python.org/3/library/contextvars.html

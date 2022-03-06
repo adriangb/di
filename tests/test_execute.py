@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from typing import Any, AsyncGenerator, Generator, List
 
 from di import ConcurrentAsyncExecutor, SyncExecutor
-from di.container import ContainerState
+from di.container import ContainerState, bind_by_type
 
 if sys.version_info < (3, 8):
     from typing_extensions import Literal
@@ -224,7 +224,7 @@ async def test_concurrency_async(dep1: Any, sync1: bool, dep2: Any, sync2: bool)
     container = Container()
 
     counter = Counter()
-    container.bind_by_type(Dependant(lambda: counter), Counter)
+    container.bind(bind_by_type(Dependant(lambda: counter), Counter))
 
     async def collector(
         a: Annotated[None, Marker(dep1, use_cache=False, sync_to_thread=sync1)],

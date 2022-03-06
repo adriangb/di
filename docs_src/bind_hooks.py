@@ -21,7 +21,7 @@ def match_by_parameter_name(
 
 container = Container()
 
-container.register_bind_hook(match_by_parameter_name)
+container.bind(match_by_parameter_name)
 
 solved = container.solve(Dependant(Foo, scope=None), scopes=[None])
 

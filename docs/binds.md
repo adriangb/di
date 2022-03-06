@@ -26,9 +26,9 @@ Binding is implemented as hooks / callbacks: when we solve a dependency graph, e
 
 This means you can implement any sort of matching you want, including:
 
-- Matching by type (`Container.bind_by_type`)
-- Matching by any subclass (`Container.bind_by_type` using the `covariant=True` parameter)
-- Custom logic, in the form of a bind hook (`Container.register_bind_hook`)
+- Matching by type (see `di.container.bind_by_type`)
+- Matching by any subclass (`di.container.bind_by_type` using the `covariant=True` parameter)
+- Custom logic, in the form of a bind hook (`Container.bind`)
 
 For example, to match by parameter name:
 

@@ -3,6 +3,7 @@ from typing import List
 import pytest
 
 from di import Container, Dependant, Marker, SyncExecutor
+from di.container import bind_by_type
 from di.typing import Annotated
 
 
@@ -31,7 +32,7 @@ def test_bind():
             state=state,
         )
         assert res.v == 1
-    with container.bind_by_type(Dependant(lambda: Test(2)), Test):
+    with container.bind(bind_by_type(Dependant(lambda: Test(2)), Test)):
         with container.enter_scope(None) as state:
             res = container.execute_sync(
                 container.solve(dependant, scopes=[None]),
@@ -79,7 +80,7 @@ def test_bind_transitive_dependency_results_skips_subdpendencies():
     def not_error() -> None:
         ...
 
-    with container.bind_by_type(Dependant(not_error), Transitive):
+    with container.bind(bind_by_type(Dependant(not_error), Transitive)):
         with container.enter_scope(None) as state:
             container.execute_sync(
                 container.solve(Dependant(dep), scopes=[None]),
@@ -120,7 +121,7 @@ def test_bind_with_dependencies():
                 state=state,
             )
         ) == 4
-    container.register_bind_hook(
+    container.bind(
         lambda param, dependant: None
         if dependant.call is not return_two
         else Dependant(return_three)
@@ -142,10 +143,12 @@ def test_bind_covariant() -> None:
         pass
 
     container = Container()
-    container.bind_by_type(
-        Dependant(lambda: Dog()),
-        Animal,
-        covariant=True,
+    container.bind(
+        bind_by_type(
+            Dependant(lambda: Dog()),
+            Animal,
+            covariant=True,
+        )
     )
 
     # include a generic to make sure we are safe with

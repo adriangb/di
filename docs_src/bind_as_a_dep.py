@@ -7,6 +7,7 @@ else:
     from typing import Protocol
 
 from di import AsyncExecutor, Container, Dependant
+from di.container import bind_by_type
 
 
 class DBProtocol(Protocol):
@@ -33,7 +34,7 @@ class Postgres(DBProtocol):
 
 async def framework() -> None:
     container = Container()
-    container.bind_by_type(Dependant(Postgres, scope="request"), DBProtocol)
+    container.bind(bind_by_type(Dependant(Postgres, scope="request"), DBProtocol))
     solved = container.solve(Dependant(controller, scope="request"), scopes=["request"])
     # this next line would fail without the bind
     async with container.enter_scope("request") as state:

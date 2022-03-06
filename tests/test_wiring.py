@@ -7,6 +7,7 @@ else:
     from typing import Annotated
 
 from di import Container, Dependant, Marker, SyncExecutor
+from di.container import bind_by_type
 
 
 def test_wiring_from_annotation() -> None:
@@ -88,7 +89,7 @@ def test_autowiring_class_with_default_class_from_bind() -> None:
 
     dep = Dependant(func)
     container = Container()
-    container.bind_by_type(Dependant(lambda: A("bound")), A)
+    container.bind(bind_by_type(Dependant(lambda: A("bound")), A))
     solved = container.solve(dep, scopes=[None])
 
     with container.enter_scope(None) as state:

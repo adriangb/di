@@ -4,6 +4,7 @@ import inspect
 from typing import Mapping, Optional, TypeVar
 
 from di import AsyncExecutor, Container, Dependant, Marker
+from di.container import bind_by_type
 from di.typing import Annotated
 
 
@@ -38,8 +39,8 @@ async def web_framework() -> None:
     container = Container()
 
     valid_request = Request(headers={"x-header-one": "one", "x-header-two": "2"})
-    with container.bind_by_type(
-        Dependant(lambda: valid_request, scope="request"), Request
+    with container.bind(
+        bind_by_type(Dependant(lambda: valid_request, scope="request"), Request)
     ):
         solved = container.solve(
             Dependant(controller, scope="request"), scopes=["request"]
@@ -50,8 +51,8 @@ async def web_framework() -> None:
         )  # success
 
     invalid_request = Request(headers={"x-header-one": "one"})
-    with container.bind_by_type(
-        Dependant(lambda: invalid_request, scope="request"), Request
+    with container.bind(
+        bind_by_type(Dependant(lambda: invalid_request, scope="request"), Request)
     ):
         solved = container.solve(
             Dependant(controller, scope="request"), scopes=["request"]
