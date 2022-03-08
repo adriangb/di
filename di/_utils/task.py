@@ -2,7 +2,18 @@ from __future__ import annotations
 
 import contextlib
 from contextlib import AsyncExitStack, ExitStack
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Tuple, TypeVar, Union
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 from di._utils.inspect import (
     is_async_gen_callable,
@@ -12,13 +23,13 @@ from di._utils.inspect import (
 from di._utils.scope_map import ScopeMap
 from di._utils.types import CacheKey
 from di.api.dependencies import DependantBase
-from di.api.executor import State as ExecutorState
+from di.api.executor import Task as ExecutorTask
 from di.api.providers import DependencyProvider
 from di.api.scopes import Scope
 from di.exceptions import IncompatibleDependencyError
 
 
-class ExecutionState(ExecutorState):
+class ExecutionState:
     __slots__ = (
         "stacks",
         "results",
@@ -45,20 +56,21 @@ DependencyType = TypeVar("DependencyType")
 UNSET: Any = object()
 
 
-class Task:
+class Task(ExecutorTask[ExecutionState]):
     __slots__ = (
         "wrapped_call",
         "user_function",
         "scope",
         "cache_key",
-        "is_async",
         "dependant",
         "task_id",
         "call_user_func_with_deps",
         "compute",
     )
 
-    compute: Any
+    compute: Union[
+        Callable[[ExecutionState], None], Callable[[ExecutionState], Awaitable[None]]
+    ]
     wrapped_call: DependencyProvider
     user_function: DependencyProvider
 
@@ -106,6 +118,9 @@ class Task:
         self.call_user_func_with_deps = self.generate_execute_fn(
             positional_parameters, keyword_parameters
         )
+
+    def __hash__(self) -> int:
+        return self.task_id
 
     def generate_execute_fn(
         self,

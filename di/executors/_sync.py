@@ -1,8 +1,10 @@
-from di.api.executor import State, SyncExecutorProtocol, TaskGraph
+from di.api.executor import StateType, SupportsSyncExecutor, SupportsTaskGraph
 
 
-class SyncExecutor(SyncExecutorProtocol):
-    def execute_sync(self, tasks: TaskGraph, state: State) -> None:
+class SyncExecutor(SupportsSyncExecutor):
+    def execute_sync(
+        self, tasks: SupportsTaskGraph[StateType], state: StateType
+    ) -> None:
         for task in tasks.static_order():
             maybe_aw = task.compute(state)
             if maybe_aw is not None:

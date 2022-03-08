@@ -14,7 +14,7 @@ from typing import (
 
 from di._utils.types import FusedContextManager
 from di.api.dependencies import DependantBase
-from di.api.executor import AsyncExecutorProtocol, SyncExecutorProtocol
+from di.api.executor import SupportsAsyncExecutor, SupportsSyncExecutor
 from di.api.providers import DependencyProvider
 from di.api.scopes import Scope
 from di.api.solved import SolvedDependant
@@ -68,7 +68,7 @@ class Container:
     def execute_sync(
         self,
         solved: SolvedDependant[DependencyType],
-        executor: SyncExecutorProtocol,
+        executor: SupportsSyncExecutor,
         *,
         state: ContainerState,
         values: Optional[Mapping[DependencyProvider, Any]] = None,
@@ -84,13 +84,13 @@ class Container:
             solved=solved,
             values=values,
         )
-        executor.execute_sync(ts, execution_state)  # type: ignore[union-attr]
+        executor.execute_sync(ts, execution_state)
         return results[root_task.task_id]  # type: ignore[no-any-return]
 
     async def execute_async(
         self,
         solved: SolvedDependant[DependencyType],
-        executor: AsyncExecutorProtocol,
+        executor: SupportsAsyncExecutor,
         *,
         state: ContainerState,
         values: Optional[Mapping[DependencyProvider, Any]] = None,
@@ -102,7 +102,7 @@ class Container:
             solved=solved,
             values=values,
         )
-        await executor.execute_async(ts, execution_state)  # type: ignore[union-attr]
+        await executor.execute_async(ts, execution_state)
         return results[root_task.task_id]  # type: ignore[no-any-return]
 
     def enter_scope(

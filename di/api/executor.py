@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from typing import Any, Awaitable, Callable, Hashable, Iterable, Union
+from typing import Any, Awaitable, Callable, Hashable, Iterable, TypeVar, Union
 
 if sys.version_info < (3, 8):
     from typing_extensions import Protocol
@@ -10,35 +10,38 @@ else:
 
 from di.api.dependencies import DependantBase
 
+StateType = TypeVar("StateType")
+T_co = TypeVar("T_co", covariant=True)
 
-class State:
-    __slots__ = ()
 
-
-class Task(Hashable, Protocol):
+class Task(Hashable, Protocol[StateType]):
     dependant: DependantBase[Any]
-    compute: Union[Callable[[State], None], Callable[[State], Awaitable[None]]]
+    compute: Union[Callable[[StateType], None], Callable[[StateType], Awaitable[None]]]
 
 
-class TaskGraph(Protocol):
-    def done(self, task: Task) -> None:
+class SupportsTaskGraph(Protocol[StateType]):
+    def done(self, task: Task[StateType]) -> None:
         ...
 
-    def get_ready(self) -> Iterable[Task]:
+    def get_ready(self) -> Iterable[Task[StateType]]:
         ...
 
     def is_active(self) -> bool:
         ...
 
-    def static_order(self) -> Iterable[Task]:
+    def static_order(self) -> Iterable[Task[StateType]]:
         ...
 
 
-class SyncExecutorProtocol(Protocol):
-    def execute_sync(self, tasks: TaskGraph, state: State) -> None:
+class SupportsSyncExecutor(Protocol):
+    def execute_sync(
+        self, tasks: SupportsTaskGraph[StateType], state: StateType
+    ) -> None:
         raise NotImplementedError
 
 
-class AsyncExecutorProtocol(Protocol):
-    async def execute_async(self, tasks: TaskGraph, state: State) -> None:
+class SupportsAsyncExecutor(Protocol):
+    async def execute_async(
+        self, tasks: SupportsTaskGraph[StateType], state: StateType
+    ) -> None:
         raise NotImplementedError

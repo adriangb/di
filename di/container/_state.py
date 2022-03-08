@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+import sys
 from contextlib import AsyncExitStack, ExitStack
 from types import TracebackType
 from typing import Any, Dict, Iterable, Optional, Type, Union
 
+if sys.version_info < (3, 8):
+    from typing_extensions import Protocol
+else:
+    from typing import Protocol
+
 from di._utils.scope_map import ScopeMap
 from di._utils.types import CacheKey, FusedContextManager
-from di._utils.typing import Protocol
 from di.api.scopes import Scope
 
 

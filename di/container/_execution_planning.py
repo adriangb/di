@@ -1,49 +1,62 @@
 from contextlib import AsyncExitStack, ExitStack
-from typing import Any, Dict, Iterable, Mapping, NamedTuple, Optional, Tuple, Union
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    Mapping,
+    NamedTuple,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+    cast,
+)
 
 from graphlib2 import TopologicalSorter
 
 from di._utils.scope_map import ScopeMap
 from di._utils.task import ExecutionState, Task
 from di._utils.types import CacheKey
-from di.api.executor import Task as ExecutorTask
-from di.api.executor import TaskGraph as SupportsTaskGraph
+from di.api.executor import SupportsTaskGraph
+from di.api.executor import Task as SupportsTask
 from di.api.providers import DependencyProvider
 from di.api.scopes import Scope
 from di.api.solved import SolvedDependant
 
 Results = Dict[int, Any]
 
+T_co = TypeVar("T_co", covariant=True)
 
-class TaskGraph:
+
+class TaskGraph(SupportsTaskGraph[ExecutionState]):
     __slots__ = ("_uncopied_ts", "_copied_ts", "_static_order")
-    _copied_ts: Optional[TopologicalSorter[ExecutorTask]]
+    _copied_ts: Optional[TopologicalSorter[Task]]
 
     def __init__(
         self,
-        ts: TopologicalSorter[ExecutorTask],
-        static_order: Iterable[ExecutorTask],
+        ts: TopologicalSorter[Task],
+        static_order: Iterable[Task],
     ) -> None:
         self._uncopied_ts = ts
         self._copied_ts = None
         self._static_order = static_order
 
-    def get_ready(self) -> Iterable[ExecutorTask]:
+    def get_ready(self) -> Iterable[Task]:
         if self._copied_ts is None:
             self._copied_ts = self._uncopied_ts.copy()
         return self._copied_ts.get_ready()
 
-    def done(self, task: ExecutorTask) -> None:
+    def done(self, task: SupportsTask[ExecutionState]) -> None:
         if self._copied_ts is None:
             self._copied_ts = self._uncopied_ts.copy()
-        self._copied_ts.done(task)
+        self._copied_ts.done(cast(Task, task))
 
     def is_active(self) -> bool:
         if self._copied_ts is None:
             self._copied_ts = self._uncopied_ts.copy()
         return self._copied_ts.is_active()
 
-    def static_order(self) -> Iterable[ExecutorTask]:
+    def static_order(self) -> Iterable[Task]:
         return self._static_order
 
 
@@ -61,7 +74,7 @@ def plan_execution(
     solved: SolvedDependant[Any],
     *,
     values: Optional[Mapping[DependencyProvider, Any]] = None,
-) -> Tuple[Dict[int, Any], SupportsTaskGraph, Any, Task,]:
+) -> Tuple[Dict[int, Any], SupportsTaskGraph[ExecutionState], ExecutionState, Task,]:
     solved_dependency_cache: "SolvedDependantCache" = solved.container_cache
     results: "Results" = {}
     execution_state = ExecutionState(
@@ -70,10 +83,8 @@ def plan_execution(
         results=results,
         cache=cache,
     )
-    # the type of TopologicalSorter[ExecutorTask] is not strictly
-    # compatible with TopologicalSorter[Task]
     ts = TaskGraph(
-        solved_dependency_cache.topological_sorter,  # type: ignore[arg-type]
+        solved_dependency_cache.topological_sorter,
         solved_dependency_cache.static_order,
     )
     return (
