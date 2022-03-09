@@ -15,7 +15,7 @@ install-poetry: .install-poetry
 .init: .install-poetry
 	@echo "---- 📦 Building package ----"
 	rm -rf .venv
-	poetry install
+	poetry install --extras anyio
 	git init .
 	poetry run pre-commit install --install-hooks
 	touch .init

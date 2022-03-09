@@ -28,7 +28,7 @@ Key features:
 ## Installation
 
 ```shell
-pip install di
+pip install di[anyio]
 ```
 
 ⚠️ This project is a work in progress. Until there is 1.X.Y release, expect breaking changes. ⚠️

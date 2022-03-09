@@ -5,8 +5,8 @@ try:
     import anyio
 except ImportError as e:
     raise ImportError(
-        "Using AsyncExector or ConcurrentAsyncExecutor requires installing anyio or the anyio extra"
-        " (`pip install di[anyio]`)"
+        "Using AsyncExector or ConcurrentAsyncExecutor requires installing anyio"
+        " (`pip install anyio`) or the anyio extra (`pip install di[anyio]`)"
     ) from e
 import anyio.abc
 
