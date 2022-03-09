@@ -2,23 +2,31 @@
 
 It will print out results to the console and open web browser windows.
 """
+import os
+
 import anyio
 from pyinstrument.profiler import Profiler  # type: ignore[import]
 
 from benchmarks.utils import GraphSize, SleepTimes, generate_dag
+from di.api.executor import SupportsAsyncExecutor, SupportsSyncExecutor
 from di.container import Container
 from di.dependant import Dependant
-from di.executors import ConcurrentAsyncExecutor, SyncExecutor
+from di.executors import AsyncExecutor, ConcurrentAsyncExecutor, SyncExecutor
 
 INTERVAL = 10e-6  # 10 us
 
 
-async def async_bench(sleep: SleepTimes, graph: GraphSize, iters: int) -> None:
+async def async_bench(
+    sleep: SleepTimes,
+    graph: GraphSize,
+    executor: SupportsAsyncExecutor,
+    iters: int,
+    name: str,
+) -> None:
     container = Container()
     solved = container.solve(
         Dependant(generate_dag(graph, sync=False, sleep=sleep)), scopes=[None]
     )
-    executor = ConcurrentAsyncExecutor()
     p = Profiler()
     async with container.enter_scope(None) as state:
         await container.execute_async(solved, executor=executor, state=state)
@@ -28,10 +36,17 @@ async def async_bench(sleep: SleepTimes, graph: GraphSize, iters: int) -> None:
             await container.execute_async(solved, executor=executor, state=state)
     p.stop()
     p.print()
-    p.open_in_browser()
+    with open(f"bench_html/{name}.html", mode="w") as f:
+        f.write(p.output_html())
 
 
-def sync_bench(sleep: SleepTimes, graph: GraphSize, iters: int) -> None:
+def sync_bench(
+    sleep: SleepTimes,
+    graph: GraphSize,
+    executor: SupportsSyncExecutor,
+    iters: int,
+    name: str,
+) -> None:
     container = Container()
     solved = container.solve(
         Dependant(generate_dag(graph, sync=True, sleep=sleep)), scopes=[None]
@@ -46,7 +61,8 @@ def sync_bench(sleep: SleepTimes, graph: GraphSize, iters: int) -> None:
             container.execute_sync(solved, executor=executor, state=state)
     p.stop()
     p.print()
-    p.open_in_browser()
+    with open(f"bench_html/{name}.html", mode="w") as f:
+        f.write(p.output_html())
 
 
 LARGE_GRAPH = GraphSize(25, 5, 5)
@@ -56,11 +72,65 @@ SLOW_DEPS = SleepTimes(1e-3, 1e-3)
 
 
 if __name__ == "__main__":
-    anyio.run(async_bench, FAST_DEPS, SMALL_GRAPH, 1_000)
-    anyio.run(async_bench, FAST_DEPS, LARGE_GRAPH, 1_000)
-    anyio.run(async_bench, SLOW_DEPS, SMALL_GRAPH, 1_000)
-    anyio.run(async_bench, SLOW_DEPS, LARGE_GRAPH, 100)
-    sync_bench(FAST_DEPS, SMALL_GRAPH, iters=1_000)
-    sync_bench(FAST_DEPS, LARGE_GRAPH, iters=1_000)
-    sync_bench(SLOW_DEPS, SMALL_GRAPH, iters=1_000)
-    sync_bench(SLOW_DEPS, LARGE_GRAPH, iters=10)
+    if not os.path.exists("bench_html"):
+        os.mkdir("bench_html")
+    anyio.run(
+        async_bench,
+        FAST_DEPS,
+        SMALL_GRAPH,
+        AsyncExecutor(),
+        5_000,
+        "async-fast_deps-small_graph",
+    )
+    anyio.run(
+        async_bench,
+        FAST_DEPS,
+        LARGE_GRAPH,
+        AsyncExecutor(),
+        5_000,
+        "async-fast_deps-large_graph",
+    )
+    anyio.run(
+        async_bench,
+        SLOW_DEPS,
+        SMALL_GRAPH,
+        ConcurrentAsyncExecutor(),
+        5_000,
+        "async-slow_deps-small_graph",
+    )
+    anyio.run(
+        async_bench,
+        SLOW_DEPS,
+        LARGE_GRAPH,
+        ConcurrentAsyncExecutor(),
+        5_000,
+        "async-slow_deps-large_graph",
+    )
+    sync_bench(
+        FAST_DEPS,
+        SMALL_GRAPH,
+        SyncExecutor(),
+        iters=5_000,
+        name="sync-fast_deps-small_graph",
+    )
+    sync_bench(
+        FAST_DEPS,
+        LARGE_GRAPH,
+        SyncExecutor(),
+        iters=5_000,
+        name="sync-fast_deps-large_graph",
+    )
+    sync_bench(
+        SLOW_DEPS,
+        SMALL_GRAPH,
+        SyncExecutor(),
+        iters=5_000,
+        name="sync-slow_deps-small_graph",
+    )
+    sync_bench(
+        SLOW_DEPS,
+        LARGE_GRAPH,
+        SyncExecutor(),
+        iters=5_000,
+        name="sync-slow_deps-large_graph",
+    )
