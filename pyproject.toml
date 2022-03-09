@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "di"
-version = "0.68.4"
+version = "0.68.5"
 description = "Dependency injection toolkit"
 authors = ["Adrian Garcia Badaracco <adrian@adriangb.com>"]
 readme = "README.md"
