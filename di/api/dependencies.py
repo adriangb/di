@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import inspect
 import sys
 from typing import Any, Generic, List, NamedTuple, Optional, TypeVar
@@ -14,7 +12,6 @@ from di.api.providers import DependencyProviderType
 from di.api.scopes import Scope
 
 T = TypeVar("T")
-T_co = TypeVar("T_co", covariant=True)
 
 
 __all__ = (
@@ -26,9 +23,9 @@ __all__ = (
 
 
 @runtime_checkable
-class InjectableClassProvider(Protocol[T_co]):
+class InjectableClassProvider(Protocol):
     @classmethod
-    def __di_dependency__(cls, param: inspect.Parameter) -> DependantBase[Any]:
+    def __di_dependency__(cls, param: inspect.Parameter) -> "DependantBase[Any]":
         ...
 
 
@@ -47,7 +44,7 @@ class DependantBase(Generic[T]):
     def cache_key(self) -> CacheKey:
         raise NotImplementedError
 
-    def get_dependencies(self) -> List[DependencyParameter]:
+    def get_dependencies(self) -> "List[DependencyParameter]":
         """Collect all of the sub dependencies for this dependant"""
         raise NotImplementedError
 
