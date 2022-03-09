@@ -76,8 +76,10 @@ def plan_execution(
 ) -> Tuple[List[Any], SupportsTaskGraph[ExecutionState], ExecutionState, Task,]:
     solved_dependency_cache: SolvedDependantCache = solved.container_cache
     results = solved_dependency_cache.empty_results.copy()
+    if values is None:
+        values = EMPTY_VALUES
     execution_state = ExecutionState(
-        values=values or EMPTY_VALUES,
+        values=values,
         stacks=stacks,
         results=results,
         cache=cache,

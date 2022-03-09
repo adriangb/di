@@ -115,7 +115,7 @@ class Task:
                 self.compute = self.compute_sync_func_no_cache
 
         self.call_user_func_with_deps = self.generate_execute_fn(
-            positional_parameters, keyword_parameters
+            self.wrapped_call, positional_parameters, keyword_parameters
         )
 
     def __hash__(self) -> int:
@@ -123,9 +123,10 @@ class Task:
 
     def generate_execute_fn(
         self,
+        call: DependencyProvider,
         positional_parameters: Iterable[Task],
         keyword_parameters: Iterable[Tuple[str, Task]],
-    ) -> Callable[[Callable[..., Any], List[Any]], Any]:
+    ) -> Callable[[List[Any]], Any]:
         # this codegen speeds up argument collection and passing
         # by avoiding creation of intermediary containers to store the values
         positional_arg_template = "results[{}]"
@@ -135,9 +136,10 @@ class Task:
             args.append(positional_arg_template.format(task.task_id))
         for keyword, task in keyword_parameters:
             args.append(keyword_arg_template.format(keyword, task.task_id))
-        out: Dict[str, Callable[..., Any]] = {}
-        exec(f'def execute(call, results): return call({",".join(args)})', out)
-        return out["execute"]
+        lcls: Dict[str, Any] = {}
+        glbls = {"call": call}
+        exec(f'def execute(results): return call({",".join(args)})', glbls, lcls)
+        return lcls["execute"]  # type: ignore[no-any-return]
 
     def __repr__(self) -> str:
         return (
@@ -152,9 +154,7 @@ class Task:
         if value is not UNSET:
             state.results[self.task_id] = value
             return
-        dependency_value = await self.call_user_func_with_deps(
-            self.wrapped_call, state.results
-        )
+        dependency_value = await self.call_user_func_with_deps(state.results)
         state.results[self.task_id] = dependency_value
         state.cache.set(self.cache_key, dependency_value, scope=self.scope)
 
@@ -162,9 +162,7 @@ class Task:
         if self.user_function in state.values:
             state.results[self.task_id] = state.values[self.user_function]
             return
-        dependency_value = await self.call_user_func_with_deps(
-            self.wrapped_call, state.results
-        )
+        dependency_value = await self.call_user_func_with_deps(state.results)
         state.results[self.task_id] = dependency_value
 
     async def compute_async_cm_cache(self, state: ExecutionState) -> None:
@@ -184,7 +182,7 @@ class Task:
             ) from None
 
         dependency_value: Any = await enter(
-            self.call_user_func_with_deps(self.wrapped_call, state.results)
+            self.call_user_func_with_deps(state.results)
         )
         state.results[self.task_id] = dependency_value
         state.cache.set(self.cache_key, dependency_value, scope=self.scope)
@@ -201,7 +199,7 @@ class Task:
                 f" and canot be used in the sync scope {self.scope}"
             ) from None
         dependency_value: Any = await enter(
-            self.call_user_func_with_deps(self.wrapped_call, state.results)
+            self.call_user_func_with_deps(state.results)
         )
         state.results[self.task_id] = dependency_value
 
@@ -214,7 +212,7 @@ class Task:
             state.results[self.task_id] = value
             return
         val = state.stacks[self.scope].enter_context(
-            self.call_user_func_with_deps(self.wrapped_call, state.results)
+            self.call_user_func_with_deps(state.results)
         )
         state.results[self.task_id] = val
         state.cache.set(self.cache_key, val, scope=self.scope)
@@ -224,7 +222,7 @@ class Task:
             state.results[self.task_id] = state.values[self.user_function]
             return
         state.results[self.task_id] = state.stacks[self.scope].enter_context(
-            self.call_user_func_with_deps(self.wrapped_call, state.results)
+            self.call_user_func_with_deps(state.results)
         )
 
     def compute_sync_func_cache(self, state: ExecutionState) -> None:
@@ -235,7 +233,7 @@ class Task:
         if value is not UNSET:
             state.results[self.task_id] = value
             return
-        val = self.call_user_func_with_deps(self.wrapped_call, state.results)
+        val = self.call_user_func_with_deps(state.results)
         state.results[self.task_id] = val
         state.cache.set(self.cache_key, val, scope=self.scope)
 
@@ -244,6 +242,4 @@ class Task:
             state.results[self.task_id] = state.values[self.user_function]
             return
 
-        state.results[self.task_id] = self.call_user_func_with_deps(
-            self.wrapped_call, state.results
-        )
+        state.results[self.task_id] = self.call_user_func_with_deps(state.results)
