@@ -1,7 +1,7 @@
 from collections import deque
 from typing import Any, Deque, Dict, Iterable, List, Sequence, Set, TypeVar
 
-from graphlib2 import TopologicalSorter
+from graphlib2 import CycleError, TopologicalSorter
 
 from di._utils.task import Task
 from di.api.dependencies import CacheKey, DependantBase, DependencyParameter
@@ -10,8 +10,7 @@ from di.api.solved import SolvedDependant
 from di.container._bind_hook import BindHook
 from di.container._execution_planning import SolvedDependantCache
 from di.container._scope_validation import validate_scopes
-from di.container._topsort import topsort
-from di.exceptions import SolvingError, WiringError
+from di.exceptions import DependencyCycleError, SolvingError, WiringError
 
 T = TypeVar("T")
 
@@ -95,17 +94,22 @@ def solve(
     }
     # Order the Dependant's topologically so that we can create Tasks
     # with references to all of their children
-    dep_topsort = topsort(
-        {
-            dep.cache_key: [p.dependency.cache_key for p in params]
-            for dep, params in computable_param_graph.items()
-        }
-    )
+    try:
+        dep_topsort = tuple(
+            TopologicalSorter(
+                {
+                    dep.cache_key: [p.dependency.cache_key for p in params]
+                    for dep, params in computable_param_graph.items()
+                }
+            ).static_order()
+        )
+    except CycleError as e:
+        raise DependencyCycleError("Nodes are in a cycle") from e
     # Create a seperate TopologicalSorter to hold the Tasks
     ts: TopologicalSorter[Task] = TopologicalSorter()
     tasks = build_tasks(
         computable_param_graph,
-        (dependants[key] for key_group in dep_topsort for key in key_group),
+        (dependants[key] for key in dep_topsort),
         ts,
     )
     static_order = tuple(ts.copy().static_order())
