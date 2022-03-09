@@ -1,8 +1,36 @@
-import anyio
+import contextvars
+from typing import Any, Awaitable, Callable, TypeVar
+
+try:
+    import anyio
+except ImportError as e:
+    raise ImportError(
+        "Using AsyncExector or ConcurrentAsyncExecutor requires installing anyio or the anyio extra"
+        " (`pip install di[anyio]`)"
+    ) from e
 import anyio.abc
 
 from di.api.executor import StateType, SupportsAsyncExecutor, SupportsTaskGraph, Task
-from di.executors._concurrency import callable_in_thread_pool
+
+T = TypeVar("T")
+
+
+def callable_in_thread_pool(call: Callable[..., T]) -> Callable[..., Awaitable[T]]:
+    def inner(*args: Any, **kwargs: Any) -> "Awaitable[T]":
+        return anyio.to_thread.run_sync(
+            contextvars.copy_context().run, lambda: call(*args, **kwargs)
+        )  # type: ignore[return-value]
+
+    return inner
+
+
+async def _execute_task(task: Task[StateType], state: StateType) -> None:
+    if getattr(task.dependant, "sync_to_thread", False):
+        await callable_in_thread_pool(task.compute)(state)
+    else:
+        maybe_aw = task.compute(state)
+        if maybe_aw is not None:
+            await maybe_aw
 
 
 class AsyncExecutor(SupportsAsyncExecutor):
@@ -10,9 +38,7 @@ class AsyncExecutor(SupportsAsyncExecutor):
         self, tasks: SupportsTaskGraph[StateType], state: StateType
     ) -> None:
         for task in tasks.static_order():
-            maybe_aw = task.compute(state)
-            if maybe_aw is not None:
-                await maybe_aw
+            await _execute_task(task, state)
 
 
 async def _async_worker(
@@ -21,12 +47,7 @@ async def _async_worker(
     state: StateType,
     taskgroup: anyio.abc.TaskGroup,
 ) -> None:
-    if getattr(task.dependant, "sync_to_thread", False):
-        await callable_in_thread_pool(task.compute)(state)
-    else:
-        maybe_aw = task.compute(state)
-        if maybe_aw is not None:
-            await maybe_aw
+    await _execute_task(task, state)
     tasks.done(task)
     for task in tasks.get_ready():
         taskgroup.start_soon(_async_worker, task, tasks, state, taskgroup)

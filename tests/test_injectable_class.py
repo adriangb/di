@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 
-from di import Container, SyncExecutor
+from di.container import Container
 from di.dependant import Dependant, Injectable
+from di.executors import SyncExecutor
 
 
 def test_injectable_class_scope() -> None:

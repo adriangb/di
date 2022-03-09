@@ -2,8 +2,10 @@ import inspect
 import typing
 from dataclasses import dataclass
 
-from di import Container, Dependant, SyncExecutor
 from di.api.dependencies import DependantBase
+from di.container import Container
+from di.dependant import Dependant
+from di.executors import SyncExecutor
 
 
 @dataclass

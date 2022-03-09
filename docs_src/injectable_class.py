@@ -1,5 +1,6 @@
-from di import Container, Dependant, SyncExecutor
-from di.dependant import Injectable
+from di.container import Container
+from di.dependant import Dependant, Injectable
+from di.executors import SyncExecutor
 
 
 class UsersRepo(Injectable, scope="app"):

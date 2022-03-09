@@ -2,16 +2,16 @@ from typing import Any, List
 
 import pytest
 
-from di import Container, Dependant, Marker, SyncExecutor
 from di.api.dependencies import DependencyParameter
-from di.container import bind_by_type
-from di.dependant import JoinedDependant
+from di.container import Container, bind_by_type
+from di.dependant import Dependant, JoinedDependant, Marker
 from di.exceptions import (
     ScopeViolationError,
     SolvingError,
     UnknownScopeError,
     WiringError,
 )
+from di.executors import SyncExecutor
 from di.typing import Annotated
 
 

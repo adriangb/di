@@ -1,4 +1,5 @@
-from di import Container, Dependant, Marker
+from di.container import Container
+from di.dependant import Dependant, Marker
 from di.typing import Annotated
 
 

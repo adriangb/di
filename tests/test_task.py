@@ -6,7 +6,9 @@ from typing import Any, AsyncGenerator, Callable, Generator
 
 import pytest
 
-from di import ConcurrentAsyncExecutor, Container, Dependant
+from di.container import Container
+from di.dependant import Dependant
+from di.executors import ConcurrentAsyncExecutor
 
 
 def sync_callable_func() -> int:

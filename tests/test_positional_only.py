@@ -2,7 +2,9 @@ import sys
 
 import pytest
 
-from di import Container, Dependant, SyncExecutor
+from di.container import Container
+from di.dependant import Dependant
+from di.executors import SyncExecutor
 
 
 class Test:

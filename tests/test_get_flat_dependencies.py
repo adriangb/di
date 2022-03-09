@@ -2,9 +2,10 @@ from typing import Any, List
 
 import pytest
 
-from di import Container, Dependant, Marker
 from di.api.dependencies import DependantBase
 from di.api.providers import DependencyProvider
+from di.container import Container
+from di.dependant import Dependant, Marker
 from di.typing import Annotated
 
 

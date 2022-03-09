@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 
-from di import AsyncExecutor, Container, Dependant, Marker
+from di.container import Container
+from di.dependant import Dependant, Marker
+from di.executors import AsyncExecutor
 from di.typing import Annotated
 
 

@@ -1,5 +1,7 @@
-from di import Container, Dependant, SyncExecutor
 from di.api.solved import SolvedDependant
+from di.container import Container
+from di.dependant import Dependant
+from di.executors import SyncExecutor
 
 
 # Framework code

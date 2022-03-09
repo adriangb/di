@@ -1,15 +1,10 @@
 """Tested only when using Annotated since it's impossible to create a cycle using default values"""
-import sys
-
-if sys.version_info < (3, 9):
-    from typing_extensions import Annotated
-else:
-    from typing import Annotated
-
 import pytest
 
-from di import Container, Dependant, Marker
+from di.container import Container
+from di.dependant import Dependant, Marker
 from di.exceptions import DependencyCycleError
+from di.typing import Annotated
 
 
 # These methods need to be defined at the global scope for

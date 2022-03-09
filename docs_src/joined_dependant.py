@@ -1,4 +1,6 @@
-from di import Container, Dependant, JoinedDependant, SyncExecutor
+from di.container import Container
+from di.dependant import Dependant, JoinedDependant
+from di.executors import SyncExecutor
 
 
 class A:

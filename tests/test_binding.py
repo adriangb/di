@@ -2,8 +2,9 @@ from typing import List
 
 import pytest
 
-from di import Container, Dependant, Marker, SyncExecutor
-from di.container import bind_by_type
+from di.container import Container, bind_by_type
+from di.dependant import Dependant, Marker
+from di.executors import SyncExecutor
 from di.typing import Annotated
 
 

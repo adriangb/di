@@ -2,7 +2,7 @@ from typing import Any, TypeVar
 
 import pytest
 
-from di import Dependant
+from di.dependant import Dependant
 
 T = TypeVar("T")
 

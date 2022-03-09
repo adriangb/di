@@ -3,8 +3,10 @@ import typing
 import anyio
 import pytest
 
-from di import Container, Dependant, Marker, SyncExecutor
+from di.container import Container
+from di.dependant import Dependant, Marker
 from di.exceptions import DuplicateScopeError
+from di.executors import SyncExecutor
 from di.typing import Annotated
 
 

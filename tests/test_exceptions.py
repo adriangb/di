@@ -3,8 +3,9 @@ from typing import AsyncGenerator, Dict, Generator
 
 import pytest
 
-from di import AsyncExecutor, Container, Dependant, Marker, SyncExecutor
-from di.container import bind_by_type
+from di.container import Container, bind_by_type
+from di.dependant import Dependant, Marker
+from di.executors import AsyncExecutor, SyncExecutor
 from di.typing import Annotated
 
 

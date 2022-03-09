@@ -3,8 +3,9 @@ from __future__ import annotations
 import inspect
 from typing import Mapping, Optional, TypeVar
 
-from di import AsyncExecutor, Container, Dependant, Marker
-from di.container import bind_by_type
+from di.container import Container, bind_by_type
+from di.dependant import Dependant, Marker
+from di.executors import AsyncExecutor
 from di.typing import Annotated
 
 

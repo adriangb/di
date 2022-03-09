@@ -1,13 +1,9 @@
-import sys
 from typing import Optional, Tuple
 
-if sys.version_info < (3, 9):
-    from typing_extensions import Annotated
-else:
-    from typing import Annotated
-
-from di import Container, Dependant, Marker, SyncExecutor
-from di.container import bind_by_type
+from di.container import Container, bind_by_type
+from di.dependant import Dependant, Marker
+from di.executors import SyncExecutor
+from di.typing import Annotated
 
 
 def test_wiring_based_from_annotation() -> None:

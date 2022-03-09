@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 
-from di import AsyncExecutor, Container, Dependant
+from di.container import Container
+from di.dependant import Dependant
+from di.executors import AsyncExecutor
 
 
 @dataclass

@@ -6,8 +6,9 @@ if sys.version_info < (3, 8):
 else:
     from typing import Protocol
 
-from di import AsyncExecutor, Container, Dependant
-from di.container import bind_by_type
+from di.container import Container, bind_by_type
+from di.dependant import Dependant
+from di.executors import AsyncExecutor
 
 
 class DBProtocol(Protocol):

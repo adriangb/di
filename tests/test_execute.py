@@ -6,9 +6,6 @@ import time
 from contextlib import contextmanager
 from typing import Any, AsyncGenerator, Generator, List
 
-from di import ConcurrentAsyncExecutor, SyncExecutor
-from di.container import ContainerState, bind_by_type
-
 if sys.version_info < (3, 8):
     from typing_extensions import Literal
 else:
@@ -17,8 +14,10 @@ else:
 import anyio
 import pytest
 
-from di import AsyncExecutor, Container, Dependant, Marker
+from di.container import Container, ContainerState, bind_by_type
+from di.dependant import Dependant, Marker
 from di.exceptions import IncompatibleDependencyError, UnknownScopeError
+from di.executors import AsyncExecutor, ConcurrentAsyncExecutor, SyncExecutor
 from di.typing import Annotated
 
 
