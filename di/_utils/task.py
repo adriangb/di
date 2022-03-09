@@ -10,6 +10,7 @@ from typing import (
     Iterable,
     List,
     Mapping,
+    NamedTuple,
     Tuple,
     TypeVar,
     Union,
@@ -28,25 +29,11 @@ from di.api.scopes import Scope
 from di.exceptions import IncompatibleDependencyError
 
 
-class ExecutionState:
-    __slots__ = (
-        "stacks",
-        "results",
-        "values",
-        "cache",
-    )
-
-    def __init__(
-        self,
-        stacks: Mapping[Scope, Union[AsyncExitStack, ExitStack]],
-        results: List[Any],
-        cache: ScopeMap[CacheKey, Any],
-        values: Mapping[DependencyProvider, Any],
-    ):
-        self.stacks = stacks
-        self.results = results
-        self.cache = cache
-        self.values = values
+class ExecutionState(NamedTuple):
+    stacks: Mapping[Scope, Union[AsyncExitStack, ExitStack]]
+    results: List[Any]
+    cache: ScopeMap[CacheKey, Any]
+    values: Mapping[DependencyProvider, Any]
 
 
 DependencyType = TypeVar("DependencyType")
