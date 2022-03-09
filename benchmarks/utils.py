@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict
 
 import anyio  # noqa
 
-from di import Dependant
+from di.dependant import Dependant
 from di.typing import Annotated
 
 random = Random(0)

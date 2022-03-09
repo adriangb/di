@@ -6,7 +6,8 @@ import anyio
 from pyinstrument.profiler import Profiler  # type: ignore[import]
 
 from benchmarks.utils import GraphSize, SleepTimes, generate_dag
-from di import Container, Dependant
+from di.container import Container
+from di.dependant import Dependant
 from di.executors import ConcurrentAsyncExecutor, SyncExecutor
 
 INTERVAL = 10e-6  # 10 us
