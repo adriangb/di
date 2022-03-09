@@ -39,7 +39,7 @@ class ExecutionState:
     def __init__(
         self,
         stacks: Mapping[Scope, Union[AsyncExitStack, ExitStack]],
-        results: Dict[int, Any],
+        results: List[Any],
         cache: ScopeMap[CacheKey, Any],
         values: Mapping[DependencyProvider, Any],
     ):
@@ -125,7 +125,7 @@ class Task:
         self,
         positional_parameters: Iterable[Task],
         keyword_parameters: Iterable[Tuple[str, Task]],
-    ) -> Callable[[Callable[..., Any], Dict[int, Any]], Any]:
+    ) -> Callable[[Callable[..., Any], List[Any]], Any]:
         # this codegen speeds up argument collection and passing
         # by avoiding creation of intermediary containers to store the values
         positional_arg_template = "results[{}]"

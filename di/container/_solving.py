@@ -118,6 +118,7 @@ def solve(
         root_task=tasks[dependency.cache_key],
         topological_sorter=ts,
         static_order=static_order,
+        empty_results=[None] * len(tasks),
     )
     validate_scopes(scopes, dep_dag)
     solved = SolvedDependant(

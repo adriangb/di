@@ -3,11 +3,11 @@ from typing import (
     Any,
     Dict,
     Iterable,
+    List,
     Mapping,
     NamedTuple,
     Optional,
     Tuple,
-    TypeVar,
     Union,
     cast,
 )
@@ -22,10 +22,6 @@ from di.api.executor import Task as SupportsTask
 from di.api.providers import DependencyProvider
 from di.api.scopes import Scope
 from di.api.solved import SolvedDependant
-
-Results = Dict[int, Any]
-
-T_co = TypeVar("T_co", covariant=True)
 
 
 class TaskGraph:
@@ -66,19 +62,22 @@ class SolvedDependantCache(NamedTuple):
     root_task: Task
     topological_sorter: TopologicalSorter[Task]
     static_order: Iterable[Task]
+    empty_results: List[Any]
+
+
+EMPTY_VALUES: Dict[DependencyProvider, Any] = {}
 
 
 def plan_execution(
     stacks: Mapping[Scope, Union[AsyncExitStack, ExitStack]],
     cache: ScopeMap[CacheKey, Any],
     solved: SolvedDependant[Any],
-    *,
     values: Optional[Mapping[DependencyProvider, Any]] = None,
-) -> Tuple[Dict[int, Any], SupportsTaskGraph[ExecutionState], ExecutionState, Task,]:
-    solved_dependency_cache: "SolvedDependantCache" = solved.container_cache
-    results: "Results" = {}
+) -> Tuple[List[Any], SupportsTaskGraph[ExecutionState], ExecutionState, Task,]:
+    solved_dependency_cache: SolvedDependantCache = solved.container_cache
+    results = solved_dependency_cache.empty_results.copy()
     execution_state = ExecutionState(
-        values=values or {},
+        values=values or EMPTY_VALUES,
         stacks=stacks,
         results=results,
         cache=cache,
