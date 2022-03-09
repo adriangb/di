@@ -28,7 +28,7 @@ Results = Dict[int, Any]
 T_co = TypeVar("T_co", covariant=True)
 
 
-class TaskGraph(SupportsTaskGraph[ExecutionState]):
+class TaskGraph:
     __slots__ = ("_uncopied_ts", "_copied_ts", "_static_order")
     _copied_ts: Optional[TopologicalSorter[Task]]
 

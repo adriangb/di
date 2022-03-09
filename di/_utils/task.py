@@ -23,7 +23,6 @@ from di._utils.inspect import (
 from di._utils.scope_map import ScopeMap
 from di._utils.types import CacheKey
 from di.api.dependencies import DependantBase
-from di.api.executor import Task as ExecutorTask
 from di.api.providers import DependencyProvider
 from di.api.scopes import Scope
 from di.exceptions import IncompatibleDependencyError
@@ -56,7 +55,7 @@ DependencyType = TypeVar("DependencyType")
 UNSET: Any = object()
 
 
-class Task(ExecutorTask[ExecutionState]):
+class Task:
     __slots__ = (
         "wrapped_call",
         "user_function",
