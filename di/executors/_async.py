@@ -41,7 +41,7 @@ class AsyncExecutor(SupportsAsyncExecutor):
             await _execute_task(task, state)
 
 
-async def _async_worker(
+async def async_worker(
     task: Task[StateType],
     tasks: SupportsTaskGraph[StateType],
     state: StateType,
@@ -50,7 +50,7 @@ async def _async_worker(
     await _execute_task(task, state)
     tasks.done(task)
     for task in tasks.get_ready():
-        taskgroup.start_soon(_async_worker, task, tasks, state, taskgroup)
+        taskgroup.start_soon(async_worker, task, tasks, state, taskgroup)
 
 
 class ConcurrentAsyncExecutor(SupportsAsyncExecutor):
@@ -59,4 +59,4 @@ class ConcurrentAsyncExecutor(SupportsAsyncExecutor):
     ) -> None:
         async with anyio.create_task_group() as taskgroup:
             for task in tasks.get_ready():
-                taskgroup.start_soon(_async_worker, task, tasks, state, taskgroup)
+                taskgroup.start_soon(async_worker, task, tasks, state, taskgroup)
