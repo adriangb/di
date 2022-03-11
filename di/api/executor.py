@@ -14,9 +14,9 @@ StateType = TypeVar("StateType")
 T_co = TypeVar("T_co", covariant=True)
 
 
-class Task(Hashable, Protocol[StateType]):
+class Task(Hashable, Protocol[T_co]):
     dependant: DependantBase[Any]
-    compute: Union[Callable[[StateType], None], Callable[[StateType], Awaitable[None]]]
+    compute: Callable[[T_co], Union[Awaitable[None], None]]
 
 
 class SupportsTaskGraph(Protocol[StateType]):

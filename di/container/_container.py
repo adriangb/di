@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from contextlib import contextmanager
 from typing import (
     Any,
@@ -50,7 +48,7 @@ class Container:
         self._register_hooks.append(hook)
 
         @contextmanager
-        def unbind() -> Generator[None, None, None]:
+        def unbind() -> "Generator[None, None, None]":
             try:
                 yield
             finally:
