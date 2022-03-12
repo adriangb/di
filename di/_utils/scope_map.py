@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import Dict, Hashable, List, TypeVar, Union
 
 from di.api.scopes import Scope

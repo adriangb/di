@@ -4,7 +4,6 @@ import contextlib
 from contextlib import AsyncExitStack, ExitStack
 from typing import (
     Any,
-    Awaitable,
     Callable,
     Dict,
     Iterable,
@@ -54,9 +53,7 @@ class Task:
         "compute",
     )
 
-    compute: Union[
-        Callable[[ExecutionState], None], Callable[[ExecutionState], Awaitable[None]]
-    ]
+    compute: Any
     wrapped_call: DependencyProvider
     user_function: DependencyProvider
 

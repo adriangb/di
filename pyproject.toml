@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "di"
-version = "0.68.5"
+version = "0.68.6"
 description = "Dependency injection toolkit"
 authors = ["Adrian Garcia Badaracco <adrian@adriangb.com>"]
 readme = "README.md"
@@ -39,7 +39,7 @@ anyio = ["anyio"]
 black = "~22"
 flake8 = "~3.9"
 isort = "~5.10"
-mypy = "v0.930"
+mypy = "v0.940"
 pre-commit = "~2"
 # testing
 pytest = "~6"

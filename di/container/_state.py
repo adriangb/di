@@ -1,24 +1,10 @@
-from __future__ import annotations
-
-import sys
 from contextlib import AsyncExitStack, ExitStack
 from types import TracebackType
-from typing import Any, Dict, Iterable, Optional, Type, Union
-
-if sys.version_info < (3, 8):
-    from typing_extensions import Protocol
-else:
-    from typing import Protocol
+from typing import Any, Dict, Optional, Type, Union
 
 from di._utils.scope_map import ScopeMap
 from di._utils.types import CacheKey, FusedContextManager
 from di.api.scopes import Scope
-
-
-class SupportsScopes(Protocol):
-    @property
-    def scopes(self) -> Iterable[Scope]:
-        ...
 
 
 class ContainerState:
@@ -32,11 +18,7 @@ class ContainerState:
         self.cached_values = cached_values or ScopeMap()
         self.stacks = stacks or {}
 
-    @property
-    def scopes(self) -> Iterable[Scope]:
-        return self.cached_values.keys()
-
-    def enter_scope(self, scope: Scope) -> FusedContextManager[ContainerState]:
+    def enter_scope(self, scope: Scope) -> "FusedContextManager[ContainerState]":
         """Enter a scope and get back a new ContainerState object that you can use to execute dependencies."""
         new = ContainerState(
             cached_values=ScopeMap(self.cached_values.copy()),
