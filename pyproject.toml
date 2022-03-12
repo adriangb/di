@@ -39,7 +39,7 @@ anyio = ["anyio"]
 black = "~22"
 flake8 = "~3.9"
 isort = "~5.10"
-mypy = "v0.930"
+mypy = "v0.940"
 pre-commit = "~2"
 # testing
 pytest = "~6"

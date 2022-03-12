@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from typing import Any, Awaitable, Callable, Hashable, Iterable, TypeVar, Union
+from typing import Awaitable, Callable, Hashable, Iterable, TypeVar, Union
 
 if sys.version_info < (3, 8):
     from typing_extensions import Protocol
@@ -11,12 +11,14 @@ else:
 from di.api.dependencies import DependantBase
 
 StateType = TypeVar("StateType")
-T_co = TypeVar("T_co", covariant=True)
 
 
-class Task(Hashable, Protocol[T_co]):
-    dependant: DependantBase[Any]
-    compute: Callable[[T_co], Union[Awaitable[None], None]]
+class Task(Hashable, Protocol[StateType]):
+    dependant: DependantBase[StateType]
+
+    @property
+    def compute(self) -> Callable[[StateType], Union[Awaitable[None], None]]:
+        ...
 
 
 class SupportsTaskGraph(Protocol[StateType]):
