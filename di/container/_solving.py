@@ -10,6 +10,7 @@ from di.api.solved import SolvedDependant
 from di.container._bind_hook import BindHook
 from di.container._execution_planning import SolvedDependantCache
 from di.container._scope_validation import validate_scopes
+from di.container._utils import get_path, get_path_str
 from di.exceptions import DependencyCycleError, SolvingError, WiringError
 
 T = TypeVar("T")
@@ -30,15 +31,15 @@ def solve(
         if match:
             dependency = match
 
-    dependants: Dict[CacheKey, DependantBase[Any]] = {}
+    dependants: "Dict[CacheKey, DependantBase[Any]]" = {}
     # DAG mapping dependants to their dependendencies
-    dep_dag: Dict[DependantBase[Any], List[DependantBase[Any]]] = {}
+    dep_dag: "Dict[DependantBase[Any], List[DependantBase[Any]]]" = {}
     # The same DAG as above but including parameters (inspect.Parameter instances)
-    param_graph: Dict[DependantBase[Any], List[DependencyParameter]] = {}
+    param_graph: "Dict[DependantBase[Any], List[DependencyParameter]]" = {}
+    # Keep track of the parents of each dependency so that we can reconstruct a path to it
+    parents: "Dict[DependantBase[Any], DependantBase[Any]]" = {}
 
-    def get_params(
-        dep: DependantBase[Any],
-    ) -> List[DependencyParameter]:
+    def get_params(dep: DependantBase[Any]) -> List[DependencyParameter]:
         # get parameters and swap them out w/ binds when they
         # exist as a bound value
         params = dep.get_dependencies().copy()
@@ -54,16 +55,20 @@ def solve(
                     and param.parameter.default is param.parameter.empty
                 ):
                     raise WiringError(
-                        f"The parameter {param.parameter.name} to {dep.call} has no dependency marker,"
-                        " no type annotation and no default value."
-                        " This will produce a TypeError when this function is called."
-                        " You must either provide a dependency marker, a type annotation or a default value."
+                        (
+                            f"The parameter {param.parameter.name} to {dep.call} has no dependency marker,"
+                            " no type annotation and no default value."
+                            " This will produce a TypeError when this function is called."
+                            " You must either provide a dependency marker, a type annotation or a default value."
+                            f"\nPath: {get_path_str(dep, parents)}"
+                        ),
+                        path=get_path(dep, parents),
                     )
         return params
 
     # Do a DFS of the DAG checking constraints along the way
-    q: Deque[DependantBase[Any]] = deque([dependency])
-    seen: Set[DependantBase[Any]] = set()
+    q: "Deque[DependantBase[Any]]" = deque([dependency])
+    seen: "Set[DependantBase[Any]]" = set()
     while q:
         dep = q.popleft()
         seen.add(dep)
@@ -72,8 +77,12 @@ def solve(
             other = dependants[cache_key]
             if other.scope != dep.scope:
                 raise SolvingError(
-                    f"The dependency {dep.call} is used with multiple scopes"
-                    f" ({dep.scope} and {other.scope}); this is not allowed."
+                    (
+                        f"The dependency {dep.call} is used with multiple scopes"
+                        f" ({dep.scope} and {other.scope}); this is not allowed."
+                        f"\nPath: {get_path_str(dep, parents)}"
+                    ),
+                    get_path(dep, parents),
                 )
             continue  # pragma: no cover
         dependants[cache_key] = dep
@@ -83,6 +92,7 @@ def solve(
         for param in params:
             predecessor_dep = param.dependency
             dep_dag[dep].append(predecessor_dep)
+            parents[predecessor_dep] = dep
             if predecessor_dep not in seen:
                 q.append(predecessor_dep)
     # Filter out any dependencies that do not have a call
@@ -104,9 +114,13 @@ def solve(
             ).static_order()
         )
     except CycleError as e:
-        raise DependencyCycleError("Nodes are in a cycle") from e
+        dep = next(iter(reversed(e.args[1])))
+        raise DependencyCycleError(
+            f"Nodes are in a cycle.\nPath: {get_path_str(dep, parents)}",
+            path=get_path(dep, parents),
+        ) from e
     # Create a seperate TopologicalSorter to hold the Tasks
-    ts: TopologicalSorter[Task] = TopologicalSorter()
+    ts: "TopologicalSorter[Task]" = TopologicalSorter()
     tasks = build_tasks(
         computable_param_graph,
         (dependants[key] for key in dep_topsort),
@@ -120,7 +134,7 @@ def solve(
         static_order=static_order,
         empty_results=[None] * len(tasks),
     )
-    validate_scopes(scopes, dep_dag)
+    validate_scopes(scopes, dep_dag, parents)
     solved = SolvedDependant(
         dependency=dependency,
         dag=param_graph,

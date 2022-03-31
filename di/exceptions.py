@@ -1,3 +1,8 @@
+from typing import Any, List
+
+from di.api.dependencies import DependantBase
+
+
 class DependencyInjectionException(Exception):
     """Base exception for this library"""
 
@@ -7,25 +12,25 @@ class DependencyInjectionException(Exception):
 class WiringError(DependencyInjectionException):
     """Raised when wiring (introspection into types) failed"""
 
-    pass
+    def __init__(self, msg: str, path: List[DependantBase[Any]]) -> None:
+        super().__init__(msg)
+        self.path = path
 
 
 class UnknownScopeError(DependencyInjectionException):
     """Raised when a dependency to be executed has an unknown Scope"""
 
-    pass
-
 
 class DuplicateScopeError(DependencyInjectionException):
     """Raised when enter_scope() is called with an existing scope"""
-
-    pass
 
 
 class DependencyCycleError(DependencyInjectionException):
     """Raised when a dependency cycle is detected"""
 
-    pass
+    def __init__(self, msg: str, path: List[DependantBase[Any]]) -> None:
+        super().__init__(msg)
+        self.path = path
 
 
 class ScopeViolationError(DependencyInjectionException):
@@ -34,16 +39,14 @@ class ScopeViolationError(DependencyInjectionException):
     A cannot depend on B (in fact, pytest will also throw an error).
     """
 
-    pass
-
 
 class SolvingError(DependencyInjectionException):
     """Raised when there is an issue solving, for example if a dependency appears twice with different scopes"""
 
-    pass
+    def __init__(self, msg: str, path: List[DependantBase[Any]]) -> None:
+        super().__init__(msg)
+        self.path = path
 
 
 class IncompatibleDependencyError(DependencyInjectionException):
     """Raised when an async context manager dependency is executed in a sync Scope"""
-
-    pass
