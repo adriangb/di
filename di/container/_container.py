@@ -25,12 +25,12 @@ DependencyType = TypeVar("DependencyType")
 
 
 class Container:
-    __slots__ = ("_register_hooks", "_state")
+    __slots__ = ("_bind_hooks", "_state")
 
-    _register_hooks: List[BindHook]
+    _bind_hooks: List[BindHook]
 
     def __init__(self) -> None:
-        self._register_hooks = []
+        self._bind_hooks = []
 
     def bind(
         self,
@@ -45,14 +45,14 @@ class Container:
         the scope or any other data from the dependency they are replacing.
         """
 
-        self._register_hooks.append(hook)
+        self._bind_hooks.append(hook)
 
         @contextmanager
         def unbind() -> "Generator[None, None, None]":
             try:
                 yield
             finally:
-                self._register_hooks.remove(hook)
+                self._bind_hooks.remove(hook)
 
         return unbind()
 
@@ -61,7 +61,7 @@ class Container:
         dependency: DependantBase[DependencyType],
         scopes: Sequence[Scope],
     ) -> SolvedDependant[DependencyType]:
-        return solve(dependency, scopes, self._register_hooks)
+        return solve(dependency, scopes, self._bind_hooks)
 
     def execute_sync(
         self,
