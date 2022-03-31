@@ -19,39 +19,52 @@ def test_no_annotations_no_default_value_no_marker():
     def badfunc(value):  # type: ignore # for Pylance
         raise AssertionError("This function should never be called")
 
+    def root(v: Annotated[None, Marker(badfunc)]) -> None:  # type: ignore
+        raise AssertionError("This function should never be called")
+
+    dep_root = Dependant(root)
+
     container = Container()
 
     with pytest.raises(
         WiringError,
         match="You must either provide a dependency marker, a type annotation or a default value",
-    ):
-        with container.enter_scope(None) as state:
-            container.execute_sync(container.solve(Dependant(badfunc), scopes=[None]), executor=SyncExecutor(), state=state)  # type: ignore # for Pylance
+    ) as exc_info:
+        container.solve(dep_root, scopes=[None])
+    assert [d.call for d in exc_info.value.path] == [root, badfunc]
 
 
 def test_default_argument():
     """No type annotations are required if default values are provided"""
 
     def default_func(value=2) -> int:  # type: ignore # for Pylance
-        return value  # type: ignore # for Pylance
+        return value
 
     container = Container()
 
     with container.enter_scope(None) as state:
-        res = container.execute_sync(container.solve(Dependant(default_func), scopes=[None]), executor=SyncExecutor(), state=state)  # type: ignore # for Pylance
+        res = container.execute_sync(
+            container.solve(Dependant(default_func), scopes=[None]),
+            executor=SyncExecutor(),
+            state=state,
+        )
     assert res == 2
 
 
 def test_marker():
     """No type annotations or default value are required if a marker is used"""
 
-    def marker_default_func(value: Annotated[Any, Marker(lambda: 2)]) -> int:  # type: ignore # for Pylance
+    def marker_default_func(value: Annotated[Any, Marker(lambda: 2)]) -> int:
         return value  # type: ignore # for Pylance
 
     container = Container()
 
     with container.enter_scope(None) as state:
-        res = container.execute_sync(container.solve(Dependant(marker_default_func), scopes=[None]), executor=SyncExecutor(), state=state)  # type: ignore # for Pylance
+        res = container.execute_sync(
+            container.solve(Dependant(marker_default_func), scopes=[None]),
+            executor=SyncExecutor(),
+            state=state,
+        )
     assert res == 2
 
 
@@ -66,9 +79,11 @@ def test_dissalow_depending_on_inner_scope():
 
     container = Container()
 
+    dep = Dependant(B, scope="outer")
+
     match = r"scope \(inner\) is narrower than .+'s scope \(outer\)"
     with pytest.raises(ScopeViolationError, match=match):
-        container.solve(Dependant(B, scope="outer"), scopes=["outer", "inner"])
+        container.solve(dep, scopes=["outer", "inner"])
 
 
 def test_dependency_with_multiple_scopes():

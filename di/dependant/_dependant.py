@@ -184,7 +184,7 @@ class Dependant(DependantBase[T]):
         """Collect all of our sub-dependencies as parameters"""
         if self.wire is False or self.call is None:
             return []
-        res: List[DependencyParameter] = []
+        res: "List[DependencyParameter]" = []
         for param in get_parameters(self.call).values():
             sub_dependant: DependantBase[Any]
             if param.kind in _VARIABLE_PARAMETER_KINDS:
