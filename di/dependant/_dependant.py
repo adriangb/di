@@ -8,7 +8,6 @@ from di._utils.inspect import (
     get_return_type_from_call,
     get_type_from_param,
 )
-from di._utils.types import Some
 from di.api.dependencies import (
     CacheKey,
     DependantBase,
@@ -24,6 +23,7 @@ from di.api.providers import (
     GeneratorProvider,
 )
 from di.api.scopes import Scope
+from di.exceptions import DependencyReturnAssignmentError
 from di.typing import get_markers_from_annotation
 
 _VARIABLE_PARAMETER_KINDS = (
@@ -32,6 +32,25 @@ _VARIABLE_PARAMETER_KINDS = (
 )
 
 T = TypeVar("T")
+
+
+def _check_return_type(param: inspect.Parameter, call: DependencyProvider) -> None:
+    maybe_param_type = get_type_from_param(param)
+    if maybe_param_type is None:
+        return
+    param_type = maybe_param_type.value
+    if inspect.isclass(call):
+        return_type = call
+    else:
+        maybe_return_type = get_return_type_from_call(call)
+        if maybe_return_type is None:
+            return
+        return_type = maybe_return_type.value
+    if isinstance(return_type, str) or isinstance(param_type, str):
+        # () -> "Foo" or other forward reference
+        return
+    if return_type != param_type:
+        raise DependencyReturnAssignmentError
 
 
 class Marker:
@@ -96,21 +115,7 @@ class Marker:
                     # a class type, a callable class instance or a function
                     call = annotation_type_option.value
         if call is not None and call is not inject_default_value:
-            param_type = get_type_from_param(param)
-            if not inspect.isclass(call):
-                return_type = get_return_type_from_call(call)
-            else:
-                return_type = Some(call)
-            if (
-                isinstance(param_type, Some)
-                and isinstance(return_type, Some)
-                and not (
-                    isinstance(param_type.value, str)
-                    or isinstance(return_type.value, str)
-                )
-                and param_type.value != return_type.value
-            ):
-                raise Exception
+            _check_return_type(param, call)
         return Dependant[Any](
             call=call,
             scope=self.scope,

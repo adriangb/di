@@ -37,6 +37,20 @@ def test_wiring_missing_return_value() -> None:
     container.solve(dep, scopes=[None])
 
 
+def test_wiring_returns_subtype() -> None:
+    def f() -> float:
+        return 1
+
+    def g(v: Annotated[int, Marker(f)]) -> None:
+        pass
+
+    container = Container()
+    dep = Dependant(g)
+
+    # no error raised because int is a subtype of float
+    container.solve(dep, scopes=[None])
+
+
 def test_wiring_based_from_annotation() -> None:
     def g() -> int:
         return 1

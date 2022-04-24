@@ -89,7 +89,7 @@ def get_type_from_param(param: inspect.Parameter) -> Optional[Some]:
         return None
     if get_origin(annotation) is Annotated:
         annotation = next(iter(get_args(annotation)))
-    if isinstance(None, annotation):
+    if annotation is type(None):  # noqa: E721
         return Some(None)
     return Some(annotation)
 
@@ -102,6 +102,6 @@ def get_return_type_from_call(call: Any) -> Optional[Some]:
         return None
     if is_gen_callable(call) or is_async_gen_callable(call):
         return_annotation = next(iter(get_args(return_annotation)))
-    if isinstance(None, return_annotation):
+    if return_annotation is type(None):  # noqa: E721
         return Some(None)
     return Some(return_annotation)
