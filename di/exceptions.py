@@ -50,3 +50,7 @@ class SolvingError(DependencyInjectionException):
 
 class IncompatibleDependencyError(DependencyInjectionException):
     """Raised when an async context manager dependency is executed in a sync Scope"""
+
+
+class DependencyReturnAssignmentError(DependencyInjectionException):
+    """Raised in situations like `param: Annotated[int, Marker(function_returns_str)`"""

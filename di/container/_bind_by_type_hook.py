@@ -1,7 +1,7 @@
 import inspect
 from typing import Any, Optional
 
-from di._utils.inspect import get_type
+from di._utils.inspect import get_type_from_param
 from di.api.dependencies import DependantBase
 from di.container._bind_hook import BindHook
 
@@ -19,7 +19,7 @@ def bind_by_type(
             return provider
         if param is None:
             return None
-        type_annotation_option = get_type(param)
+        type_annotation_option = get_type_from_param(param)
         if type_annotation_option is None:
             return None
         type_annotation = type_annotation_option.value

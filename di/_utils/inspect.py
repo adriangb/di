@@ -83,10 +83,25 @@ def get_parameters(call: Callable[..., Any]) -> Dict[str, inspect.Parameter]:
     return processed_params
 
 
-def get_type(param: inspect.Parameter) -> Optional[Some]:
+def get_type_from_param(param: inspect.Parameter) -> Optional[Some]:
     annotation = param.annotation
     if annotation is param.empty:
         return None
     if get_origin(annotation) is Annotated:
         annotation = next(iter(get_args(annotation)))
+    if isinstance(None, annotation):
+        return Some(None)
     return Some(annotation)
+
+
+def get_return_type_from_call(call: Any) -> Optional[Some]:
+    if not callable(call):
+        raise TypeError
+    return_annotation = inspect.signature(call).return_annotation
+    if return_annotation is inspect.Signature.empty:
+        return None
+    if is_gen_callable(call) or is_async_gen_callable(call):
+        return_annotation = next(iter(get_args(return_annotation)))
+    if isinstance(None, return_annotation):
+        return Some(None)
+    return Some(return_annotation)

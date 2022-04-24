@@ -9,12 +9,12 @@ from di.typing import Annotated
 
 # These methods need to be defined at the global scope for
 # forward references to be resolved correctly at runtime
-def dep1(v: "Annotated[int, Marker(dep2)]") -> None:  # type: ignore
-    ...  # pragma: no cover
+def dep1(v: "Annotated[int, Marker(dep2)]") -> int:  # type: ignore
+    return 1  # pragma: no cover
 
 
-def dep2(v: "Annotated[int, Marker(dep1)]") -> None:
-    ...  # pragma: no cover
+def dep2(v: "Annotated[int, Marker(dep1)]") -> int:
+    return 2  # pragma: no cover
 
 
 def test_cycle() -> None:

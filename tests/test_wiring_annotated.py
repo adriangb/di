@@ -1,34 +1,8 @@
-from typing import Optional, Tuple
+from typing import Tuple
 
 from di.container import Container, bind_by_type
-from di.dependant import Dependant, Marker
+from di.dependant import Dependant
 from di.executors import SyncExecutor
-from di.typing import Annotated
-
-
-def test_wiring_based_from_annotation() -> None:
-    def g() -> int:
-        return 1
-
-    class G:
-        pass
-
-    dep_a = Marker(g)
-    dep_b = "foo bar baz!"
-    dep_c = Marker(g, use_cache=False)
-    dep_d = Marker(g)
-
-    def f(
-        a: Annotated[int, dep_a],
-        b: Annotated[G, dep_b],
-        c: Annotated[int, dep_c],
-        d: Annotated[Optional[int], dep_d] = None,
-    ) -> None:
-        pass
-
-    dep = Dependant(f)
-    subdeps = dep.get_dependencies()
-    assert [d.dependency.call for d in subdeps] == [g, G, g, g]
 
 
 def test_autowiring_class_with_default_builtin() -> None:

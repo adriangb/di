@@ -3,7 +3,12 @@ from __future__ import annotations
 import inspect
 from typing import Any, List, Optional, TypeVar, overload
 
-from di._utils.inspect import get_parameters, get_type
+from di._utils.inspect import (
+    get_parameters,
+    get_return_type_from_call,
+    get_type_from_param,
+)
+from di._utils.types import Some
 from di.api.dependencies import (
     CacheKey,
     DependantBase,
@@ -64,6 +69,10 @@ class Marker:
 
         This method can return the same or a new instance of a Dependant to avoid modifying itself.
         """
+
+        def inject_default_value() -> Any:
+            return param.default
+
         if self.wire is False:
             return Dependant[Any](
                 call=self.call,
@@ -75,12 +84,9 @@ class Marker:
         call = self.call
         if call is None and param.default is not param.empty:
 
-            def inject_default_value() -> Any:
-                return param.default
-
             call = inject_default_value
         if call is None:
-            annotation_type_option = get_type(param)
+            annotation_type_option = get_type_from_param(param)
             if annotation_type_option is not None and inspect.isclass(
                 annotation_type_option.value
             ):
@@ -89,6 +95,22 @@ class Marker:
                 else:
                     # a class type, a callable class instance or a function
                     call = annotation_type_option.value
+        if call is not None and call is not inject_default_value:
+            param_type = get_type_from_param(param)
+            if not inspect.isclass(call):
+                return_type = get_return_type_from_call(call)
+            else:
+                return_type = Some(call)
+            if (
+                isinstance(param_type, Some)
+                and isinstance(return_type, Some)
+                and not (
+                    isinstance(param_type.value, str)
+                    or isinstance(return_type.value, str)
+                )
+                and param_type.value != return_type.value
+            ):
+                raise Exception
         return Dependant[Any](
             call=call,
             scope=self.scope,
