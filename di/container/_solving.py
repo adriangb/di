@@ -32,7 +32,7 @@ def solve(
             dependency = match
 
     dependants: "Dict[CacheKey, DependantBase[Any]]" = {}
-    # DAG mapping dependants to their dependendencies
+    # DAG mapping dependants to their dependencies
     dep_dag: "Dict[DependantBase[Any], List[DependantBase[Any]]]" = {}
     # The same DAG as above but including parameters (inspect.Parameter instances)
     param_graph: "Dict[DependantBase[Any], List[DependencyParameter]]" = {}
@@ -119,7 +119,7 @@ def solve(
             f"Nodes are in a cycle.\nPath: {get_path_str(dep, parents)}",
             path=get_path(dep, parents),
         ) from e
-    # Create a seperate TopologicalSorter to hold the Tasks
+    # Create a separate TopologicalSorter to hold the Tasks
     ts: "TopologicalSorter[Task]" = TopologicalSorter()
     tasks = build_tasks(
         computable_param_graph,
