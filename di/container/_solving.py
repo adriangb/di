@@ -1,5 +1,4 @@
-from collections import deque
-from typing import Any, Deque, Dict, Iterable, List, Sequence, Set, TypeVar
+from typing import Any, Dict, Iterable, List, Sequence, Set, TypeVar
 
 from graphlib2 import CycleError, TopologicalSorter
 
@@ -39,7 +38,7 @@ def solve(
     # Keep track of the parents of each dependency so that we can reconstruct a path to it
     parents: "Dict[DependantBase[Any], DependantBase[Any]]" = {}
 
-    def get_params(dep: DependantBase[Any]) -> List[DependencyParameter]:
+    def get_params(dep: "DependantBase[Any]") -> "List[DependencyParameter]":
         # get parameters and swap them out w/ binds when they
         # exist as a bound value
         params = dep.get_dependencies().copy()
@@ -66,11 +65,10 @@ def solve(
                     )
         return params
 
-    # Do a DFS of the DAG checking constraints along the way
-    q: "Deque[DependantBase[Any]]" = deque([dependency])
+    q: "List[DependantBase[Any]]" = [dependency]
     seen: "Set[DependantBase[Any]]" = set()
     while q:
-        dep = q.popleft()
+        dep = q.pop()
         seen.add(dep)
         cache_key = dep.cache_key
         if cache_key in dependants:
