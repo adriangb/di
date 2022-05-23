@@ -1,5 +1,5 @@
 import typing
-from typing import Any, Generic, List, Mapping, TypeVar
+from typing import Any, Generic, Iterable, List, Mapping, TypeVar
 
 from di.api.dependencies import DependantBase, DependencyParameter
 
@@ -14,7 +14,7 @@ class SolvedDependant(Generic[DependencyType]):
     __slots__ = ("dependency", "dag", "container_cache")
 
     dependency: DependantBase[DependencyType]
-    dag: Mapping[DependantBase[Any], List[DependencyParameter]]
+    dag: Mapping[DependantBase[Any], Iterable[DependencyParameter]]
     # container_cache can be used by the creating container to store data that is tied
     # to the SolvedDependant
     container_cache: typing.Any
@@ -22,7 +22,7 @@ class SolvedDependant(Generic[DependencyType]):
     def __init__(
         self,
         dependency: DependantBase[DependencyType],
-        dag: Mapping[DependantBase[Any], List[DependencyParameter]],
+        dag: Mapping[DependantBase[Any], Iterable[DependencyParameter]],
         container_cache: typing.Any,
     ):
         self.dependency = dependency
