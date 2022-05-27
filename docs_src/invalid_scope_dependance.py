@@ -24,4 +24,4 @@ def controller(conn: DBConnDep) -> None:
 
 def framework() -> None:
     container = Container()
-    container.solve(Dependant(controller), scopes=["app", "request"])
+    container.solve(Dependant(controller, scope="request"), scopes=["app", "request"])

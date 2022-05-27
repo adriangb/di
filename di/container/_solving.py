@@ -1,4 +1,3 @@
-import itertools
 from typing import Any, Dict, Iterable, List, Mapping, Sequence, Set, Tuple, TypeVar
 
 from graphlib2 import CycleError, TopologicalSorter
@@ -108,13 +107,11 @@ def build_dag(
             f"Nodes are in a cycle.\nPath: {get_path_str(dep, parents)}",
             path=get_path(dep, parents),
         ) from e
-    # make sure all values have a key
-    # e.g. {1: [2]} -> {1: [2], 2: []}
     dag = {
-        d: dag.get(d, [])
-        for d in itertools.chain(
-            *((v.dependency for v in vs) for vs in dag.values()), dag.keys()
-        )
+        dependants[d.cache_key]: [
+            s._replace(dependency=dependants[s.dependency.cache_key]) for s in dag[d]
+        ]
+        for d in dag
     }
     return dag, parents
 

@@ -257,7 +257,7 @@ def call6(c4: Annotated[None, Marker(call4)]):
     ...
 
 
-def call7(c6: Annotated[None, Marker(call6)]):
+def call7(c6: Annotated[None, Marker(call6)], c2: Annotated[None, Marker(call2)]):
     ...
 
 
@@ -272,7 +272,7 @@ def call7(c6: Annotated[None, Marker(call6)]):
                 call3: [],
                 call4: [call2, call3],
                 call6: [call4],
-                call7: [call6],
+                call7: [call6, call2],
             },
         ),
         (
