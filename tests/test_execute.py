@@ -349,12 +349,10 @@ async def test_async_cm_de_in_sync_scope():
             )
 
 
-def test_unknown_scope():
-    def bad_dep(v: Annotated[int, Marker(lambda: 1, scope="request")]) -> int:
+def test_unknown_scope() -> None:
+    def bad_dep(v: Annotated[int, Marker(lambda: 1, scope="foo")]) -> int:
         return v
 
     container = Container()
-    solved = container.solve(Dependant(bad_dep), scopes=["app", "request"])
-    with container.enter_scope("app") as state:
-        with pytest.raises(UnknownScopeError):
-            container.execute_sync(solved, executor=SyncExecutor(), state=state)
+    with pytest.raises(UnknownScopeError):
+        container.solve(Dependant(bad_dep, scope="app"), scopes=["app"])
