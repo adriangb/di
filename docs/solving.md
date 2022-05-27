@@ -30,7 +30,7 @@ This means that `di` does *not* do any reflection for each request, nor does it 
 
 ## Getting a list of dependencies
 
-You can easily list all dependencies in a dag via `Container.dag.keys()`.
+You can easily list all dependencies in a dag via `SolvedDependant.dag.keys()`.
 
 ```Python hl_lines="20"
 --8<-- "docs_src/solved_dependant.py"
