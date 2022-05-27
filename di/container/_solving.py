@@ -64,29 +64,31 @@ def build_dag(
     q: "List[DependantBase[Any]]" = [dependency]
     seen: "Set[DependantBase[Any]]" = set()
     while q:
-        dep = q.pop()
-        seen.add(dep)
-        cache_key = dep.cache_key
-        if cache_key in dependants:
-            other = dependants[cache_key]
-            if other.scope != dep.scope:
-                raise SolvingError(
-                    (
-                        f"The dependency {dep.call} is used with multiple scopes"
-                        f" ({dep.scope} and {other.scope}); this is not allowed."
-                        f"\nPath: {get_path_str(dep, parents)}"
-                    ),
-                    get_path(dep, parents),
-                )
-            continue  # pragma: no cover
-        dependants[cache_key] = dep
-        params = get_params(dep, binds, parents)
-        dag[dep] = params
-        for param in params:
-            predecessor_dep = param.dependency
-            parents[predecessor_dep] = dep
-            if predecessor_dep not in seen:
-                q.append(predecessor_dep)
+        level = q.copy()
+        q.clear()
+        for dep in level:
+            seen.add(dep)
+            cache_key = dep.cache_key
+            if cache_key in dependants:
+                other = dependants[cache_key]
+                if other.scope != dep.scope:
+                    raise SolvingError(
+                        (
+                            f"The dependency {dep.call} is used with multiple scopes"
+                            f" ({dep.scope} and {other.scope}); this is not allowed."
+                            f"\nPath: {get_path_str(dep, parents)}"
+                        ),
+                        get_path(dep, parents),
+                    )
+                continue  # pragma: no cover
+            dependants[cache_key] = dep
+            params = get_params(dep, binds, parents)
+            dag[dep] = params
+            for param in params:
+                predecessor_dep = param.dependency
+                parents[predecessor_dep] = dep
+                if predecessor_dep not in seen:
+                    q.append(predecessor_dep)
     # filter out dependencies that are not callable
     dag = {
         d: [s for s in dag[d] if s.dependency.call is not None]
