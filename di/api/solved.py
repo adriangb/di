@@ -1,5 +1,5 @@
 import typing
-from typing import Any, Generic, Iterable, List, Mapping, TypeVar
+from typing import Any, Generic, Iterable, Mapping, TypeVar
 
 from di.api.dependencies import DependantBase, DependencyParameter
 
@@ -28,9 +28,3 @@ class SolvedDependant(Generic[DependencyType]):
         self.dependency = dependency
         self.dag = dag
         self.container_cache = container_cache
-
-    def get_flat_subdependants(self) -> List[DependantBase[Any]]:
-        """Get an exhaustive list of all of the dependencies of this dependency,
-        in no particular order.
-        """
-        return list(self.dag.keys() - {self.dependency})
