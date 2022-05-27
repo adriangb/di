@@ -1,4 +1,15 @@
-from typing import Any, Dict, Iterable, List, Mapping, Sequence, Set, Tuple, TypeVar
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Sequence,
+    Set,
+    Tuple,
+    TypeVar,
+)
 
 from graphlib2 import CycleError, TopologicalSorter
 
@@ -44,6 +55,29 @@ def get_params(
                     path=get_path(dep, parents),
                 )
     return params
+
+
+def resolve_unset_scopes(
+    dep_scopes: Sequence[Scope], scopes: Sequence[Scope]
+) -> Sequence[Scope]:
+    if None in scopes or not scopes:
+        # None is a valid scope, so we have no unset scopes
+        return dep_scopes
+    scope_idxs = dict((scope, idx) for idx, scope in enumerate(scopes))
+    current = scopes[0]
+    # If we have A("app"), B("request"), C(None) and C depends on B which depends on A
+    # we need to set C's scope to "request".
+    # For this case dep_scopes = [None, "request", "app"]
+    # If we have A("app"), B(None) B gets "app" scope
+    # Here dep_scopes = [None, "app"]
+    res: "List[Scope]" = []
+    for scope in dep_scopes:
+        if scope is None:
+            scope = current
+        elif scope_idxs[scope] > scope_idxs[current]:
+            current = scope
+        res.append(scope)
+    return res
 
 
 def build_dag(
@@ -135,6 +169,16 @@ def solve(
 
     dag, parents = build_dag(dependency, binds)
 
+    def get_scope(dep: "DependantBase[Any]") -> Scope:
+        if dep.scope is not None:
+            return dep.scope
+        if None in scopes:
+            return dep.scope
+        path = get_path(dep, parents)
+        dep_scopes = [d.scope for d in path]
+        # dep is the last dependency in path
+        return next(iter(reversed(resolve_unset_scopes(dep_scopes, scopes))))
+
     # Order the Dependant's topologically so that we can create Tasks
     # with references to all of their children
     dep_topsort = tuple(
@@ -144,7 +188,7 @@ def solve(
     )
     # Create a separate TopologicalSorter to hold the Tasks
     ts: "TopologicalSorter[Task]" = TopologicalSorter()
-    tasks = build_tasks(dag, dep_topsort, ts)
+    tasks = build_tasks(dag, dep_topsort, ts, get_scope)
     static_order = tuple(ts.copy().static_order())
     ts.prepare()
     assert dependency.call is not None
@@ -154,7 +198,24 @@ def solve(
         static_order=static_order,
         empty_results=[None] * len(tasks),
     )
-    validate_scopes(scopes, {d: [s.dependency for s in dag[d]] for d in dag}, parents)
+    # at this point the call is never None
+    # but type checkers don't know this, hence the filtering
+    call_dag = {
+        dep.call: [
+            subdep.dependency.call
+            for subdep in dag[dep]
+            if subdep.dependency.call is not None
+        ]
+        for dep in dag
+        if dep.call is not None
+    }
+    call_parents = {
+        dep.call: parent.call
+        for dep, parent in parents.items()
+        if dep.call is not None and parent.call is not None
+    }
+    dep_scopes = {dep.call: tasks[dep].scope for dep in dag if dep.call is not None}
+    validate_scopes(scopes, dag=call_dag, parents=call_parents, dep_scopes=dep_scopes)
     solved = SolvedDependant(
         dependency=dependency,
         dag=dag,
@@ -170,6 +231,7 @@ def build_tasks(
     ],
     topsorted: Iterable[DependantBase[Any]],
     ts: TopologicalSorter[Task],
+    get_scope: Callable[[DependantBase[Any]], Scope],
 ) -> Dict[DependantBase[Any], Task]:
     tasks: Dict[DependantBase[Any], Task] = {}
     task_id = 0
@@ -190,7 +252,7 @@ def build_tasks(
 
         assert dep.call is not None
         tasks[dep] = task = Task(
-            scope=dep.scope,
+            scope=get_scope(dep),
             call=dep.call,
             use_cache=dep.use_cache,
             cache_key=dep.cache_key,

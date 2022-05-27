@@ -1,4 +1,4 @@
-from typing import Any, List, Mapping
+from typing import Any, List, Mapping, Iterable
 
 import pytest
 
@@ -311,3 +311,56 @@ def test_solved_dag(
     got = {d.call: [s.dependency.call for s in dag[d]] for d in dag}
 
     assert got == expected
+
+
+
+def test_infer_scope_1() -> None:
+    # This dep must be inferred into the "app" scope
+    # because that's the only scope we enter
+    # Otherwise we'd get an error
+
+    def dep() -> Iterable[None]:
+        yield None
+
+    container = Container()
+    solved = container.solve(Dependant(dep), scopes=["app"])
+    with container.enter_scope("app") as state:
+        container.execute_sync(solved, SyncExecutor(), state=state)
+
+
+def test_infer_scope_2() -> None:
+    # Since None is a known scope, we don't change it
+
+    def dep() -> Iterable[None]:
+        yield None
+
+    container = Container()
+    solved = container.solve(Dependant(dep), scopes=[None])
+    with container.enter_scope(None) as state:
+        container.execute_sync(solved, SyncExecutor(), state=state)
+
+
+def test_infer_scope_3() -> None:
+    def db_connection() -> None:
+        ...
+
+    DataBase = Annotated[None, Marker(db_connection, scope="app")]
+
+    def query_param() -> None:
+        ...
+
+    QueryParam = Annotated[None, Marker(query_param, scope="request")]
+
+    def user_function(db: DataBase, param: QueryParam) -> None:
+        ...
+
+    def endpoint(func: Annotated[None, Marker(user_function)]) -> None:
+        ...
+
+    container = Container()
+    solved = container.solve(
+        Dependant(endpoint, scope="request"), scopes=["app", "request"]
+    )
+    with container.enter_scope("app") as state:
+        with container.enter_scope("request", state=state) as state:
+            container.execute_sync(solved, SyncExecutor(), state=state)
