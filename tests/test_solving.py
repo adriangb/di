@@ -1,4 +1,4 @@
-from typing import Any, List, Mapping, Iterable
+from typing import Any, Iterable, List, Mapping
 
 import pytest
 
@@ -311,7 +311,6 @@ def test_solved_dag(
     got = {d.call: [s.dependency.call for s in dag[d]] for d in dag}
 
     assert got == expected
-
 
 
 def test_infer_scope_1() -> None:
