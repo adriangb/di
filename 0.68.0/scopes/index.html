@@ -487,7 +487,7 @@ This means that dependencies scoped to an outer scope cannot depend on dependenc
 
 <span class="k">def</span> <span class="nf">framework</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
-    <span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">),</span> <span class="n">scopes</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;app&quot;</span><span class="p">,</span> <span class="s2">&quot;request&quot;</span><span class="p">])</span>
+    <span class="n">container</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Dependant</span><span class="p">(</span><span class="n">controller</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">&quot;request&quot;</span><span class="p">),</span> <span class="n">scopes</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;app&quot;</span><span class="p">,</span> <span class="s2">&quot;request&quot;</span><span class="p">])</span>
 </code></pre></div>
 <p>This example will fail with <code>di.exceptions.ScopeViolationError</code> because an <code>DBConnection</code> is scoped to <code>"app"</code> so it cannot depend on <code>Request</code> which is scoped to <code>"request"</code>.
 The order of the scopes is determined by the <code>scopes</code> parameter to <code>Container.solve</code>.
