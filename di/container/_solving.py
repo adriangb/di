@@ -198,8 +198,8 @@ def solve(
     if dependency.call is None:
         raise ValueError
 
-    task_dag: Dict[Task, List[Task]] = {}
-    dep_dag: Dict[DependantBase[Any], List[DependencyParameter]] = {}
+    task_dag: "Dict[Task, List[Task]]" = {}
+    dep_dag: "Dict[DependantBase[Any], List[DependencyParameter]]" = {}
     scope_idxs = dict((scope, idx) for idx, scope in enumerate(scopes))
 
     # this is implemented recursively
