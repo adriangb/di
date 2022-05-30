@@ -1,3 +1,3 @@
 import typing
 
-Scope = typing.Union[typing.Hashable, None]
+Scope = typing.Hashable

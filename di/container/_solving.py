@@ -123,38 +123,26 @@ def build_task(
 
     path[dependency] = None  # any value will do, we only use the keys
 
-    if not params:
-        if scope is None and None not in scope_idxs:
-            # use the outermost scope
-            scope = next(iter(scope_idxs.keys()))
-    else:
-        for param in params:
-            if param.dependency.call is None:
-                continue
-            dependant_dag[dependency].append(param)
-            child_task = build_task(
-                param.dependency,
-                binds,
-                tasks,
-                task_dag,
-                dependant_dag,
-                path,
-                scope_idxs,
-            )
-            subtasks.append(child_task)
-            if param.parameter is None:
-                continue
-            if param.parameter.kind in POSITIONAL_PARAMS:
-                positional_parameters.append(child_task)
-            else:
-                keyword_parameters.append((param.parameter.name, child_task))
-        child_scopes = [st.scope for st in subtasks]
-        if scope is None and None not in scope_idxs:
-            # find the innermost scope amongst child scopes
-            child_scope = next(
-                iter(sorted(child_scopes, key=lambda scope: -scope_idxs[scope]))
-            )
-            scope = child_scope
+    for param in params:
+        if param.dependency.call is None:
+            continue
+        dependant_dag[dependency].append(param)
+        child_task = build_task(
+            param.dependency,
+            binds,
+            tasks,
+            task_dag,
+            dependant_dag,
+            path,
+            scope_idxs,
+        )
+        subtasks.append(child_task)
+        if param.parameter is None:
+            continue
+        if param.parameter.kind in POSITIONAL_PARAMS:
+            positional_parameters.append(child_task)
+        else:
+            keyword_parameters.append((param.parameter.name, child_task))
 
     task = Task(
         dependant=dependency,
