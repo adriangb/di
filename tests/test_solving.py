@@ -99,7 +99,7 @@ def test_dependency_with_multiple_scopes():
 
     container = Container()
     with pytest.raises(SolvingError, match="used with multiple scopes"):
-        container.solve(Dependant(B, scope="request"), scopes=[None])
+        container.solve(Dependant(B, scope="request"), scopes=["app", "request"])
 
 
 def test_siblings() -> None:
@@ -363,3 +363,42 @@ def test_infer_scope_3() -> None:
     with container.enter_scope("app") as state:
         with container.enter_scope("request", state=state) as state:
             container.execute_sync(solved, SyncExecutor(), state=state)
+
+
+def test_infer_scope_4() -> None:
+    # This dep must be inferred into the "app" scope
+    # because that's the only scope we enter
+    # Otherwise we'd get an error
+
+    dep1_values = iter((1, -1))
+
+    def dep1() -> int:
+        return next(dep1_values)
+
+    def dep2(v1: Annotated[int, Marker(dep1, scope="connection")]) -> int:
+        assert v1 == 1  # cached in the connection scope
+        return 2
+
+    dep3_values = iter((3, 4))
+
+    def dep3(v2: Annotated[int, Marker(dep2, scope="request")]) -> int:
+        return next(dep3_values)
+
+    # we want to check what scope was inferred for dep3
+    # so we'll return it's value and make sure it changes
+    def final(v3: Annotated[int, Marker(dep3)]) -> int:
+        return v3  # should be 3 and then 4
+
+    container = Container()
+    solved = container.solve(Dependant(final), scopes=["connection", "request"])
+    with container.enter_scope("connection") as conn_state:
+        with container.enter_scope("request", state=conn_state) as req_state:
+            res = container.execute_sync(solved, SyncExecutor(), state=req_state)
+            assert res == 3
+            res = container.execute_sync(solved, SyncExecutor(), state=req_state)
+            assert res == 3
+        with container.enter_scope("request", state=conn_state) as req_state:
+            res = container.execute_sync(solved, SyncExecutor(), state=req_state)
+            assert res == 4
+            res = container.execute_sync(solved, SyncExecutor(), state=req_state)
+            assert res == 4

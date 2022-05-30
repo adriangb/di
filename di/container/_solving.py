@@ -1,17 +1,7 @@
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    Mapping,
-    Sequence,
-    Set,
-    Tuple,
-    TypeVar,
-)
+import inspect
+from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple, TypeVar
 
-from graphlib2 import CycleError, TopologicalSorter
+from graphlib2 import TopologicalSorter
 
 from di._utils.task import Task
 from di.api.dependencies import CacheKey, DependantBase, DependencyParameter
@@ -19,17 +9,33 @@ from di.api.scopes import Scope
 from di.api.solved import SolvedDependant
 from di.container._bind_hook import BindHook
 from di.container._execution_planning import SolvedDependantCache
-from di.container._scope_validation import validate_scopes
-from di.container._utils import get_path, get_path_str
-from di.exceptions import DependencyCycleError, SolvingError, WiringError
+from di.exceptions import (
+    DependencyCycleError,
+    ScopeViolationError,
+    SolvingError,
+    UnknownScopeError,
+    WiringError,
+)
 
 T = TypeVar("T")
 
 
+POSITIONAL_PARAMS = (
+    inspect.Parameter.POSITIONAL_ONLY,
+    inspect.Parameter.POSITIONAL_OR_KEYWORD,
+)
+
+
+def get_path_str(path: Iterable[DependantBase[Any]]) -> str:
+    return " -> ".join(
+        [repr(item) if item.call is not None else repr(item.call) for item in path]
+    )
+
+
 def get_params(
-    dep: "DependantBase[Any]",
+    dep: DependantBase[Any],
     binds: Iterable[BindHook],
-    parents: Mapping[DependantBase[Any], DependantBase[Any]],
+    path: Iterable[DependantBase[Any]],
 ) -> "List[DependencyParameter]":
     """Get Dependants for parameters and resolve binds"""
     params = dep.get_dependencies().copy()
@@ -50,106 +56,128 @@ def get_params(
                         " no type annotation and no default value."
                         " This will produce a TypeError when this function is called."
                         " You must either provide a dependency marker, a type annotation or a default value."
-                        f"\nPath: {get_path_str(dep, parents)}"
+                        f"\nPath: {get_path_str([*path, dep])}"
                     ),
-                    path=get_path(dep, parents),
+                    path=[*path, dep],
                 )
     return params
 
 
-def resolve_unset_scopes(
-    dep_scopes: Sequence[Scope], scopes: Sequence[Scope]
-) -> Sequence[Scope]:
-    if None in scopes or not scopes:
-        # None is a valid scope, so we have no unset scopes
-        return dep_scopes
-    scope_idxs = dict((scope, idx) for idx, scope in enumerate(scopes))
-    current = scopes[0]
-    # If we have A("app"), B("request"), C(None) and C depends on B which depends on A
-    # we need to set C's scope to "request".
-    # For this case dep_scopes = [None, "request", "app"]
-    # If we have A("app"), B(None) B gets "app" scope
-    # Here dep_scopes = [None, "app"]
-    res: "List[Scope]" = []
-    for scope in dep_scopes:
-        if scope is None:
-            scope = current
-        elif scope_idxs[scope] > scope_idxs[current]:
-            current = scope
-        res.append(scope)
-    return res
+def check_task_scope_validity(
+    task: Task,
+    subtasks: Iterable[Task],
+    scopes: Mapping[Scope, int],
+    path: Iterable[DependantBase[Any]],
+) -> None:
+    if task.scope not in scopes:
+        raise UnknownScopeError(
+            f"Dependency{task.dependant} has an unknown scope {task.scope}."
+            f"\nExample Path: {get_path_str(path)}"
+        )
+    for subtask in subtasks:
+        if scopes[task.scope] < scopes[subtask.scope]:
+            raise ScopeViolationError(
+                f"{task.dependant.call} cannot depend on {subtask.dependant.call}"
+                f" because {subtask.dependant.call}'s scope ({subtask.scope})"
+                f" is narrower than {task.dependant.call}'s scope ({task.scope})"
+                f"\nExample Path: {get_path_str(path)}"
+            )
 
 
-def build_dag(
+def build_task(
     dependency: DependantBase[Any],
     binds: Iterable[BindHook],
-) -> Tuple[
-    Mapping[DependantBase[Any], Iterable[DependencyParameter]],
-    Mapping[DependantBase[Any], DependantBase[Any]],
-]:
-    """Build a forward DAG (parent -> children) and reversed dag (child -> parent).
-    Checks for DAG cycles.
-    """
-    dag: "Dict[DependantBase[Any], List[DependencyParameter]]" = {}
-    dependants: "Dict[CacheKey, DependantBase[Any]]" = {}
-    # Keep track of the parents of each dependency so that we can reconstruct a path to it
-    parents: "Dict[DependantBase[Any], DependantBase[Any]]" = {}
+    tasks: Dict[CacheKey, Task],
+    task_dag: Dict[Task, List[Task]],
+    dependant_dag: Dict[DependantBase[Any], List[DependencyParameter]],
+    path: Dict[DependantBase[Any], Any],
+    scope_idxs: Mapping[Scope, int],
+) -> Task:
 
-    q: "List[DependantBase[Any]]" = [dependency]
-    seen: "Set[DependantBase[Any]]" = set()
-    while q:
-        level = q.copy()
-        q.clear()
-        for dep in level:
-            seen.add(dep)
-            cache_key = dep.cache_key
-            if cache_key in dependants:
-                other = dependants[cache_key]
-                if other.scope != dep.scope:
-                    raise SolvingError(
-                        (
-                            f"The dependency {dep.call} is used with multiple scopes"
-                            f" ({dep.scope} and {other.scope}); this is not allowed."
-                            f"\nPath: {get_path_str(dep, parents)}"
-                        ),
-                        get_path(dep, parents),
-                    )
-                continue  # pragma: no cover
-            dependants[cache_key] = dep
-            params = get_params(dep, binds, parents)
-            dag[dep] = params
-            for param in params:
-                predecessor_dep = param.dependency
-                parents[predecessor_dep] = dep
-                if predecessor_dep not in seen:
-                    q.append(predecessor_dep)
-    # filter out dependencies that are not callable
-    dag = {
-        d: [s for s in dag[d] if s.dependency.call is not None]
-        for d in dag
-        if d.call is not None
-    }
-    # check for cycles in callables, dependant instances are unique
-    try:
-        TopologicalSorter(
-            {
-                dep.call: [p.dependency.call for p in params]
-                for dep, params in dag.items()
-            }
-        ).prepare()
-    except CycleError as e:
-        dep = next(iter(reversed(e.args[1])))
+    call = dependency.call
+    assert call is not None
+    scope = dependency.scope
+
+    # perf: we could keep around another variable instead of
+    # creating a set here
+    if dependency.call in {d.call for d in path}:
         raise DependencyCycleError(
-            f"Nodes are in a cycle.\nPath: {get_path_str(dep, parents)}",
-            path=get_path(dep, parents),
-        ) from e
-    dag = {
-        dependants[d.cache_key]: [
-            s._replace(dependency=dependants[s.dependency.cache_key]) for s in dag[d]
-        ]
-        for d in dag
-    }
-    return dag, parents
+            "Dependencies are in a cycle",
+            list(path.keys()),
+        )
+
+    if dependency.cache_key in tasks:
+        if tasks[dependency.cache_key].scope != dependency.scope:
+            raise SolvingError(
+                f"{dependency.call} was used with multiple scopes",
+                path=list(path.keys()),
+            )
+        return tasks[dependency.cache_key]
+
+    params = get_params(dependency, binds, path)
+
+    positional_parameters: "List[Task]" = []
+    keyword_parameters: "List[Tuple[str, Task]]" = []
+    subtasks: "List[Task]" = []
+    dependant_dag[dependency] = []
+
+    path[dependency] = None  # any value will do, we only use the keys
+
+    if not params:
+        if scope is None and None not in scope_idxs:
+            # use the outermost scope
+            scope = next(iter(reversed(scope_idxs.keys())))
+    else:
+        for param in params:
+            if param.dependency.call is None:
+                continue
+            dependant_dag[dependency].append(param)
+            child_task = build_task(
+                param.dependency,
+                binds,
+                tasks,
+                task_dag,
+                dependant_dag,
+                path,
+                scope_idxs,
+            )
+            subtasks.append(child_task)
+            if param.parameter is None:
+                continue
+            if param.parameter.kind in POSITIONAL_PARAMS:
+                positional_parameters.append(child_task)
+            else:
+                keyword_parameters.append((param.parameter.name, child_task))
+        child_scopes = [st.scope for st in subtasks]
+        # find the innermost scope amongst child scopes
+        child_scope = next(
+            iter(sorted(child_scopes, key=lambda scope: -scope_idxs[scope]))
+        )
+        if scope is None and None not in scope_idxs:
+            scope = child_scope
+
+    task = Task(
+        dependant=dependency,
+        scope=scope,
+        call=call,
+        cache_key=dependency.cache_key,
+        task_id=len(tasks),
+        positional_parameters=tuple(positional_parameters),
+        keyword_parameters=tuple(keyword_parameters),
+        use_cache=dependency.use_cache,
+    )
+    tasks[dependency.cache_key] = task
+    task_dag[task] = subtasks
+    # check scopes
+    check_task_scope_validity(
+        task,
+        subtasks,
+        scope_idxs,
+        path,
+    )
+    # remove ourselves from the path
+    path.pop(dependency)
+    return task
 
 
 def solve(
@@ -167,103 +195,32 @@ def solve(
         if match:
             dependency = match
 
-    dag, parents = build_dag(dependency, binds)
+    if dependency.call is None:
+        raise ValueError
 
-    def get_scope(dep: "DependantBase[Any]") -> Scope:
-        if dep.scope is not None:
-            return dep.scope
-        if None in scopes:
-            return dep.scope
-        path = get_path(dep, parents)
-        dep_scopes = [d.scope for d in path]
-        # dep is the last dependency in path
-        return next(iter(reversed(resolve_unset_scopes(dep_scopes, scopes))))
+    task_dag: Dict[Task, List[Task]] = {}
+    dep_dag: Dict[DependantBase[Any], List[DependencyParameter]] = {}
+    scope_idxs = dict((scope, idx) for idx, scope in enumerate(scopes))
 
-    # Order the Dependant's topologically so that we can create Tasks
-    # with references to all of their children
-    dep_topsort = tuple(
-        TopologicalSorter(
-            {dep: [p.dependency for p in params] for dep, params in dag.items()}
-        ).static_order()
-    )
-    # Create a separate TopologicalSorter to hold the Tasks
-    ts: "TopologicalSorter[Task]" = TopologicalSorter()
-    tasks = build_tasks(dag, dep_topsort, ts, get_scope)
+    # this is implemented recursively
+    # which will crash on DAGs with depth > 1000 (default recursion limit)
+    # if we encounter that in a real world use case
+    # we can just rewrite this to be iterative
+    root_task = build_task(dependency, binds, {}, task_dag, dep_dag, {}, scope_idxs)
+
+    ts = TopologicalSorter(task_dag)
     static_order = tuple(ts.copy().static_order())
     ts.prepare()
     assert dependency.call is not None
     container_cache = SolvedDependantCache(
-        root_task=tasks[dependency],
+        root_task=root_task,
         topological_sorter=ts,
         static_order=static_order,
-        empty_results=[None] * len(tasks),
+        empty_results=[None] * len(task_dag),
     )
-    # at this point the call is never None
-    # but type checkers don't know this, hence the filtering
-    call_dag = {
-        dep.call: [
-            subdep.dependency.call
-            for subdep in dag[dep]
-            if subdep.dependency.call is not None
-        ]
-        for dep in dag
-        if dep.call is not None
-    }
-    call_parents = {
-        dep.call: parent.call
-        for dep, parent in parents.items()
-        if dep.call is not None and parent.call is not None
-    }
-    dep_scopes = {dep.call: tasks[dep].scope for dep in dag if dep.call is not None}
-    validate_scopes(scopes, dag=call_dag, parents=call_parents, dep_scopes=dep_scopes)
     solved = SolvedDependant(
         dependency=dependency,
-        dag=dag,
+        dag=dep_dag,
         container_cache=container_cache,
     )
     return solved
-
-
-def build_tasks(
-    dag: Mapping[
-        DependantBase[Any],
-        Iterable[DependencyParameter],
-    ],
-    topsorted: Iterable[DependantBase[Any]],
-    ts: TopologicalSorter[Task],
-    get_scope: Callable[[DependantBase[Any]], Scope],
-) -> Dict[DependantBase[Any], Task]:
-    tasks: Dict[DependantBase[Any], Task] = {}
-    task_id = 0
-    for dep in topsorted:
-        positional: List[Task] = []
-        keyword: Dict[str, Task] = {}
-        for param in dag[dep]:
-            if param.parameter is not None:
-                assert param.dependency.call is not None
-                task = tasks[param.dependency]
-                if param.parameter.kind is param.parameter.KEYWORD_ONLY:
-                    keyword[param.parameter.name] = task
-                else:
-                    positional.append(task)
-
-        positional_parameters = tuple(positional)
-        keyword_parameters = tuple((k, v) for k, v in keyword.items())
-
-        assert dep.call is not None
-        tasks[dep] = task = Task(
-            scope=get_scope(dep),
-            call=dep.call,
-            use_cache=dep.use_cache,
-            cache_key=dep.cache_key,
-            dependant=dep,
-            task_id=task_id,
-            positional_parameters=positional_parameters,
-            keyword_parameters=keyword_parameters,
-        )
-        task_id += 1
-        ts.add(
-            task,
-            *(tasks[p.dependency] for p in dag[dep] if p.dependency.call is not None),
-        )
-    return tasks
