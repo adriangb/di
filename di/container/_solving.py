@@ -124,25 +124,28 @@ def build_task(
     path[dependency] = None  # any value will do, we only use the keys
 
     for param in params:
-        if param.dependency.call is None:
-            continue
         dependant_dag[dependency].append(param)
-        child_task = build_task(
-            param.dependency,
-            binds,
-            tasks,
-            task_dag,
-            dependant_dag,
-            path,
-            scope_idxs,
-        )
-        subtasks.append(child_task)
-        if param.parameter is None:
-            continue
-        if param.parameter.kind in POSITIONAL_PARAMS:
-            positional_parameters.append(child_task)
-        else:
-            keyword_parameters.append((param.parameter.name, child_task))
+        if param.dependency.call is not None:
+            child_task = build_task(
+                param.dependency,
+                binds,
+                tasks,
+                task_dag,
+                dependant_dag,
+                path,
+                scope_idxs,
+            )
+            subtasks.append(child_task)
+            if param.parameter is not None:
+                if param.parameter.kind in POSITIONAL_PARAMS:
+                    positional_parameters.append(child_task)
+                else:
+                    keyword_parameters.append((param.parameter.name, child_task))
+        if (
+            param.dependency not in dependant_dag
+            and param.dependency.cache_key not in tasks
+        ):
+            dependant_dag[param.dependency] = []
 
     task = Task(
         dependant=dependency,
