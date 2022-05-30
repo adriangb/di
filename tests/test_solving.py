@@ -99,7 +99,7 @@ def test_dependency_with_multiple_scopes():
 
     container = Container()
     with pytest.raises(SolvingError, match="used with multiple scopes"):
-        container.solve(Dependant(B, scope="request"), scopes=[None])
+        container.solve(Dependant(B, scope="request"), scopes=["app", "request"])
 
 
 def test_siblings() -> None:
@@ -131,6 +131,21 @@ def test_siblings() -> None:
         container.execute_sync(solved, executor=SyncExecutor(), state=state)
     assert all(s.called for s in siblings)
     assert dep1.calls == 1  # they all use_cached the dependency
+
+
+def test_non_executable_siblings_is_included_in_dag_but_not_executed() -> None:
+    container = Container()
+
+    # sibling should be ignored and excluded from the dag
+    main_dep = Dependant(lambda: 1)
+    sibling = Dependant[Any](None)
+    dep = JoinedDependant(main_dep, siblings=[sibling])
+    solved = container.solve(dep, scopes=[None])
+    assert [p.dependency for p in solved.dag[dep]] == [sibling]
+    assert sibling in solved.dag
+    with container.enter_scope(None) as state:
+        res = container.execute_sync(solved, executor=SyncExecutor(), state=state)
+        assert 1 == res
 
 
 def test_non_parameter_dependency():
