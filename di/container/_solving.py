@@ -126,7 +126,7 @@ def build_task(
     if not params:
         if scope is None and None not in scope_idxs:
             # use the outermost scope
-            scope = next(iter(reversed(scope_idxs.keys())))
+            scope = next(iter(scope_idxs.keys()))
     else:
         for param in params:
             if param.dependency.call is None:

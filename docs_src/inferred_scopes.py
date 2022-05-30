@@ -23,21 +23,25 @@ async def web_framework() -> None:
         Dependant(controller, scope="request"), scopes=["singleton", "request"]
     )
     os.environ["domain"] = "bar.example.com"
-    async with container.enter_scope("singleton") as state:
-        async with container.enter_scope("request") as state:
+    async with container.enter_scope("singleton") as singleton_state:
+        async with container.enter_scope(
+            "request", state=singleton_state
+        ) as request_state:
             status = await container.execute_async(
                 solved,
                 values={Request: Request("bar.example.com")},
                 executor=AsyncExecutor(),
-                state=state,
+                state=request_state,
             )
             assert status == 200, status
-        async with container.enter_scope("request") as state:
+        async with container.enter_scope(
+            "request", state=singleton_state
+        ) as request_state:
             status = await container.execute_async(
                 solved,
                 values={Request: Request("foo.example.com")},
                 executor=AsyncExecutor(),
-                state=state,
+                state=request_state,
             )
             assert status == 403, status
 
