@@ -12,29 +12,34 @@ class Request:
         self.domain = domain
 
 
-async def web_framework():
+async def web_framework() -> None:
     container = Container()
+    container.bind(
+        lambda param, dependant: Dependant(Request, scope="request", wire=False)
+        if dependant.call is Request
+        else None
+    )
     solved = container.solve(
         Dependant(controller, scope="request"), scopes=["singleton", "request"]
     )
     os.environ["domain"] = "bar.example.com"
     async with container.enter_scope("singleton") as state:
         async with container.enter_scope("request") as state:
-            res = await container.execute_async(
+            status = await container.execute_async(
                 solved,
                 values={Request: Request("bar.example.com")},
                 executor=AsyncExecutor(),
                 state=state,
             )
-            assert res == 200
+            assert status == 200, status
         async with container.enter_scope("request") as state:
-            res = await container.execute_async(
+            status = await container.execute_async(
                 solved,
                 values={Request: Request("foo.example.com")},
                 executor=AsyncExecutor(),
                 state=state,
             )
-            assert res == 403
+            assert status == 403, status
 
 
 # get_domain_from_env gets the "singleton" scope

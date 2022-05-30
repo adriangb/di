@@ -49,4 +49,7 @@ The goal of this rule is to:
 --8<-- "docs_src/inferred_scopes.py"
 ```
 
+In this example we didn't provide a scope for `get_domain_from_env`, but `di` can see that it does not depend on anything with the `"request"` scope and so it gets assigned the `"singleton"` scope.
+On the other hand `authorize` *does* depend on a `Request` object
+
 [contextvars]: https://docs.python.org/3/library/contextvars.html
