@@ -206,7 +206,19 @@ def solve(
     # which will crash on DAGs with depth > 1000 (default recursion limit)
     # if we encounter that in a real world use case
     # we can just rewrite this to be iterative
-    root_task = build_task(dependency, binds, {}, task_dag, dep_dag, {}, scope_idxs)
+    #
+    root_task = build_task(
+        dependency=dependency,
+        binds=binds,
+        tasks={},
+        task_dag=task_dag,
+        dependant_dag=dep_dag,
+        # we use a dict to represent the path so that we can have
+        # both O(1) lookups, and an ordered mutable sequence (via dict keys)
+        # we simply ignore / don't use the dict values
+        path={},
+        scope_idxs=scope_idxs,
+    )
 
     ts = TopologicalSorter(task_dag)
     static_order = tuple(ts.copy().static_order())
