@@ -149,11 +149,11 @@ def build_task(
             else:
                 keyword_parameters.append((param.parameter.name, child_task))
         child_scopes = [st.scope for st in subtasks]
-        # find the innermost scope amongst child scopes
-        child_scope = next(
-            iter(sorted(child_scopes, key=lambda scope: -scope_idxs[scope]))
-        )
         if scope is None and None not in scope_idxs:
+            # find the innermost scope amongst child scopes
+            child_scope = next(
+                iter(sorted(child_scopes, key=lambda scope: -scope_idxs[scope]))
+            )
             scope = child_scope
 
     task = Task(
@@ -168,7 +168,6 @@ def build_task(
     )
     tasks[dependency.cache_key] = task
     task_dag[task] = subtasks
-    # check scopes
     check_task_scope_validity(
         task,
         subtasks,
@@ -195,8 +194,8 @@ def solve(
         if match:
             dependency = match
 
-    if dependency.call is None:
-        raise ValueError
+    if dependency.call is None:  # pragma: no cover
+        raise ValueError("DependantBase.call must not be None")
 
     task_dag: "Dict[Task, List[Task]]" = {}
     dep_dag: "Dict[DependantBase[Any], List[DependencyParameter]]" = {}
@@ -206,7 +205,6 @@ def solve(
     # which will crash on DAGs with depth > 1000 (default recursion limit)
     # if we encounter that in a real world use case
     # we can just rewrite this to be iterative
-    #
     root_task = build_task(
         dependency=dependency,
         binds=binds,
