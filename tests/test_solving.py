@@ -133,6 +133,21 @@ def test_siblings() -> None:
     assert dep1.calls == 1  # they all use_cached the dependency
 
 
+def test_non_executable_siblings_is_included_in_dag_but_not_executed() -> None:
+    container = Container()
+
+    # sibling should be ignored and excluded from the dag
+    main_dep = Dependant(lambda: 1)
+    sibling = Dependant[Any](None)
+    dep = JoinedDependant(main_dep, siblings=[sibling])
+    solved = container.solve(dep, scopes=[None])
+    assert [p.dependency for p in solved.dag[dep]] == [sibling]
+    assert sibling in solved.dag
+    with container.enter_scope(None) as state:
+        res = container.execute_sync(solved, executor=SyncExecutor(), state=state)
+        assert 1 == res
+
+
 def test_non_parameter_dependency():
     """Dependencies can be declared as not call parameters but rather just computationally required"""
 
