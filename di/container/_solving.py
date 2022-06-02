@@ -123,11 +123,7 @@ def build_task(
 
     path[dependency] = None  # any value will do, we only use the keys
 
-    if not params:
-        if scope is None and None not in scope_idxs:
-            # use the outermost scope
-            scope = next(iter(scope_idxs.keys()))
-    else:
+    if params:
         for param in params:
             dependant_dag[dependency].append(param)
             if param.dependency.call is not None:
@@ -158,6 +154,10 @@ def build_task(
                 iter(sorted(child_scopes, key=lambda scope: -scope_idxs[scope]))
             )
             scope = child_scope
+    else:
+        if scope is None and None not in scope_idxs:
+            # use the outermost scope
+            scope = next(iter(scope_idxs.keys()))
 
     task = Task(
         dependant=dependency,
