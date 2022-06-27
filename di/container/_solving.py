@@ -1,9 +1,20 @@
 import inspect
-from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple, TypeVar
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+)
 
 from graphlib2 import TopologicalSorter
 
 from di._utils.task import Task
+from di._utils.types import Some
 from di.api.dependencies import CacheKey, DependantBase, DependencyParameter
 from di.api.scopes import Scope
 from di.api.solved import SolvedDependant
@@ -92,6 +103,7 @@ def build_task(
     dependant_dag: Dict[DependantBase[Any], List[DependencyParameter]],
     path: Dict[DependantBase[Any], Any],
     scope_idxs: Mapping[Scope, int],
+    default_scope: Optional[Some[Scope]],
 ) -> Task:
 
     call = dependency.call
@@ -135,6 +147,7 @@ def build_task(
                     dependant_dag,
                     path,
                     scope_idxs,
+                    default_scope,
                 )
                 subtasks.append(child_task)
                 if param.parameter is not None:
@@ -156,8 +169,12 @@ def build_task(
             scope = child_scope
     else:
         if scope is None and None not in scope_idxs:
-            # use the outermost scope
-            scope = next(iter(scope_idxs.keys()))
+            if default_scope is None:
+                # use the outermost scope
+                scope = next(iter(scope_idxs.keys()))
+            else:
+                # use the user supplied default scope
+                scope = default_scope.value
 
     task = Task(
         dependant=dependency,
@@ -186,6 +203,7 @@ def solve(
     dependency: DependantBase[T],
     scopes: Sequence[Scope],
     binds: Iterable[BindHook],
+    default_scope: Optional[Scope],
 ) -> SolvedDependant[T]:
     """Solve a dependency.
 
@@ -196,6 +214,9 @@ def solve(
         match = hook(None, dependency)
         if match:
             dependency = match
+
+    if None not in scopes and default_scope is not None and default_scope not in scopes:
+        raise ValueError(f"{default_scope=} is not in {scopes=}")
 
     if dependency.call is None:  # pragma: no cover
         raise ValueError("DependantBase.call must not be None")
@@ -219,6 +240,9 @@ def solve(
         # we simply ignore / don't use the dict values
         path={},
         scope_idxs=scope_idxs,
+        default_scope=Some(default_scope)
+        if default_scope is not None or None in scopes
+        else None,
     )
 
     ts = TopologicalSorter(task_dag)

@@ -358,14 +358,13 @@ def test_infer_scope_3() -> None:
     def db_connection() -> None:
         ...
 
-    DataBase = Annotated[None, Marker(db_connection, scope="app")]
-
     def query_param() -> None:
         ...
 
-    QueryParam = Annotated[None, Marker(query_param, scope="request")]
-
-    def user_function(db: DataBase, param: QueryParam) -> None:
+    def user_function(
+        db: Annotated[None, Marker(db_connection, scope="app")],
+        param: Annotated[None, Marker(query_param, scope="request")],
+    ) -> None:
         ...
 
     def endpoint(func: Annotated[None, Marker(user_function)]) -> None:
@@ -417,3 +416,46 @@ def test_infer_scope_4() -> None:
             assert res == 4
             res = container.execute_sync(solved, SyncExecutor(), state=req_state)
             assert res == 4
+
+
+def test_default_scope() -> None:
+
+    connection_ids = [1, 2]
+
+    def db_connection() -> int:
+        return connection_ids.pop(0)
+
+    def user_function(
+        db: Annotated[int, Marker(db_connection)],
+    ) -> int:
+        return db
+
+    def endpoint(val: Annotated[int, Marker(user_function)]) -> int:
+        return val
+
+    container = Container()
+    solved = container.solve(
+        Dependant(endpoint, scope="endpoint"),
+        scopes=["app", "connection", "endpoint"],
+        default_scope="connection",
+    )
+    # our goal here is to check that user_function and db_connection
+    # both got the "connection" scope because that's what we passed as the default
+    executor = SyncExecutor()
+    with container.enter_scope("app") as app_state:
+        with container.enter_scope("connection", state=app_state) as conn_state:
+            with container.enter_scope("endpoint", state=conn_state) as endpoint_state:
+                val1 = container.execute_sync(solved, executor, state=endpoint_state)
+                val2 = container.execute_sync(solved, executor, state=endpoint_state)
+                assert val1 == val2
+            val3 = container.execute_sync(solved, executor, state=endpoint_state)
+            assert val2 == val3
+        with container.enter_scope("connection", state=app_state) as conn_state:
+            with container.enter_scope("endpoint", state=conn_state) as endpoint_state:
+                val4 = container.execute_sync(solved, executor, state=endpoint_state)
+                val5 = container.execute_sync(solved, executor, state=endpoint_state)
+                assert val4 == val5
+            val6 = container.execute_sync(solved, executor, state=endpoint_state)
+            assert val5 == val6
+
+    assert (val1, val4) == (1, 2)

@@ -60,8 +60,9 @@ class Container:
         self,
         dependency: DependantBase[DependencyType],
         scopes: Sequence[Scope],
+        default_scope: Optional[Scope] = None,
     ) -> SolvedDependant[DependencyType]:
-        return solve(dependency, scopes, self._bind_hooks)
+        return solve(dependency, scopes, self._bind_hooks, default_scope)
 
     def execute_sync(
         self,
