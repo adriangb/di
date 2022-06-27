@@ -50,6 +50,14 @@ The goal of this rule is to:
 ```
 
 In this example we didn't provide a scope for `get_domain_from_env`, but `di` can see that it does not depend on anything with the `"request"` scope and so it gets assigned the `"singleton"` scope.
-On the other hand `authorize` *does* depend on a `Request` object
+On the other hand `authorize` *does* depend on a `Request` object, so it gets the `"request"` scope.
+
+### Default scope
+
+If you want to set an upper bound for inferred scopes (for example if you'd rather your web framework assume dependencies are `"request"` scoped instead of `"singleton"` scoped by default) you can use the `default_scope: Optional[Scope]` parameter to `Container.solve()` to set a fixed inferred scope:
+
+```Python
+--8<-- "docs_src/default_scope.py"
+```
 
 [contextvars]: https://docs.python.org/3/library/contextvars.html
