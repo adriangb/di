@@ -216,7 +216,7 @@ def solve(
             dependency = match
 
     if None not in scopes and default_scope is not None and default_scope not in scopes:
-        raise ValueError(f"{default_scope=} is not in {scopes=}")
+        raise ValueError(f"default_scope={default_scope} is not in scopes={scopes}")
 
     if dependency.call is None:  # pragma: no cover
         raise ValueError("DependantBase.call must not be None")
