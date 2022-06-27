@@ -56,7 +56,7 @@ On the other hand `authorize` *does* depend on a `Request` object, so it gets th
 
 If you want to set an upper bound for inferred scopes (for example if you'd rather your web framework assume dependencies are `"request"` scoped instead of `"singleton"` scoped by default) you can use the `default_scope: Optional[Scope]` parameter to `Container.solve()` to set a fixed inferred scope:
 
-```Python
+```Python hl_lines="25 28 39 49 52"
 --8<-- "docs_src/default_scope.py"
 ```
 

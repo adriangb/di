@@ -1,7 +1,7 @@
 import pytest
 
 from di.exceptions import ScopeViolationError
-from docs_src import inferred_scopes, invalid_scope_dependance
+from docs_src import default_scope, inferred_scopes, invalid_scope_dependance
 
 
 def test_invalid_scope_dependance() -> None:
@@ -12,3 +12,8 @@ def test_invalid_scope_dependance() -> None:
 @pytest.mark.anyio
 async def test_inferred_scopes() -> None:
     await inferred_scopes.web_framework()
+
+
+@pytest.mark.anyio
+async def test_default_scopes() -> None:
+    await default_scope.web_framework()
