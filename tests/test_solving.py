@@ -230,7 +230,7 @@ def test_unknown_scope():
         container.solve(Dependant(bad_dep), scopes=[None])
 
 
-RandomInt = Annotated[float, Marker(random, use_cache=False)]
+RandomInt = Annotated[float, Marker(lambda: random(), use_cache=False)]
 
 
 def test_re_used_marker() -> None:
