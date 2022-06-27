@@ -1,3 +1,4 @@
+from random import random
 from typing import Any, Iterable, List, Mapping
 
 import pytest
@@ -229,23 +230,23 @@ def test_unknown_scope():
         container.solve(Dependant(bad_dep), scopes=[None])
 
 
-def test_re_used_dependant() -> None:
-    def dep1() -> None:
-        ...
+RandomInt = Annotated[float, Marker(random, use_cache=False)]
 
-    Dep1 = Annotated[None, Marker(dep1)]
 
-    def dep2(one: Dep1) -> None:
-        ...
+def test_re_used_marker() -> None:
+    def dep2(num: RandomInt) -> float:
+        return num
 
     def dep3(
-        one: Dep1,
-        two: Annotated[None, Marker(dep2)],
+        num_2: Annotated[float, Marker(dep2)],
+        new_num: RandomInt,
     ) -> None:
-        ...
+        assert num_2 != new_num
 
     container = Container()
-    container.solve(Dependant(dep3, scope=None), scopes=[None])
+    solved = container.solve(Dependant(dep3, scope=None), scopes=[None])
+    with container.enter_scope(None) as state:
+        container.execute_sync(solved, SyncExecutor(), state=state)
 
 
 def call1():
