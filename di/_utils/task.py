@@ -4,6 +4,7 @@ import contextlib
 from contextlib import AsyncExitStack, ExitStack
 from typing import (
     Any,
+    Awaitable,
     Callable,
     Dict,
     Iterable,
@@ -53,7 +54,10 @@ class Task:
         "compute",
     )
 
-    compute: Any
+    compute: Union[
+        Callable[[ExecutionState], Awaitable[None]],
+        Callable[[ExecutionState], None],
+    ]
     wrapped_call: DependencyProvider
     user_function: DependencyProvider
 
@@ -105,8 +109,8 @@ class Task:
     def __hash__(self) -> int:
         return self.task_id
 
+    @staticmethod
     def generate_execute_fn(
-        self,
         call: DependencyProvider,
         positional_parameters: Iterable[Task],
         keyword_parameters: Iterable[Tuple[str, Task]],
@@ -120,10 +124,10 @@ class Task:
             args.append(positional_arg_template.format(task.task_id))
         for keyword, task in keyword_parameters:
             args.append(keyword_arg_template.format(keyword, task.task_id))
-        lcls: Dict[str, Any] = {}
-        glbls = {"call": call}
-        exec(f'def execute(results): return call({",".join(args)})', glbls, lcls)
-        return lcls["execute"]  # type: ignore[no-any-return]
+        locals: Dict[str, Any] = {}
+        globals = {"call": call}
+        exec(f'def execute(results): return call({",".join(args)})', globals, locals)
+        return locals["execute"]  # type: ignore[no-any-return]
 
     def __repr__(self) -> str:
         return (
@@ -162,7 +166,7 @@ class Task:
         except AttributeError:
             raise IncompatibleDependencyError(
                 f"The dependency {self.user_function} is an awaitable dependency"
-                f" and canot be used in the sync scope {self.scope}"
+                f" and cannot be used in the sync scope {self.scope}"
             ) from None
 
         dependency_value: Any = await enter(
@@ -180,7 +184,7 @@ class Task:
         except AttributeError:
             raise IncompatibleDependencyError(
                 f"The dependency {self.user_function} is an awaitable dependency"
-                f" and canot be used in the sync scope {self.scope}"
+                f" and cannot be used in the sync scope {self.scope}"
             ) from None
         dependency_value: Any = await enter(
             self.call_user_func_with_deps(state.results)

@@ -340,7 +340,7 @@ async def test_async_cm_de_in_sync_scope():
     container = Container()
     with container.enter_scope(None) as state:
         with pytest.raises(
-            IncompatibleDependencyError, match="canot be used in the sync scope"
+            IncompatibleDependencyError, match="cannot be used in the sync scope"
         ):
             await container.execute_async(
                 container.solve(Dependant(dep, scope=None), scopes=[None]),
