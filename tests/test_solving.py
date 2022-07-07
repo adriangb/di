@@ -1,8 +1,9 @@
-from typing import Any, List
+from typing import Any, List, Mapping
 
 import pytest
 
 from di.api.dependencies import DependencyParameter
+from di.api.providers import DependencyProvider
 from di.container import Container, bind_by_type
 from di.dependant import Dependant, JoinedDependant, Marker
 from di.exceptions import (
@@ -230,3 +231,83 @@ def test_re_used_dependant() -> None:
 
     container = Container()
     container.solve(Dependant(dep3, scope=None), scopes=[None])
+
+
+def call1():
+    ...
+
+
+def call2(c1: Annotated[None, Marker(call1)]):
+    ...
+
+
+def call3():
+    ...
+
+
+def call4(c2: Annotated[None, Marker(call2)], *, c3: Annotated[None, Marker(call3)]):
+    ...
+
+
+def call5(*, c4: Annotated[None, Marker(call4)]):
+    ...
+
+
+def call6(c4: Annotated[None, Marker(call4)]):
+    ...
+
+
+def call7(c6: Annotated[None, Marker(call6)], c2: Annotated[None, Marker(call2)]):
+    ...
+
+
+@pytest.mark.parametrize(
+    "dep,expected",
+    [
+        (
+            call7,
+            {
+                call1: [],
+                call2: [call1],
+                call3: [],
+                call4: [call2, call3],
+                call6: [call4],
+                call7: [call6, call2],
+            },
+        ),
+        (
+            call6,
+            {
+                call1: [],
+                call2: [call1],
+                call3: [],
+                call4: [call2, call3],
+                call6: [call4],
+            },
+        ),
+        (
+            call5,
+            {
+                call1: [],
+                call2: [call1],
+                call3: [],
+                call4: [call2, call3],
+                call5: [call4],
+            },
+        ),
+        (call4, {call1: [], call2: [call1], call3: [], call4: [call2, call3]}),
+        (call3, {call3: []}),
+        (call2, {call1: [], call2: [call1]}),
+        (call1, {call1: []}),
+    ],
+)
+def test_solved_dag(
+    dep: DependencyProvider,
+    expected: Mapping[DependencyProvider, List[DependencyProvider]],
+) -> None:
+    container = Container()
+
+    dag = container.solve(Dependant(call=dep), scopes=[None]).dag
+    got = {d.call: [s.dependency.call for s in dag[d]] for d in dag}
+
+    assert got == expected

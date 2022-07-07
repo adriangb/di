@@ -40,7 +40,7 @@ def validate_scopes(
     """Validate that dependencies all have a valid scope and
     that dependencies only depend on outer scopes or their own scope.
     """
-    scope_idxs = {scope: idx for idx, scope in enumerate(reversed([*scopes, None]))}
+    scope_idxs = {scope: idx for idx, scope in enumerate(reversed(scopes))}
     for dep, predecessors in dag.items():
         check_scope(dep, scope_idxs, parents)
         for predecessor in predecessors:

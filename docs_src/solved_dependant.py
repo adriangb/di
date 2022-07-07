@@ -19,7 +19,7 @@ def web_framework():
             solved, values={Request: Request()}, executor=SyncExecutor(), state=state
         )
 
-    dependencies = solved.get_flat_subdependants()
+    dependencies = solved.dag.keys() - {solved.dependency}
     assert all(isinstance(item, Dependant) for item in dependencies)
     assert set(dependant.call for dependant in dependencies) == {Request, MyClass}
 

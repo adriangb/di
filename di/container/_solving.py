@@ -1,5 +1,4 @@
-from collections import deque
-from typing import Any, Deque, Dict, Iterable, List, Sequence, Set, TypeVar
+from typing import Any, Dict, Iterable, List, Mapping, Sequence, Set, Tuple, TypeVar
 
 from graphlib2 import CycleError, TopologicalSorter
 
@@ -14,6 +13,109 @@ from di.container._utils import get_path, get_path_str
 from di.exceptions import DependencyCycleError, SolvingError, WiringError
 
 T = TypeVar("T")
+
+
+def get_params(
+    dep: "DependantBase[Any]",
+    binds: Iterable[BindHook],
+    parents: Mapping[DependantBase[Any], DependantBase[Any]],
+) -> "List[DependencyParameter]":
+    """Get Dependants for parameters and resolve binds"""
+    params = dep.get_dependencies().copy()
+    for idx, param in enumerate(params):
+        for hook in binds:
+            match = hook(param.parameter, param.dependency)
+            if match is not None:
+                param = param._replace(dependency=match)
+        params[idx] = param
+        if param.parameter is not None:
+            if (
+                param.dependency.call is None
+                and param.parameter.default is param.parameter.empty
+            ):
+                raise WiringError(
+                    (
+                        f"The parameter {param.parameter.name} to {dep.call} has no dependency marker,"
+                        " no type annotation and no default value."
+                        " This will produce a TypeError when this function is called."
+                        " You must either provide a dependency marker, a type annotation or a default value."
+                        f"\nPath: {get_path_str(dep, parents)}"
+                    ),
+                    path=get_path(dep, parents),
+                )
+    return params
+
+
+def build_dag(
+    dependency: DependantBase[Any],
+    binds: Iterable[BindHook],
+) -> Tuple[
+    Mapping[DependantBase[Any], Iterable[DependencyParameter]],
+    Mapping[DependantBase[Any], DependantBase[Any]],
+]:
+    """Build a forward DAG (parent -> children) and reversed dag (child -> parent).
+    Checks for DAG cycles.
+    """
+    dag: "Dict[DependantBase[Any], List[DependencyParameter]]" = {}
+    dependants: "Dict[CacheKey, DependantBase[Any]]" = {}
+    # Keep track of the parents of each dependency so that we can reconstruct a path to it
+    parents: "Dict[DependantBase[Any], DependantBase[Any]]" = {}
+
+    q: "List[DependantBase[Any]]" = [dependency]
+    seen: "Set[DependantBase[Any]]" = set()
+    while q:
+        level = q.copy()
+        q.clear()
+        for dep in level:
+            seen.add(dep)
+            cache_key = dep.cache_key
+            if cache_key in dependants:
+                other = dependants[cache_key]
+                if other.scope != dep.scope:
+                    raise SolvingError(
+                        (
+                            f"The dependency {dep.call} is used with multiple scopes"
+                            f" ({dep.scope} and {other.scope}); this is not allowed."
+                            f"\nPath: {get_path_str(dep, parents)}"
+                        ),
+                        get_path(dep, parents),
+                    )
+                continue  # pragma: no cover
+            dependants[cache_key] = dep
+            params = get_params(dep, binds, parents)
+            dag[dep] = params
+            for param in params:
+                predecessor_dep = param.dependency
+                parents[predecessor_dep] = dep
+                if predecessor_dep not in seen:
+                    q.append(predecessor_dep)
+    # filter out dependencies that are not callable
+    dag = {
+        d: [s for s in dag[d] if s.dependency.call is not None]
+        for d in dag
+        if d.call is not None
+    }
+    # check for cycles in callables, dependant instances are unique
+    try:
+        TopologicalSorter(
+            {
+                dep.call: [p.dependency.call for p in params]
+                for dep, params in dag.items()
+            }
+        ).prepare()
+    except CycleError as e:
+        dep = next(iter(reversed(e.args[1])))
+        raise DependencyCycleError(
+            f"Nodes are in a cycle.\nPath: {get_path_str(dep, parents)}",
+            path=get_path(dep, parents),
+        ) from e
+    dag = {
+        dependants[d.cache_key]: [
+            s._replace(dependency=dependants[s.dependency.cache_key]) for s in dag[d]
+        ]
+        for d in dag
+    }
+    return dag, parents
 
 
 def solve(
@@ -31,134 +133,53 @@ def solve(
         if match:
             dependency = match
 
-    dependants: "Dict[CacheKey, DependantBase[Any]]" = {}
-    # DAG mapping dependants to their dependendencies
-    dep_dag: "Dict[DependantBase[Any], List[DependantBase[Any]]]" = {}
-    # The same DAG as above but including parameters (inspect.Parameter instances)
-    param_graph: "Dict[DependantBase[Any], List[DependencyParameter]]" = {}
-    # Keep track of the parents of each dependency so that we can reconstruct a path to it
-    parents: "Dict[DependantBase[Any], DependantBase[Any]]" = {}
+    dag, parents = build_dag(dependency, binds)
 
-    def get_params(dep: DependantBase[Any]) -> List[DependencyParameter]:
-        # get parameters and swap them out w/ binds when they
-        # exist as a bound value
-        params = dep.get_dependencies().copy()
-        for idx, param in enumerate(params):
-            for hook in binds:
-                match = hook(param.parameter, param.dependency)
-                if match is not None:
-                    param = param._replace(dependency=match)
-            params[idx] = param
-            if param.parameter is not None:
-                if (
-                    param.dependency.call is None
-                    and param.parameter.default is param.parameter.empty
-                ):
-                    raise WiringError(
-                        (
-                            f"The parameter {param.parameter.name} to {dep.call} has no dependency marker,"
-                            " no type annotation and no default value."
-                            " This will produce a TypeError when this function is called."
-                            " You must either provide a dependency marker, a type annotation or a default value."
-                            f"\nPath: {get_path_str(dep, parents)}"
-                        ),
-                        path=get_path(dep, parents),
-                    )
-        return params
-
-    # Do a DFS of the DAG checking constraints along the way
-    q: "Deque[DependantBase[Any]]" = deque([dependency])
-    seen: "Set[DependantBase[Any]]" = set()
-    while q:
-        dep = q.popleft()
-        seen.add(dep)
-        cache_key = dep.cache_key
-        if cache_key in dependants:
-            other = dependants[cache_key]
-            if other.scope != dep.scope:
-                raise SolvingError(
-                    (
-                        f"The dependency {dep.call} is used with multiple scopes"
-                        f" ({dep.scope} and {other.scope}); this is not allowed."
-                        f"\nPath: {get_path_str(dep, parents)}"
-                    ),
-                    get_path(dep, parents),
-                )
-            continue  # pragma: no cover
-        dependants[cache_key] = dep
-        params = get_params(dep)
-        param_graph[dep] = params
-        dep_dag[dep] = []
-        for param in params:
-            predecessor_dep = param.dependency
-            dep_dag[dep].append(predecessor_dep)
-            parents[predecessor_dep] = dep
-            if predecessor_dep not in seen:
-                q.append(predecessor_dep)
-    # Filter out any dependencies that do not have a call
-    # These do not become tasks since they don't need to be computed
-    computable_param_graph = {
-        dep: [param for param in param_graph[dep] if param.dependency.call is not None]
-        for dep in param_graph
-        if dep.call is not None
-    }
     # Order the Dependant's topologically so that we can create Tasks
     # with references to all of their children
-    try:
-        dep_topsort = tuple(
-            TopologicalSorter(
-                {
-                    dep.cache_key: [p.dependency.cache_key for p in params]
-                    for dep, params in computable_param_graph.items()
-                }
-            ).static_order()
-        )
-    except CycleError as e:
-        dep = next(iter(reversed(e.args[1])))
-        raise DependencyCycleError(
-            f"Nodes are in a cycle.\nPath: {get_path_str(dep, parents)}",
-            path=get_path(dep, parents),
-        ) from e
-    # Create a seperate TopologicalSorter to hold the Tasks
-    ts: "TopologicalSorter[Task]" = TopologicalSorter()
-    tasks = build_tasks(
-        computable_param_graph,
-        (dependants[key] for key in dep_topsort),
-        ts,
+    dep_topsort = tuple(
+        TopologicalSorter(
+            {dep: [p.dependency for p in params] for dep, params in dag.items()}
+        ).static_order()
     )
+    # Create a separate TopologicalSorter to hold the Tasks
+    ts: "TopologicalSorter[Task]" = TopologicalSorter()
+    tasks = build_tasks(dag, dep_topsort, ts)
     static_order = tuple(ts.copy().static_order())
     ts.prepare()
+    assert dependency.call is not None
     container_cache = SolvedDependantCache(
-        root_task=tasks[dependency.cache_key],
+        root_task=tasks[dependency],
         topological_sorter=ts,
         static_order=static_order,
         empty_results=[None] * len(tasks),
     )
-    validate_scopes(scopes, dep_dag, parents)
+    validate_scopes(scopes, {d: [s.dependency for s in dag[d]] for d in dag}, parents)
     solved = SolvedDependant(
         dependency=dependency,
-        dag=param_graph,
+        dag=dag,
         container_cache=container_cache,
     )
     return solved
 
 
 def build_tasks(
-    dag: Dict[
+    dag: Mapping[
         DependantBase[Any],
-        List[DependencyParameter],
+        Iterable[DependencyParameter],
     ],
     topsorted: Iterable[DependantBase[Any]],
     ts: TopologicalSorter[Task],
-) -> Dict[CacheKey, Task]:
-    tasks: Dict[CacheKey, Task] = {}
+) -> Dict[DependantBase[Any], Task]:
+    tasks: Dict[DependantBase[Any], Task] = {}
     task_id = 0
     for dep in topsorted:
         positional: List[Task] = []
         keyword: Dict[str, Task] = {}
         for param in dag[dep]:
             if param.parameter is not None:
-                task = tasks[param.dependency.cache_key]
+                assert param.dependency.call is not None
+                task = tasks[param.dependency]
                 if param.parameter.kind is param.parameter.KEYWORD_ONLY:
                     keyword[param.parameter.name] = task
                 else:
@@ -168,7 +189,7 @@ def build_tasks(
         keyword_parameters = tuple((k, v) for k, v in keyword.items())
 
         assert dep.call is not None
-        tasks[dep.cache_key] = task = Task(
+        tasks[dep] = task = Task(
             scope=dep.scope,
             call=dep.call,
             use_cache=dep.use_cache,
@@ -179,5 +200,8 @@ def build_tasks(
             keyword_parameters=keyword_parameters,
         )
         task_id += 1
-        ts.add(task, *(tasks[p.dependency.cache_key] for p in dag[dep]))
+        ts.add(
+            task,
+            *(tasks[p.dependency] for p in dag[dep] if p.dependency.call is not None),
+        )
     return tasks

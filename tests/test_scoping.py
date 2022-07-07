@@ -32,9 +32,11 @@ def not_use_cache(v: Annotated[int, Marker(dep1, scope="outer", use_cache=False)
 
 def test_scoped_execute():
     container = Container()
-    use_cache_solved = container.solve(Dependant(use_cache), scopes=["outer", "inner"])
+    use_cache_solved = container.solve(
+        Dependant(use_cache, scope="outer"), scopes=["outer", "inner"]
+    )
     not_use_cache_solved = container.solve(
-        Dependant(not_use_cache), scopes=["outer", "inner"]
+        Dependant(not_use_cache, scope="outer"), scopes=["outer", "inner"]
     )
     with container.enter_scope("outer") as outer_state:
         dep1.value = 1
