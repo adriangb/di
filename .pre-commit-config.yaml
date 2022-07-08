@@ -6,12 +6,6 @@ repos:
     -   id: trailing-whitespace
   - repo: local
     hooks:
-    - id: lockfile
-      name: check poetry.lock
-      language: system
-      entry: poetry lock --no-update
-      files: ^pyproject.toml|poetry.lock$
-      pass_filenames: false
     - id: isort
       name: isort
       language: system
