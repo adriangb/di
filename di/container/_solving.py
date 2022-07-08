@@ -1,9 +1,20 @@
 import inspect
-from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple, TypeVar
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+)
 
 from graphlib2 import TopologicalSorter
 
 from di._utils.task import Task
+from di._utils.types import Some
 from di.api.dependencies import CacheKey, DependantBase, DependencyParameter
 from di.api.scopes import Scope
 from di.api.solved import SolvedDependant
@@ -36,7 +47,7 @@ def get_params(
     dep: DependantBase[Any],
     binds: Iterable[BindHook],
     path: Iterable[DependantBase[Any]],
-) -> "List[DependencyParameter]":
+) -> List[DependencyParameter]:
     """Get Dependants for parameters and resolve binds"""
     params = dep.get_dependencies().copy()
     for idx, param in enumerate(params):
@@ -92,6 +103,7 @@ def build_task(
     dependant_dag: Dict[DependantBase[Any], List[DependencyParameter]],
     path: Dict[DependantBase[Any], Any],
     scope_idxs: Mapping[Scope, int],
+    default_scope: Optional[Some[Scope]],
 ) -> Task:
 
     call = dependency.call
@@ -123,29 +135,46 @@ def build_task(
 
     path[dependency] = None  # any value will do, we only use the keys
 
-    for param in params:
-        dependant_dag[dependency].append(param)
-        if param.dependency.call is not None:
-            child_task = build_task(
-                param.dependency,
-                binds,
-                tasks,
-                task_dag,
-                dependant_dag,
-                path,
-                scope_idxs,
+    if params:
+        for param in params:
+            dependant_dag[dependency].append(param)
+            if param.dependency.call is not None:
+                child_task = build_task(
+                    param.dependency,
+                    binds,
+                    tasks,
+                    task_dag,
+                    dependant_dag,
+                    path,
+                    scope_idxs,
+                    default_scope,
+                )
+                subtasks.append(child_task)
+                if param.parameter is not None:
+                    if param.parameter.kind in POSITIONAL_PARAMS:
+                        positional_parameters.append(child_task)
+                    else:
+                        keyword_parameters.append((param.parameter.name, child_task))
+            if (
+                param.dependency not in dependant_dag
+                and param.dependency.cache_key not in tasks
+            ):
+                dependant_dag[param.dependency] = []
+        child_scopes = [st.scope for st in subtasks]
+        if scope is None and None not in scope_idxs:
+            # find the innermost scope amongst child scopes
+            child_scope = next(
+                iter(sorted(child_scopes, key=lambda scope: -scope_idxs[scope]))
             )
-            subtasks.append(child_task)
-            if param.parameter is not None:
-                if param.parameter.kind in POSITIONAL_PARAMS:
-                    positional_parameters.append(child_task)
-                else:
-                    keyword_parameters.append((param.parameter.name, child_task))
-        if (
-            param.dependency not in dependant_dag
-            and param.dependency.cache_key not in tasks
-        ):
-            dependant_dag[param.dependency] = []
+            scope = child_scope
+    else:
+        if scope is None and None not in scope_idxs:
+            if default_scope is None:
+                # use the outermost scope
+                scope = next(iter(scope_idxs.keys()))
+            else:
+                # use the user supplied default scope
+                scope = default_scope.value
 
     task = Task(
         dependant=dependency,
@@ -174,6 +203,7 @@ def solve(
     dependency: DependantBase[T],
     scopes: Sequence[Scope],
     binds: Iterable[BindHook],
+    default_scope: Optional[Scope],
 ) -> SolvedDependant[T]:
     """Solve a dependency.
 
@@ -184,6 +214,9 @@ def solve(
         match = hook(None, dependency)
         if match:
             dependency = match
+
+    if None not in scopes and default_scope is not None and default_scope not in scopes:
+        raise ValueError(f"default_scope={default_scope} is not in scopes={scopes}")
 
     if dependency.call is None:  # pragma: no cover
         raise ValueError("DependantBase.call must not be None")
@@ -207,6 +240,9 @@ def solve(
         # we simply ignore / don't use the dict values
         path={},
         scope_idxs=scope_idxs,
+        default_scope=Some(default_scope)
+        if default_scope is not None or None in scopes
+        else None,
     )
 
     ts = TopologicalSorter(task_dag)
