@@ -1,5 +1,5 @@
 import inspect
-from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple, TypeVar
+from typing import Any, Dict, Iterable, List, Mapping, Sequence, TypeVar
 
 from graphlib2 import TopologicalSorter
 
@@ -117,7 +117,7 @@ def build_task(
     params = get_params(dependency, binds, path)
 
     positional_parameters: "List[Task]" = []
-    keyword_parameters: "List[Tuple[str, Task]]" = []
+    keyword_parameters: "Dict[str, Task]" = {}
     subtasks: "List[Task]" = []
     dependant_dag[dependency] = []
 
@@ -140,7 +140,7 @@ def build_task(
                 if param.parameter.kind in POSITIONAL_PARAMS:
                     positional_parameters.append(child_task)
                 else:
-                    keyword_parameters.append((param.parameter.name, child_task))
+                    keyword_parameters[param.parameter.name] = child_task
         if (
             param.dependency not in dependant_dag
             and param.dependency.cache_key not in tasks
@@ -153,8 +153,8 @@ def build_task(
         call=call,
         cache_key=dependency.cache_key,
         task_id=len(tasks),
-        positional_parameters=tuple(positional_parameters),
-        keyword_parameters=tuple(keyword_parameters),
+        positional_parameters=positional_parameters,
+        keyword_parameters=keyword_parameters,
         use_cache=dependency.use_cache,
     )
     tasks[dependency.cache_key] = task
