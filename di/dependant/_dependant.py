@@ -56,7 +56,7 @@ class Marker:
     def register_parameter(self, param: inspect.Parameter) -> DependantBase[Any]:
         """Hook to register the parameter this Dependant corresponds to.
 
-        This can be used to inferr self.call from a type annotation (autowiring),
+        This can be used to infer self.call from a type annotation (auto-wiring),
         or to just register the type annotation.
 
         This method can return the same or a new instance of a Dependant to avoid modifying itself.
