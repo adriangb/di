@@ -14,6 +14,7 @@ else:
 import anyio
 import pytest
 
+from di.concurrency import as_async
 from di.container import Container, ContainerState, bind_by_type
 from di.dependant import Dependant, Marker
 from di.exceptions import IncompatibleDependencyError, UnknownScopeError
@@ -91,7 +92,7 @@ def test_execute():
             executor=SyncExecutor(),
             state=state,
         )
-    assert res.three.zero is res.zero
+        assert res.three.zero is res.zero
 
 
 def sync_callable_func() -> int:
@@ -136,9 +137,10 @@ class Counter:
         yield
 
 
+@as_async
 def sync_callable_func_slow(counter: Counter) -> None:
-    start = time.time()
     with counter.acquire():
+        start = time.time()
         while counter.counter < 2:
             if time.time() - start > 0.5:
                 raise TimeoutError(
@@ -149,8 +151,8 @@ def sync_callable_func_slow(counter: Counter) -> None:
 
 
 async def async_callable_func_slow(counter: Counter) -> None:
-    start = time.time()
     with counter.acquire():
+        start = time.time()
         while counter.counter < 2:
             if time.time() - start > 0.5:
                 raise TimeoutError(
@@ -160,6 +162,7 @@ async def async_callable_func_slow(counter: Counter) -> None:
         return
 
 
+@as_async
 def sync_gen_func_slow(counter: Counter) -> Generator[None, None, None]:
     sync_callable_func_slow(counter)
     yield None
@@ -171,6 +174,7 @@ async def async_gen_func_slow(counter: Counter) -> AsyncGenerator[None, None]:
 
 
 class SyncCallableClsSlow:
+    @as_async
     def __call__(self, counter: Counter) -> None:
         sync_callable_func_slow(counter)
 
@@ -180,31 +184,34 @@ class AsyncCallableClsSlow:
         await async_callable_func_slow(counter)
 
 
+deps = [
+    sync_callable_func_slow,
+    async_callable_func_slow,
+    sync_gen_func_slow,
+    async_gen_func_slow,
+    SyncCallableClsSlow(),
+    AsyncCallableClsSlow(),
+]
+
+dep_ids = [
+    "sync_callable_func",
+    "async_callable_func",
+    "sync_gen_func",
+    "async_gen_func",
+    "SyncCallableCls",
+    "AsyncCallableCls",
+]
+
+
 @pytest.mark.parametrize(
     "dep1",
-    [
-        async_callable_func_slow,
-        async_gen_func_slow,
-        AsyncCallableClsSlow(),
-    ],
-    ids=[
-        "async_callable_func",
-        "async_gen_func",
-        "AsyncCallableCls",
-    ],
+    deps,
+    ids=dep_ids,
 )
 @pytest.mark.parametrize(
     "dep2",
-    [
-        async_callable_func_slow,
-        async_gen_func_slow,
-        AsyncCallableClsSlow(),
-    ],
-    ids=[
-        "async_callable_func",
-        "async_gen_func",
-        "AsyncCallableCls",
-    ],
+    deps,
+    ids=dep_ids,
 )
 @pytest.mark.anyio
 async def test_concurrency_async(dep1: Any, dep2: Any):

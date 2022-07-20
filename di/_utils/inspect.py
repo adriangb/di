@@ -30,7 +30,6 @@ def unwrap_callable(call: Any) -> Any:
 def is_coroutine_callable(call: Any) -> bool:
     if inspect.isclass(call):
         return False
-    call = unwrap_callable(call)
     if inspect.iscoroutinefunction(call):
         return True
     # not a class but has a __call__, so maybe a callable class instance
@@ -38,11 +37,11 @@ def is_coroutine_callable(call: Any) -> bool:
 
 
 def is_async_gen_callable(call: Callable[..., Any]) -> bool:
-    return inspect.isasyncgenfunction(unwrap_callable(call))
+    return inspect.isasyncgenfunction(call)
 
 
 def is_gen_callable(call: Any) -> bool:
-    return inspect.isgeneratorfunction(unwrap_callable(call))
+    return inspect.isgeneratorfunction(call)
 
 
 def get_annotations(call: Callable[..., Any]) -> Dict[str, Any]:
