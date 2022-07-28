@@ -98,8 +98,6 @@ def build_task(
     assert call is not None
     scope = dependency.scope
 
-    # perf: we could keep around another variable instead of
-    # creating a set here
     if dependency.call in {d.call for d in path}:
         raise DependencyCycleError(
             "Dependencies are in a cycle",
