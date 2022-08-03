@@ -11,10 +11,12 @@ from typing import (
     List,
     Mapping,
     NamedTuple,
+    Protocol,
     TypeVar,
     Union,
 )
 
+from di._utils.concurrency import contextmanager_in_threadpool
 from di._utils.inspect import (
     is_async_gen_callable,
     is_coroutine_callable,
@@ -41,23 +43,30 @@ DependencyType = TypeVar("DependencyType")
 UNSET: Any = object()
 
 
+class ComputeSync(Protocol):
+    def __call__(self, __state: ExecutionState) -> None:
+        ...
+
+
+class ComputeAsync(Protocol):
+    def __call__(self, __state: ExecutionState) -> Awaitable[None]:
+        ...
+
+
 class Task:
     __slots__ = (
-        "wrapped_call",
         "user_function",
         "scope",
         "cache_key",
         "dependant",
         "task_id",
         "call_user_func_with_deps",
-        "compute",
+        "compute_sync",
+        "compute_async",
     )
 
-    compute: Union[
-        Callable[[ExecutionState], Awaitable[None]],
-        Callable[[ExecutionState], None],
-    ]
-    wrapped_call: DependencyProvider
+    compute_sync: ComputeSync
+    compute_async: ComputeAsync
     user_function: DependencyProvider
 
     def __init__(
@@ -76,33 +85,34 @@ class Task:
         self.cache_key = cache_key
         self.dependant = dependant
         self.task_id = task_id
+        wrapped_call: DependencyProvider
         if is_async_gen_callable(self.user_function):
-            self.wrapped_call = contextlib.asynccontextmanager(call)  # type: ignore[arg-type]
+            wrapped_call = contextlib.asynccontextmanager(call)  # type: ignore[arg-type]
             if use_cache:
-                self.compute = self.compute_async_cm_cache
+                self.compute_async = self.compute_async_cm_cache
             else:
-                self.compute = self.compute_async_cm_no_cache
+                self.compute_async = self.compute_async_cm_no_cache
         elif is_coroutine_callable(self.user_function):
-            self.wrapped_call = self.user_function
+            wrapped_call = self.user_function
             if use_cache:
-                self.compute = self.compute_async_coro_cache
+                self.compute_async = self.compute_async_coro_cache
             else:
-                self.compute = self.compute_async_coro_no_cache
+                self.compute_async = self.compute_async_coro_no_cache
         elif is_gen_callable(call):
-            self.wrapped_call = contextlib.contextmanager(call)  # type: ignore[arg-type]
+            wrapped_call = contextlib.contextmanager(call)  # type: ignore[arg-type]
             if use_cache:
-                self.compute = self.compute_sync_cm_cache
+                self.compute_sync = self.compute_sync_cm_cache
             else:
-                self.compute = self.compute_sync_cm_no_cache
+                self.compute_sync = self.compute_sync_cm_no_cache
         else:
-            self.wrapped_call = call
+            wrapped_call = call
             if use_cache:
-                self.compute = self.compute_sync_func_cache
+                self.compute_sync = self.compute_sync_func_cache
             else:
-                self.compute = self.compute_sync_func_no_cache
+                self.compute_sync = self.compute_sync_func_no_cache
 
         self.call_user_func_with_deps = self.generate_execute_fn(
-            self.wrapped_call, positional_parameters, keyword_parameters
+            wrapped_call, positional_parameters, keyword_parameters
         )
 
     def __hash__(self) -> int:

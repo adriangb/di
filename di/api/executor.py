@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from typing import Awaitable, Callable, Hashable, Iterable, TypeVar, Union
+from typing import Awaitable, Callable, Hashable, Iterable, TypeVar
 
 if sys.version_info < (3, 8):
     from typing_extensions import Protocol
@@ -17,7 +17,11 @@ class Task(Hashable, Protocol[StateType]):
     dependant: DependantBase[StateType]
 
     @property
-    def compute(self) -> Callable[[StateType], Union[Awaitable[None], None]]:
+    def compute_sync(self) -> Callable[[StateType], None]:
+        ...
+
+    @property
+    def compute_async(self) -> Callable[[StateType], Awaitable[None]]:
         ...
 
 
