@@ -64,14 +64,6 @@ class Marker:
 
         This method can return the same or a new instance of a Dependant to avoid modifying itself.
         """
-        if self.wire is False:
-            return Dependant[Any](
-                call=self.call,
-                scope=self.scope,
-                use_cache=self.use_cache,
-                wire=self.wire,
-                sync_to_thread=self.sync_to_thread,
-            )
         call = self.call
         if call is None and param.default is not param.empty:
 
