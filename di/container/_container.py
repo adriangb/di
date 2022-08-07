@@ -18,7 +18,7 @@ from di.api.scopes import Scope
 from di.api.solved import SolvedDependant
 from di.container._bind_hook import BindHook
 from di.container._execution_planning import plan_execution
-from di.container._solving import solve
+from di.container._solving import ScopeResolver, solve
 from di.container._state import ContainerState
 
 DependencyType = TypeVar("DependencyType")
@@ -60,9 +60,9 @@ class Container:
         self,
         dependency: DependantBase[DependencyType],
         scopes: Sequence[Scope],
-        default_scope: Optional[Scope] = None,
+        scope_resolver: Optional[ScopeResolver] = None,
     ) -> SolvedDependant[DependencyType]:
-        return solve(dependency, scopes, self._bind_hooks, default_scope)
+        return solve(dependency, scopes, self._bind_hooks, scope_resolver)
 
     def execute_sync(
         self,

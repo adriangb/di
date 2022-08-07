@@ -1,5 +1,8 @@
 import os
+from typing import Any, Sequence
 
+from di.api.dependencies import DependantBase
+from di.api.scopes import Scope
 from di.container import Container
 from di.dependant import Dependant, Marker
 from di.executors import AsyncExecutor
@@ -19,10 +22,20 @@ async def web_framework() -> None:
         if dependant.call is Request
         else None
     )
+
+    def scope_resolver(
+        dep: DependantBase[Any],
+        subdep_scopes: Sequence[Scope],
+        scopes: Sequence[Scope],
+    ) -> Scope:
+        if dep.scope is None:
+            return "request"
+        return dep.scope
+
     solved = container.solve(
         Dependant(controller, scope="request"),
         scopes=["singleton", "request"],
-        default_scope="request",
+        scope_resolver=scope_resolver,
     )
     async with container.enter_scope("singleton") as singleton_state:
         os.environ["domain"] = "bar.example.com"

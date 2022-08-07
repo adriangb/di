@@ -34,16 +34,17 @@ The order of the scopes is determined by the `scopes` parameter to `Container.so
 If you've used Pytest fixtures before, you're already familiar with these rules.
 In Pytest, a `"session"` scoped fixture cannot depend on a `"function"` scoped fixture.
 
-## Inferred scopes
+## Overriding scopes
 
-Most of the time you only need to specify scopes for dependencies that have a lifetime coupled to some external event like an HTTP request.
-Otherwise, you can leave the scope unspecified or use `None` as the scope and `di` will automatically infer the scope based on the dependency graph.
-The rule for this is simple: `di` will pick the highest / outermost valid scope.
-The goal of this rule is to:
+You may encounter situations where you don't want to make your users explicitly set the scope for each dependency.
+For example, Spring defaults dependencies to the "singleton" scope.
+Our approach is to give you a callback that gets information on the current context (the scopes passed to `Container.solve`, the current `DependantBase` and the scopes of all of it's sub-dependencies) where you can inject your own logic for determining the right scope.
+Some examples of this include:
 
-- Minimize boilerplate (because you don't have to specify a scope in most cases)
-- Ensuring optimal caching (by using the outermost scope)
-- Reducing errors (because you won't accidentally specify an invalid scope)
+- A fixed default scope. You ignore all of the inputs and return a fixed value. This allows you to emulate Spring's behavior by returning a "singleton" scope or FastAPI's behavior by returning a "connection"/"request" scope.
+- Try to assign the outermost valid scope. If the dependency depends on a `"request"` sub-dependency, you can't assign a `"singleton"` scope, so you assign the `"request"` scope. If there are no sub-dependencies or they all have the `"singleton"` scope, then you can assign the `"singleton"` scope.
+
+Here is an example of the simpler fixed-default behavior:
 
 ```Python
 --8<-- "docs_src/inferred_scopes.py"
@@ -51,13 +52,5 @@ The goal of this rule is to:
 
 In this example we didn't provide a scope for `get_domain_from_env`, but `di` can see that it does not depend on anything with the `"request"` scope and so it gets assigned the `"singleton"` scope.
 On the other hand `authorize` *does* depend on a `Request` object, so it gets the `"request"` scope.
-
-### Default scope
-
-If you want to set an upper bound for inferred scopes (for example if you'd rather your web framework assume dependencies are `"request"` scoped instead of `"singleton"` scoped by default) you can use the `default_scope: Optional[Scope]` parameter to `Container.solve()` to set a fixed inferred scope:
-
-```Python hl_lines="25 28 39 49 52"
---8<-- "docs_src/default_scope.py"
-```
 
 [contextvars]: https://docs.python.org/3/library/contextvars.html
