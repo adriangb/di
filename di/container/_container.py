@@ -40,9 +40,6 @@ class Container:
 
         This can be used as a function (for a permanent bind, cleared when `scope` is exited)
         or as a context manager (the bind will be cleared when the context manager exits).
-
-        Binds are only identified by the identity of the callable and do not take into account
-        the scope or any other data from the dependency they are replacing.
         """
 
         self._bind_hooks.append(hook)

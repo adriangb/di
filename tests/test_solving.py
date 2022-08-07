@@ -194,10 +194,16 @@ class CannotBeWired:
 def test_no_wire() -> None:
     """Specifying wire=False skips wiring on the dependency itself"""
 
+    def without_flag(dep: Annotated[CannotBeWired, Marker(wire=True)]) -> None:
+        ...
+
+    def with_flag(dep: Annotated[CannotBeWired, Marker(wire=False)]) -> None:
+        ...
+
     container = Container()
     with pytest.raises(WiringError):
-        container.solve(Dependant(CannotBeWired), scopes=[None])
-    container.solve(Dependant(CannotBeWired, wire=False), scopes=[None])
+        container.solve(Dependant(without_flag), scopes=[None])
+    container.solve(Dependant(with_flag), scopes=[None])
 
 
 def test_wiring_from_binds() -> None:

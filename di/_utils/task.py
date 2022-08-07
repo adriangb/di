@@ -11,7 +11,6 @@ from typing import (
     List,
     Mapping,
     NamedTuple,
-    Tuple,
     TypeVar,
     Union,
 )
@@ -70,7 +69,7 @@ class Task:
         dependant: DependantBase[Any],
         task_id: int,
         positional_parameters: Iterable[Task],
-        keyword_parameters: Iterable[Tuple[str, Task]],
+        keyword_parameters: Mapping[str, Task],
     ) -> None:
         self.scope = scope
         self.user_function = call
@@ -113,7 +112,7 @@ class Task:
     def generate_execute_fn(
         call: DependencyProvider,
         positional_parameters: Iterable[Task],
-        keyword_parameters: Iterable[Tuple[str, Task]],
+        keyword_parameters: Mapping[str, Task],
     ) -> Callable[[List[Any]], Any]:
         # this codegen speeds up argument collection and passing
         # by avoiding creation of intermediary containers to store the values
@@ -122,7 +121,7 @@ class Task:
         args: List[str] = []
         for task in positional_parameters:
             args.append(positional_arg_template.format(task.task_id))
-        for keyword, task in keyword_parameters:
+        for keyword, task in keyword_parameters.items():
             args.append(keyword_arg_template.format(keyword, task.task_id))
         locals: Dict[str, Any] = {}
         globals = {"call": call}
