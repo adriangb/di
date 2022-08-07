@@ -47,7 +47,7 @@ Some examples of this include:
 Here is an example of the simpler fixed-default behavior:
 
 ```Python
---8<-- "docs_src/inferred_scopes.py"
+--8<-- "docs_src/default_scope.py"
 ```
 
 In this example we didn't provide a scope for `get_domain_from_env`, but `di` can see that it does not depend on anything with the `"request"` scope and so it gets assigned the `"singleton"` scope.
