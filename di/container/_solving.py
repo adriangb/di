@@ -163,7 +163,7 @@ def build_task(
             param.dependency not in dependant_dag
             and param.dependency.cache_key not in tasks
         ):
-            dep_params = []
+            dependant_dag[param.dependency] = []
     if scope_resolver:
         child_scopes = [st.scope for st in subtasks]
         scope = scope_resolver(dependency, child_scopes, tuple(scope_idxs.keys()))
