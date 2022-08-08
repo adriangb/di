@@ -1,5 +1,11 @@
 import inspect
-from typing import Any, Dict, Iterable, List, Mapping, Sequence, TypeVar
+import sys
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, TypeVar
+
+if sys.version_info < (3, 8):
+    from typing_extensions import Protocol
+else:
+    from typing import Protocol
 
 from graphlib2 import TopologicalSorter
 
@@ -26,6 +32,26 @@ POSITIONAL_PARAMS = (
 )
 
 
+class ScopeResolver(Protocol):
+    def __call__(
+        self,
+        __dependant: DependantBase[Any],
+        __sub_dependenant_scopes: Sequence[Scope],
+        __solver_scopes: Sequence[Scope],
+    ) -> Scope:
+        """Infer scopes for a Marker/Dependant that does not have an explicit scope.
+
+        The three paramters given are:
+        - `sub_dependenant_scopes`: the scopes of all sub-dependencies (if any).
+          This can be used to set a lower bound for the scope.
+          For example, if a sub dependency has some "singleton" scope
+          our current dependency (the `dependant` argument) cannot have some "ephemeral"
+          scope because that would violate scoping rules.
+        - `solver_scopes`: the scopes passed to `Container.solve`. Provided for convenience.
+        - `dependant`: the current dependency we are inferring a scope for.
+        """
+
+
 def get_path_str(path: Iterable[DependantBase[Any]]) -> str:
     return " -> ".join(
         [repr(item) if item.call is not None else repr(item.call) for item in path]
@@ -36,7 +62,7 @@ def get_params(
     dep: DependantBase[Any],
     binds: Iterable[BindHook],
     path: Iterable[DependantBase[Any]],
-) -> "List[DependencyParameter]":
+) -> List[DependencyParameter]:
     """Get Dependants for parameters and resolve binds"""
     params = dep.get_dependencies().copy()
     for idx, param in enumerate(params):
@@ -92,6 +118,7 @@ def build_task(
     dependant_dag: Dict[DependantBase[Any], List[DependencyParameter]],
     path: Dict[DependantBase[Any], Any],
     scope_idxs: Mapping[Scope, int],
+    scope_resolver: Optional[ScopeResolver],
 ) -> Task:
 
     call = dependency.call
@@ -104,25 +131,17 @@ def build_task(
             list(path.keys()),
         )
 
-    if dependency.cache_key in tasks:
-        if tasks[dependency.cache_key].scope != dependency.scope:
-            raise SolvingError(
-                f"{dependency.call} was used with multiple scopes",
-                path=list(path.keys()),
-            )
-        return tasks[dependency.cache_key]
-
     params = get_params(dependency, binds, path)
 
     positional_parameters: "List[Task]" = []
     keyword_parameters: "Dict[str, Task]" = {}
     subtasks: "List[Task]" = []
-    dependant_dag[dependency] = []
+    dep_params: "List[DependencyParameter]" = []
 
     path[dependency] = None  # any value will do, we only use the keys
 
     for param in params:
-        dependant_dag[dependency].append(param)
+        dep_params.append(param)
         if param.dependency.call is not None:
             child_task = build_task(
                 param.dependency,
@@ -132,6 +151,7 @@ def build_task(
                 dependant_dag,
                 path,
                 scope_idxs,
+                scope_resolver,
             )
             subtasks.append(child_task)
             if param.parameter is not None:
@@ -144,6 +164,18 @@ def build_task(
             and param.dependency.cache_key not in tasks
         ):
             dependant_dag[param.dependency] = []
+    if scope_resolver:
+        child_scopes = [st.scope for st in subtasks]
+        scope = scope_resolver(dependency, child_scopes, tuple(scope_idxs.keys()))
+
+    if dependency.cache_key in tasks:
+        if tasks[dependency.cache_key].scope != scope:
+            raise SolvingError(
+                f"{dependency.call} was used with multiple scopes",
+                path=list(path.keys()),
+            )
+        path.pop(dependency)
+        return tasks[dependency.cache_key]
 
     task = Task(
         dependant=dependency,
@@ -155,6 +187,7 @@ def build_task(
         keyword_parameters=keyword_parameters,
         use_cache=dependency.use_cache,
     )
+    dependant_dag[dependency] = dep_params
     tasks[dependency.cache_key] = task
     task_dag[task] = subtasks
     check_task_scope_validity(
@@ -172,6 +205,7 @@ def solve(
     dependency: DependantBase[T],
     scopes: Sequence[Scope],
     binds: Iterable[BindHook],
+    scope_resolver: Optional[ScopeResolver],
 ) -> SolvedDependant[T]:
     """Solve a dependency.
 
@@ -205,6 +239,7 @@ def solve(
         # we simply ignore / don't use the dict values
         path={},
         scope_idxs=scope_idxs,
+        scope_resolver=scope_resolver,
     )
 
     ts = TopologicalSorter(task_dag)
