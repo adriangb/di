@@ -131,25 +131,17 @@ def build_task(
             list(path.keys()),
         )
 
-    if dependency.cache_key in tasks:
-        if tasks[dependency.cache_key].scope != dependency.scope:
-            raise SolvingError(
-                f"{dependency.call} was used with multiple scopes",
-                path=list(path.keys()),
-            )
-        return tasks[dependency.cache_key]
-
     params = get_params(dependency, binds, path)
 
     positional_parameters: "List[Task]" = []
     keyword_parameters: "Dict[str, Task]" = {}
     subtasks: "List[Task]" = []
-    dependant_dag[dependency] = []
+    dep_params: "List[DependencyParameter]" = []
 
     path[dependency] = None  # any value will do, we only use the keys
 
     for param in params:
-        dependant_dag[dependency].append(param)
+        dep_params.append(param)
         if param.dependency.call is not None:
             child_task = build_task(
                 param.dependency,
@@ -171,10 +163,19 @@ def build_task(
             param.dependency not in dependant_dag
             and param.dependency.cache_key not in tasks
         ):
-            dependant_dag[param.dependency] = []
+            dep_params = []
     if scope_resolver:
         child_scopes = [st.scope for st in subtasks]
         scope = scope_resolver(dependency, child_scopes, tuple(scope_idxs.keys()))
+
+    if dependency.cache_key in tasks:
+        if tasks[dependency.cache_key].scope != scope:
+            raise SolvingError(
+                f"{dependency.call} was used with multiple scopes",
+                path=list(path.keys()),
+            )
+        path.pop(dependency)
+        return tasks[dependency.cache_key]
 
     task = Task(
         dependant=dependency,
@@ -186,6 +187,7 @@ def build_task(
         keyword_parameters=keyword_parameters,
         use_cache=dependency.use_cache,
     )
+    dependant_dag[dependency] = dep_params
     tasks[dependency.cache_key] = task
     task_dag[task] = subtasks
     check_task_scope_validity(
