@@ -1,15 +1,11 @@
 import inspect
-from typing import (
-    Any,
-    Dict,
-    Iterable,
-    List,
-    Mapping,
-    Optional,
-    Protocol,
-    Sequence,
-    TypeVar,
-)
+import sys
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, TypeVar
+
+if sys.version_info < (3, 8):
+    from typing_extensions import Protocol
+else:
+    from typing import Protocol
 
 from graphlib2 import TopologicalSorter
 
