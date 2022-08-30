@@ -1,4 +1,5 @@
 import inspect
+from concurrent.futures import Future
 from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
 from functools import partial, wraps
 from typing import (
@@ -18,7 +19,7 @@ from typing import (
 )
 
 import anyio
-from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
+from anyio.streams.memory import MemoryObjectSendStream
 
 T = TypeVar("T")
 
@@ -26,13 +27,11 @@ T = TypeVar("T")
 def cm_thead_worker(
     cm: ContextManager[T],
     res_stream: MemoryObjectSendStream[T],
-    err_stream: MemoryObjectReceiveStream[Optional[Exception]],
+    exc_fut: Future[Optional[Exception]],
 ) -> None:
     with cm as res:
         anyio.from_thread.run(res_stream.send, res)
-        exc = anyio.from_thread.run(err_stream.receive)
-        if exc:
-            raise exc
+        exc_fut.result()
 
 
 @asynccontextmanager
@@ -43,27 +42,22 @@ async def contextmanager_in_threadpool(
     send_res, rcv_res = anyio.create_memory_object_stream(  # type: ignore
         float("inf"), item_type=Any
     )
-    # streams for exceptions
-    send_err, rcv_err = anyio.create_memory_object_stream(  # type: ignore
-        float("inf"), item_type=Optional[Exception]
-    )
+    err_fut: "Future[Optional[Exception]]" = Future()
 
     async with AsyncExitStack() as stack:
         stack.enter_context(rcv_res)
-        stack.enter_context(rcv_err)
         stack.enter_context(send_res)
-        stack.enter_context(send_err)
         async with anyio.create_task_group() as tg:
             tg.start_soon(
-                anyio.to_thread.run_sync, cm_thead_worker, cm, send_res, rcv_err
+                anyio.to_thread.run_sync, cm_thead_worker, cm, send_res, err_fut
             )
             res = await rcv_res.receive()
             try:
                 yield res
             except Exception as e:
-                await send_err.send(e)
+                err_fut.set_exception(e)
             else:
-                await send_err.send(None)
+                err_fut.set_result(None)
 
 
 P = ParamSpec("P")

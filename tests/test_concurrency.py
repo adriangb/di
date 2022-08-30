@@ -62,8 +62,7 @@ async def test_as_async_cm() -> None:
 
 @pytest.mark.anyio
 async def test_as_async_call() -> None:
-    wrapped_call = as_async(callable)
-    res = await wrapped_call(1)
+    res = await callable(1)
     assert res == 1
 
 
