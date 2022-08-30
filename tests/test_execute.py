@@ -1,9 +1,7 @@
 import contextvars
 import functools
 import sys
-import threading
-import time
-from contextlib import contextmanager
+from dataclasses import dataclass
 from typing import Any, AsyncGenerator, Generator, List
 
 if sys.version_info < (3, 8):
@@ -120,64 +118,45 @@ class AsyncCallableCls:
         return 1
 
 
-class Counter:
-    def __init__(self) -> None:
-        self._lock = threading.Lock()
-        self._counter = 0
-
-    @property
-    def counter(self) -> int:
-        return self._counter
-
-    @contextmanager
-    def acquire(self) -> Generator[None, None, None]:
-        with self._lock:
-            self._counter += 1
-        yield
+@dataclass
+class Synchronizer:
+    started: List[anyio.Event]
+    shutdown: anyio.Event
 
 
-def sync_callable_func_slow(counter: Counter) -> None:
-    start = time.time()
-    with counter.acquire():
-        while counter.counter < 2:
-            if time.time() - start > 0.5:
-                raise TimeoutError(
-                    "Tasks did not execute concurrently"
-                )  # pragma: no cover
-            time.sleep(0.005)
-        return
+def sync_callable_func_slow(synchronizer: Synchronizer) -> None:
+    # anyio requires arguments to from_thread.run to be coroutines
+    async def set() -> None:
+        synchronizer.started.pop().set()
+
+    # trio requires set() to be called from within an async task
+    anyio.from_thread.run(set)
+    anyio.from_thread.run(synchronizer.shutdown.wait)
 
 
-async def async_callable_func_slow(counter: Counter) -> None:
-    start = time.time()
-    with counter.acquire():
-        while counter.counter < 2:
-            if time.time() - start > 0.5:
-                raise TimeoutError(
-                    "Tasks did not execute concurrently"
-                )  # pragma: no cover
-            await anyio.sleep(0.005)
-        return
+async def async_callable_func_slow(synchronizer: Synchronizer) -> None:
+    synchronizer.started.pop().set()
+    await synchronizer.shutdown.wait()
 
 
-def sync_gen_func_slow(counter: Counter) -> Generator[None, None, None]:
-    sync_callable_func_slow(counter)
+def sync_gen_func_slow(synchronizer: Synchronizer) -> Generator[None, None, None]:
+    sync_callable_func_slow(synchronizer)
     yield None
 
 
-async def async_gen_func_slow(counter: Counter) -> AsyncGenerator[None, None]:
-    await async_callable_func_slow(counter)
+async def async_gen_func_slow(synchronizer: Synchronizer) -> AsyncGenerator[None, None]:
+    await async_callable_func_slow(synchronizer)
     yield None
 
 
 class SyncCallableClsSlow:
-    def __call__(self, counter: Counter) -> None:
-        sync_callable_func_slow(counter)
+    def __call__(self, synchronizer: Synchronizer) -> None:
+        sync_callable_func_slow(synchronizer)
 
 
 class AsyncCallableClsSlow:
-    async def __call__(self, counter: Counter) -> None:
-        await async_callable_func_slow(counter)
+    async def __call__(self, synchronizer: Synchronizer) -> None:
+        await async_callable_func_slow(synchronizer)
 
 
 @pytest.mark.parametrize(
@@ -222,8 +201,8 @@ class AsyncCallableClsSlow:
 async def test_concurrency_async(dep1: Any, sync1: bool, dep2: Any, sync2: bool):
     container = Container()
 
-    counter = Counter()
-    container.bind(bind_by_type(Dependant(lambda: counter), Counter))
+    synchronizer = Synchronizer([anyio.Event(), anyio.Event()], anyio.Event())
+    container.bind(bind_by_type(Dependant(lambda: synchronizer), Synchronizer))
 
     async def collector(
         a: Annotated[None, Marker(dep1, use_cache=False, sync_to_thread=sync1)],
@@ -231,12 +210,21 @@ async def test_concurrency_async(dep1: Any, sync1: bool, dep2: Any, sync2: bool)
     ):
         ...
 
-    async with container.enter_scope(None) as state:
-        await container.execute_async(
-            container.solve(Dependant(collector), scopes=[None]),
-            executor=ConcurrentAsyncExecutor(),
-            state=state,
-        )
+    async def monitor() -> None:
+        with anyio.fail_after(1):
+            async with anyio.create_task_group() as tg:
+                for e in synchronizer.started:
+                    tg.start_soon(e.wait)
+        synchronizer.shutdown.set()
+
+    async with anyio.create_task_group() as tg:
+        async with container.enter_scope(None) as state:
+            tg.start_soon(monitor)
+            await container.execute_async(
+                container.solve(Dependant(collector), scopes=[None]),
+                executor=ConcurrentAsyncExecutor(),
+                state=state,
+            )
 
 
 @pytest.mark.anyio
