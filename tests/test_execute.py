@@ -90,7 +90,7 @@ def test_execute():
             executor=SyncExecutor(),
             state=state,
         )
-        assert res.three.zero is res.zero
+    assert res.three.zero is res.zero
 
 
 def sync_callable_func() -> int:
@@ -145,7 +145,7 @@ async def async_callable_func_slow(synchronizer: Synchronizer) -> None:
 
 @as_async
 def sync_gen_func_slow(synchronizer: Synchronizer) -> Generator[None, None, None]:
-    sync_callable_func_slow(synchronizer)
+    _sync_callable_func_slow(synchronizer)
     yield None
 
 
@@ -165,35 +165,54 @@ class AsyncCallableClsSlow:
         await async_callable_func_slow(synchronizer)
 
 
-deps = {
-    "sync_callable_func": sync_callable_func_slow,
-    "async_callable_func": async_callable_func_slow,
-    "async_gen_func": async_gen_func_slow,
-    "SyncCallableCls": SyncCallableClsSlow(),
-    "AsyncCallableCls": AsyncCallableClsSlow(),
-}
-
-
 @pytest.mark.parametrize(
-    "dep1",
-    deps.values(),
-    ids=deps.keys(),
+    "dep1,sync1",
+    [
+        (sync_callable_func_slow, True),
+        (async_callable_func_slow, False),
+        # (sync_gen_func_slow, True),
+        (async_gen_func_slow, False),
+        (SyncCallableClsSlow(), True),
+        (AsyncCallableClsSlow(), False),
+    ],
+    ids=[
+        "sync_callable_func",
+        "async_callable_func",
+        # "sync_gen_func",
+        "async_gen_func",
+        "SyncCallableCls",
+        "AsyncCallableCls",
+    ],
 )
 @pytest.mark.parametrize(
-    "dep2",
-    deps.values(),
-    ids=deps.keys(),
+    "dep2,sync2",
+    [
+        (sync_callable_func_slow, True),
+        (async_callable_func_slow, False),
+        # (sync_gen_func_slow, True),
+        (async_gen_func_slow, False),
+        (SyncCallableClsSlow(), True),
+        (AsyncCallableClsSlow(), False),
+    ],
+    ids=[
+        "sync_callable_func",
+        "async_callable_func",
+        # "sync_gen_func",
+        "async_gen_func",
+        "SyncCallableCls",
+        "AsyncCallableCls",
+    ],
 )
 @pytest.mark.anyio
-async def test_concurrency_async(dep1: Any, dep2: Any):
+async def test_concurrency_async(dep1: Any, sync1: bool, dep2: Any, sync2: bool):
     container = Container()
 
     synchronizer = Synchronizer([anyio.Event(), anyio.Event()], anyio.Event())
     container.bind(bind_by_type(Dependant(lambda: synchronizer), Synchronizer))
 
     async def collector(
-        a: Annotated[None, Marker(dep1, use_cache=False)],
-        b: Annotated[None, Marker(dep2, use_cache=False)],
+        a: Annotated[None, Marker(dep1, use_cache=False, sync_to_thread=sync1)],
+        b: Annotated[None, Marker(dep2, use_cache=False, sync_to_thread=sync2)],
     ):
         ...
 

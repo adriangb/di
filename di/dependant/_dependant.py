@@ -35,6 +35,7 @@ class Marker:
     scope: Scope
     use_cache: bool
     wire: bool
+    sync_to_thread: bool
 
     def __init__(
         self,
@@ -43,6 +44,7 @@ class Marker:
         scope: Scope = None,
         use_cache: bool = True,
         wire: bool = True,
+        sync_to_thread: bool = False,
     ) -> None:
         # by default we assume that call and dependency are the same thing
         # but we don't enforce this on subclasses so that they can assign
@@ -52,22 +54,16 @@ class Marker:
         self.scope = scope
         self.use_cache = use_cache
         self.wire = wire
+        self.sync_to_thread = sync_to_thread
 
     def register_parameter(self, param: inspect.Parameter) -> DependantBase[Any]:
         """Hook to register the parameter this Dependant corresponds to.
 
-        This can be used to infer self.call from a type annotation (auto-wiring),
+        This can be used to inferr self.call from a type annotation (autowiring),
         or to just register the type annotation.
 
         This method can return the same or a new instance of a Dependant to avoid modifying itself.
         """
-        if self.wire is False:
-            return Dependant[Any](
-                call=self.call,
-                scope=self.scope,
-                use_cache=self.use_cache,
-                wire=self.wire,
-            )
         call = self.call
         if call is None and param.default is not param.empty:
 
@@ -90,12 +86,14 @@ class Marker:
             scope=self.scope,
             use_cache=self.use_cache,
             wire=self.wire,
+            sync_to_thread=self.sync_to_thread,
         )
 
 
 class Dependant(DependantBase[T]):
     call: Optional[DependencyProviderType[T]]
     wire: bool
+    sync_to_thread: bool
     scope: Scope
     marker: Optional[Marker]
 
@@ -108,6 +106,7 @@ class Dependant(DependantBase[T]):
         scope: Scope = ...,
         use_cache: bool = ...,
         wire: bool = ...,
+        sync_to_thread: bool = ...,
     ) -> None:
         ...
 
@@ -120,6 +119,7 @@ class Dependant(DependantBase[T]):
         scope: Scope = ...,
         use_cache: bool = ...,
         wire: bool = ...,
+        sync_to_thread: bool = ...,
     ) -> None:
         ...
 
@@ -132,6 +132,7 @@ class Dependant(DependantBase[T]):
         scope: Scope = ...,
         use_cache: bool = ...,
         wire: bool = ...,
+        sync_to_thread: bool = ...,
     ) -> None:
         ...
 
@@ -144,6 +145,7 @@ class Dependant(DependantBase[T]):
         scope: Scope = ...,
         use_cache: bool = ...,
         wire: bool = ...,
+        sync_to_thread: bool = ...,
     ) -> None:
         ...
 
@@ -155,11 +157,13 @@ class Dependant(DependantBase[T]):
         scope: Scope = None,
         use_cache: bool = True,
         wire: bool = True,
+        sync_to_thread: bool = False,
     ) -> None:
         self.call = call
         self.scope = scope
         self.use_cache = use_cache
         self.wire = wire
+        self.sync_to_thread = sync_to_thread
         self.marker = marker
 
     @property
