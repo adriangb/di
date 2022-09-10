@@ -10,7 +10,7 @@ Dependencies are cached by their cache key, computed in `Dependant.cache_key`.
 See [dependants] for more information on `Dependant.cache_key`.
 Dependencies are cached by default, but this behavior can be changed on a per-dependency basis using the `use_cache=False` parameter to `Dependant`.
 
-```Python hl_lines="8-13"
+```Python hl_lines="10-15"
 --8<-- "docs_src/sharing.py"
 ```
 
