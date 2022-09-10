@@ -20,7 +20,7 @@ In this example, we'll look at what it would take for a web framework to provide
 
 Let's start by looking at the User's code.
 
-```python hl_lines="20-30"
+```python hl_lines="22-32"
 --8<-- "docs_src/web_framework.py"
 ```
 
@@ -33,13 +33,13 @@ This part can get a bit complex, but it's okay because it's written once, in a l
 First, we'll need to create a `Container` instance.
 This would be tied to the `App` or `Router` instance of the web framework.
 
-```python hl_lines="11"
+```python hl_lines="13"
 --8<-- "docs_src/web_framework.py"
 ```
 
 Next, we "solve" the users' endpoint:
 
-```python hl_lines="12"
+```python hl_lines="14"
 --8<-- "docs_src/web_framework.py"
 ```
 
@@ -49,7 +49,7 @@ This is very important for performance: we want to do the least amount of work p
 
 Finally, we execute the endpoint for each incoming request:
 
-```python hl_lines="13-16"
+```python hl_lines="15-18"
 --8<-- "docs_src/web_framework.py"
 ```
 

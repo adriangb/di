@@ -24,7 +24,7 @@ For example, here is a more advanced use case where the framework solves the end
 
 This means that `di` does *not* do any reflection for each request, nor does it have to do dependency resolution.
 
-```Python hl_lines="11-13 16-18"
+```Python hl_lines="13-15 18-20"
 --8<-- "docs_src/solved_dependant.py"
 ```
 
@@ -32,7 +32,7 @@ This means that `di` does *not* do any reflection for each request, nor does it 
 
 You can easily list all dependencies in a dag via `SolvedDependant.dag.keys()`.
 
-```Python hl_lines="20"
+```Python hl_lines="22"
 --8<-- "docs_src/solved_dependant.py"
 ```
 
