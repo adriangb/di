@@ -122,10 +122,10 @@ class Dependant(DependantBase[T]):
 
     Arguments:
         call: used to find subdependencies
-        wire: ??
-        sync_to_thread: ??
-        scope: ??
-        marker: ??
+        wire: if True then `call` is introspected to find sub-dependencies.
+        sync_to_thread: if True synchronous dependencies are run in a separate thread to avoid blocking the event loop
+        scope: the Scope for this dependency (see https://www.adriangb.com/di/latest/scopes/)
+        marker: the Marker from which this Defendant was constructed. This is included only for introspection purposes.
     """
 
     call: Optional[DependencyProviderType[T]]
