@@ -20,7 +20,7 @@ In this example, we'll look at what it would take for a web framework to provide
 
 Let's start by looking at the User's code.
 
-```python hl_lines="22-32"
+```python hl_lines="32-53"
 --8<-- "docs_src/web_framework.py"
 ```
 
@@ -33,23 +33,21 @@ This part can get a bit complex, but it's okay because it's written once, in a l
 First, we'll need to create a `Container` instance.
 This would be tied to the `App` or `Router` instance of the web framework.
 
-```python hl_lines="13"
+```python hl_lines="15"
 --8<-- "docs_src/web_framework.py"
 ```
 
-Next, we "solve" the users' endpoint:
-
-```python hl_lines="14"
---8<-- "docs_src/web_framework.py"
-```
-
-This should happen once, maybe at app startup.
-The framework can then store the `solved` object, which contains all the information necessary to execute the dependency (dependency being in this case the user's endpoint/controller function).
+Next we solve all of our endpoints/controllers (in this case just a single one).
+This should happen once, maybe at application startup, and then you should save the `solved` object, which contains all the information necessary to execute the dependency (dependency being in this case the user's endpoint/controller function).
 This is very important for performance: we want to do the least amount of work possible for each incoming request.
+
+```python hl_lines="16-19"
+--8<-- "docs_src/web_framework.py"
+```
 
 Finally, we execute the endpoint for each incoming request:
 
-```python hl_lines="15-18"
+```python hl_lines="22-29"
 --8<-- "docs_src/web_framework.py"
 ```
 
