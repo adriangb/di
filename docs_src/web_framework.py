@@ -20,7 +20,7 @@ class App:
         )
         self.executor = SyncExecutor()
 
-    def run(self, request: Request) -> None:
+    def run(self, request: Request) -> int:
         with self.container.enter_scope("request") as state:
             return self.container.execute_sync(
                 self.solved,
@@ -45,8 +45,10 @@ def controller(myobj: MyClass) -> int:
 
 def main() -> None:
     app = App(controller)
-    app.run(Request(1))
-    app.run(Request(2))
+    resp = app.run(Request(1))
+    assert resp == 2
+    resp = app.run(Request(2))
+    assert resp == 3
 
 
 if __name__ == "__main__":
