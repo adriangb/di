@@ -1,6 +1,8 @@
+from typing import Any, Callable
+
 from di.container import Container
 from di.dependant import Dependant
-from di.executors import AsyncExecutor
+from di.executors import SyncExecutor
 
 
 # Framework code
@@ -9,14 +11,23 @@ class Request:
         self.value = value
 
 
-async def web_framework():
-    container = Container()
-    solved = container.solve(Dependant(controller, scope="request"), scopes=["request"])
-    async with container.enter_scope("request") as state:
-        res = await container.execute_async(
-            solved, values={Request: Request(1)}, executor=AsyncExecutor(), state=state
+class App:
+    def __init__(self, controller: Callable[..., Any]) -> None:
+        self.container = Container()
+        self.solved = self.container.solve(
+            Dependant(controller, scope="request"),
+            scopes=["request"],
         )
-    assert res == 2
+        self.executor = SyncExecutor()
+
+    def run(self, request: Request) -> None:
+        with self.container.enter_scope("request") as state:
+            return self.container.execute_sync(
+                self.solved,
+                values={Request: request},
+                executor=self.executor,
+                state=state,
+            )
 
 
 # User code
@@ -28,5 +39,15 @@ class MyClass:
         return self.value + value
 
 
-async def controller(myobj: MyClass) -> int:
+def controller(myobj: MyClass) -> int:
     return myobj.add(1)
+
+
+def main() -> None:
+    app = App(controller)
+    app.run(Request(1))
+    app.run(Request(2))
+
+
+if __name__ == "__main__":
+    main()
