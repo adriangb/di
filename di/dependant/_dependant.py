@@ -50,7 +50,7 @@ class Marker:
         ...
     ```
 
-    See more in [dependency-markers](https://www.adriangb.com/di/0.70.1/wiring/#dependency-markers).
+    See more in [dependency-markers](https://www.adriangb.com/di/latest/wiring/#dependency-markers).
     """
 
     call: Optional[DependencyProvider]
