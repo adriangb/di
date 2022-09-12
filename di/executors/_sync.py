@@ -2,6 +2,8 @@ from di.api.executor import StateType, SupportsSyncExecutor, SupportsTaskGraph
 
 
 class SyncExecutor(SupportsSyncExecutor):
+    """Execute sync functions with the solved dependencies."""
+
     def execute_sync(
         self, tasks: SupportsTaskGraph[StateType], state: StateType
     ) -> None:

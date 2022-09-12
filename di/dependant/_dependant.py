@@ -30,6 +30,29 @@ T = TypeVar("T")
 
 
 class Marker:
+    """A dependency marker holds information about a dependency.
+
+    Used to tell `di` how to construct another class.
+
+    For example:
+
+    ```py
+    def endpoint(conn: Annotated[DBConn, Marker(inject_db, scope="request")]):
+        ...
+    ```
+
+    Building your own `Marker` can be critical to enable nice functionality.
+    You could for example create a custom `Marker` "Header" than knows how to construct a `str`
+    from the headers of a request. Resulting in:
+
+    ```py
+    def endpoint(content_type: FromHeader[str]):
+        ...
+    ```
+
+    See more in [dependency-markers](https://www.adriangb.com/di/0.70.1/wiring/#dependency-markers).
+    """
+
     call: Optional[DependencyProvider]
     dependency: Optional[Any]
     scope: Scope
@@ -91,6 +114,20 @@ class Marker:
 
 
 class Dependant(DependantBase[T]):
+    """Connect dependencies together.
+
+    A `Dependant` can have sub-dependencies (also `Dependant`s).
+    The first argument is a `Callable`, which is used to find the
+    sub-dependencies.
+
+    Arguments:
+        call: used to find subdependencies
+        wire: ??
+        sync_to_thread: ??
+        scope: ??
+        marker: ??
+    """
+
     call: Optional[DependencyProviderType[T]]
     wire: bool
     sync_to_thread: bool

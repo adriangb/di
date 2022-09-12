@@ -25,6 +25,14 @@ DependencyType = TypeVar("DependencyType")
 
 
 class Container:
+    """Solve and execute dependencies.
+
+    Usually hooked to the `App` in the framework.
+
+    Should happen once, maybe at app startup, because solving
+    dependencies can be slow.
+    """
+
     __slots__ = ("_bind_hooks", "_state")
 
     _bind_hooks: List[BindHook]

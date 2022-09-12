@@ -34,6 +34,8 @@ async def _execute_task(task: Task[StateType], state: StateType) -> None:
 
 
 class AsyncExecutor(SupportsAsyncExecutor):
+    """Execute async functions with the solved dependencies."""
+
     async def execute_async(
         self, tasks: SupportsTaskGraph[StateType], state: StateType
     ) -> None:
