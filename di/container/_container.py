@@ -27,10 +27,11 @@ DependencyType = TypeVar("DependencyType")
 class Container:
     """Solve and execute dependencies.
 
-    Usually hooked to the `App` in the framework.
-
-    Should happen once, maybe at app startup, because solving
-    dependencies can be slow.
+    Generally you will want one Container per application.
+    There is not performance advantage to re-using a container, the only reason to do so is to share binds.
+    For each "thing" you want to wire with di and execute you'll want to call `Container.solve()`
+    exactly once and then keep a reference to the returned `SolvedDependant` to pass to `Container.execute`.
+    Solving is very expensive so avoid doing it in a hot loop.
     """
 
     __slots__ = ("_bind_hooks", "_state")
@@ -67,6 +68,12 @@ class Container:
         scopes: Sequence[Scope],
         scope_resolver: Optional[ScopeResolver] = None,
     ) -> SolvedDependant[DependencyType]:
+        """Build the dependency graph.
+
+        Should happen once, maybe during startup.
+
+        Solving dependencies can be slow.
+        """
         return solve(dependency, scopes, self._bind_hooks, scope_resolver)
 
     def execute_sync(

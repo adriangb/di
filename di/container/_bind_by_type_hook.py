@@ -12,6 +12,8 @@ def bind_by_type(
     *,
     covariant: bool = False,
 ) -> BindHook:
+    """Hook to substitute the matched dependency"""
+
     def hook(
         param: Optional[inspect.Parameter], dependant: DependantBase[Any]
     ) -> Optional[DependantBase[Any]]:
