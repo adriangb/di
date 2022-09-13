@@ -34,6 +34,8 @@ async def _execute_task(task: Task[StateType], state: StateType) -> None:
 
 
 class AsyncExecutor(SupportsAsyncExecutor):
+    """An executor that executes sync and async dependencies sequentially."""
+
     async def execute_async(
         self, tasks: SupportsTaskGraph[StateType], state: StateType
     ) -> None:
