@@ -1,4 +1,5 @@
 import inspect
+import sys
 from contextlib import asynccontextmanager, contextmanager
 from functools import partial
 from typing import (
@@ -10,12 +11,16 @@ from typing import (
     ContextManager,
     Iterator,
     Optional,
-    ParamSpec,
     TypeVar,
     Union,
     cast,
     overload,
 )
+
+if sys.version_info < (3, 10):
+    from typing_extensions import ParamSpec
+else:
+    from typing import ParamSpec
 
 import anyio
 
