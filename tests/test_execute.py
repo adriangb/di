@@ -170,7 +170,7 @@ class AsyncCallableClsSlow:
     [
         (sync_callable_func_slow, True),
         (async_callable_func_slow, False),
-        # (sync_gen_func_slow, True),
+        (sync_gen_func_slow, True),
         (async_gen_func_slow, False),
         (SyncCallableClsSlow(), True),
         (AsyncCallableClsSlow(), False),
@@ -178,7 +178,7 @@ class AsyncCallableClsSlow:
     ids=[
         "sync_callable_func",
         "async_callable_func",
-        # "sync_gen_func",
+        "sync_gen_func",
         "async_gen_func",
         "SyncCallableCls",
         "AsyncCallableCls",

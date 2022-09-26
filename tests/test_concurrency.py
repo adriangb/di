@@ -1,4 +1,3 @@
-import threading
 from contextlib import AsyncExitStack, asynccontextmanager
 from contextvars import ContextVar
 from typing import Generator
@@ -17,14 +16,7 @@ def callable(val: int) -> int:
 
 @as_async
 def context_manager_like(val: int) -> Generator[int, None, None]:
-    # check that startup and shutdown are handled in the same thread
-    # and same context
-    t_id = threading.get_ident()
-    ctx.set("foo")
     yield val
-    new_t_id = threading.get_ident()
-    assert t_id == new_t_id
-    assert ctx.get() == "foo"
 
 
 class MyException(Exception):
