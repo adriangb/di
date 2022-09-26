@@ -9,7 +9,10 @@ DependencyType = TypeVar("DependencyType")
 
 
 class SolvedDependant(Generic[DependencyType]):
-    """Representation of a fully solved dependency as DAG"""
+    """Representation of a fully solved dependency as DAG.
+
+    A SolvedDependant could be a user's endpoint/controller function.
+    """
 
     __slots__ = ("dependency", "dag", "container_cache")
 

@@ -11,6 +11,8 @@ from di.api.executor import StateType, SupportsAsyncExecutor, SupportsTaskGraph,
 
 
 class AsyncExecutor(SupportsAsyncExecutor):
+    """An executor that executes sync and async dependencies sequentially."""
+
     async def execute_async(
         self, tasks: SupportsTaskGraph[StateType], state: StateType
     ) -> None:
