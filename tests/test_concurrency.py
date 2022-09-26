@@ -1,6 +1,6 @@
 from contextlib import AsyncExitStack, asynccontextmanager
 from contextvars import ContextVar
-from typing import Generator
+from typing import AsyncIterator, Awaitable, Callable, Generator
 
 import pytest
 
@@ -14,9 +14,17 @@ def callable(val: int) -> int:
     return val
 
 
+# check typing
+_async_fn: Callable[[int], Awaitable[int]] = callable
+
+
 @as_async
 def context_manager_like(val: int) -> Generator[int, None, None]:
     yield val
+
+
+# check typing
+_async_cm_like: Callable[[int], AsyncIterator[int]] = context_manager_like
 
 
 class MyException(Exception):
