@@ -97,7 +97,7 @@ async def test_dependency_types(
         # test the cached execution paths
         res = await container.execute_async(solved, executor=executor, state=state)
         assert res == 1
-        # test the by value exeuction paths
+        # test the by value execution paths
         res = await container.execute_async(
             solved, executor=executor, values={dep: 2}, state=state
         )

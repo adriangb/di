@@ -12,6 +12,7 @@ else:
 import anyio
 import pytest
 
+from di.concurrency import as_async
 from di.container import Container, ContainerState, bind_by_type
 from di.dependant import Dependant, Marker
 from di.exceptions import IncompatibleDependencyError, UnknownScopeError
@@ -124,7 +125,7 @@ class Synchronizer:
     shutdown: anyio.Event
 
 
-def sync_callable_func_slow(synchronizer: Synchronizer) -> None:
+def _sync_callable_func_slow(synchronizer: Synchronizer) -> None:
     # anyio requires arguments to from_thread.run to be coroutines
     async def set() -> None:
         synchronizer.started.pop().set()
@@ -134,13 +135,17 @@ def sync_callable_func_slow(synchronizer: Synchronizer) -> None:
     anyio.from_thread.run(synchronizer.shutdown.wait)
 
 
+sync_callable_func_slow = as_async(_sync_callable_func_slow)
+
+
 async def async_callable_func_slow(synchronizer: Synchronizer) -> None:
     synchronizer.started.pop().set()
     await synchronizer.shutdown.wait()
 
 
+@as_async
 def sync_gen_func_slow(synchronizer: Synchronizer) -> Generator[None, None, None]:
-    sync_callable_func_slow(synchronizer)
+    _sync_callable_func_slow(synchronizer)
     yield None
 
 
@@ -150,8 +155,9 @@ async def async_gen_func_slow(synchronizer: Synchronizer) -> AsyncGenerator[None
 
 
 class SyncCallableClsSlow:
+    @as_async
     def __call__(self, synchronizer: Synchronizer) -> None:
-        sync_callable_func_slow(synchronizer)
+        _sync_callable_func_slow(synchronizer)
 
 
 class AsyncCallableClsSlow:
