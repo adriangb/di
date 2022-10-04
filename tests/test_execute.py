@@ -211,8 +211,8 @@ async def test_concurrency_async(dep1: Any, sync1: bool, dep2: Any, sync2: bool)
     container.bind(bind_by_type(Dependant(lambda: synchronizer), Synchronizer))
 
     async def collector(
-        a: Annotated[None, Marker(dep1, use_cache=False, sync_to_thread=sync1)],
-        b: Annotated[None, Marker(dep2, use_cache=False, sync_to_thread=sync2)],
+        a: Annotated[None, Marker(dep1, use_cache=False)],
+        b: Annotated[None, Marker(dep2, use_cache=False)],
     ):
         ...
 
