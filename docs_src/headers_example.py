@@ -2,7 +2,7 @@ import inspect
 from typing import Mapping, Optional, TypeVar
 
 from di.container import Container, bind_by_type
-from di.dependant import Dependant, Marker
+from di.dependent import Dependent, Marker
 from di.executors import AsyncExecutor
 from di.typing import Annotated
 
@@ -17,7 +17,7 @@ class Header(Marker):
         self.alias = alias
         super().__init__(call=None, scope="request", use_cache=False)
 
-    def register_parameter(self, param: inspect.Parameter) -> Dependant[str]:
+    def register_parameter(self, param: inspect.Parameter) -> Dependent[str]:
         if self.alias is not None:
             name = self.alias
         else:
@@ -26,7 +26,7 @@ class Header(Marker):
         def get_header(request: Annotated[Request, Marker()]) -> str:
             return param.annotation(request.headers[name])
 
-        return Dependant(get_header, scope="request")
+        return Dependent(get_header, scope="request")
 
 
 T = TypeVar("T")
@@ -39,10 +39,10 @@ async def web_framework() -> None:
 
     valid_request = Request(headers={"x-header-one": "one", "x-header-two": "2"})
     with container.bind(
-        bind_by_type(Dependant(lambda: valid_request, scope="request"), Request)
+        bind_by_type(Dependent(lambda: valid_request, scope="request"), Request)
     ):
         solved = container.solve(
-            Dependant(controller, scope="request"), scopes=["request"]
+            Dependent(controller, scope="request"), scopes=["request"]
         )
     with container.enter_scope("request") as state:
         await container.execute_async(
@@ -51,10 +51,10 @@ async def web_framework() -> None:
 
     invalid_request = Request(headers={"x-header-one": "one"})
     with container.bind(
-        bind_by_type(Dependant(lambda: invalid_request, scope="request"), Request)
+        bind_by_type(Dependent(lambda: invalid_request, scope="request"), Request)
     ):
         solved = container.solve(
-            Dependant(controller, scope="request"), scopes=["request"]
+            Dependent(controller, scope="request"), scopes=["request"]
         )
 
     with container.enter_scope("request") as state:

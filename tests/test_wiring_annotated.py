@@ -1,7 +1,7 @@
 from typing import Optional, Tuple
 
 from di.container import Container, bind_by_type
-from di.dependant import Dependant, Marker
+from di.dependent import Dependent, Marker
 from di.executors import SyncExecutor
 from di.typing import Annotated
 
@@ -26,7 +26,7 @@ def test_wiring_based_from_annotation() -> None:
     ) -> None:
         pass
 
-    dep = Dependant(f)
+    dep = Dependent(f)
     subdeps = dep.get_dependencies()
     assert [d.dependency.call for d in subdeps] == [g, G, g, g]
 
@@ -40,7 +40,7 @@ def test_autowiring_class_with_default_builtin() -> None:
     def func(a: A) -> Tuple[str, int]:
         return (a.value1, a.value2)
 
-    dep = Dependant(func)
+    dep = Dependent(func)
     container = Container()
     solved = container.solve(dep, scopes=[None])
 
@@ -62,7 +62,7 @@ def test_autowiring_class_with_default_class() -> None:
     def func(b: B) -> str:
         return b.a.value
 
-    dep = Dependant(func)
+    dep = Dependent(func)
     container = Container()
     solved = container.solve(dep, scopes=[None])
 
@@ -84,9 +84,9 @@ def test_autowiring_class_with_default_class_from_bind() -> None:
     def func(b: B) -> str:
         return b.a.value
 
-    dep = Dependant(func)
+    dep = Dependent(func)
     container = Container()
-    container.bind(bind_by_type(Dependant(lambda: A("bound")), A))
+    container.bind(bind_by_type(Dependent(lambda: A("bound")), A))
     solved = container.solve(dep, scopes=[None])
 
     with container.enter_scope(None) as state:

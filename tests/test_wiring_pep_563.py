@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from di.container import Container
-from di.dependant import Dependant
+from di.dependent import Dependent
 from di.executors import SyncExecutor
 
 
@@ -14,7 +14,7 @@ def test_postponed_evaluation_solving():
     container = Container()
     with container.enter_scope(None) as state:
         res = container.execute_sync(
-            container.solve(Dependant(Test.__call__), scopes=[None]),
+            container.solve(Dependent(Test.__call__), scopes=[None]),
             executor=SyncExecutor(),
             state=state,
         )

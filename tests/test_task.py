@@ -7,7 +7,7 @@ from typing import Any, AsyncGenerator, Callable, Generator
 import pytest
 
 from di.container import Container
-from di.dependant import Dependant
+from di.dependent import Dependent
 from di.executors import ConcurrentAsyncExecutor
 
 
@@ -89,7 +89,7 @@ async def test_dependency_types(
 ):
     dep = wrapper(dep)
     container = Container()
-    solved = container.solve(Dependant(dep, use_cache=use_cache), scopes=[None])  # type: ignore
+    solved = container.solve(Dependent(dep, use_cache=use_cache), scopes=[None])  # type: ignore
     executor = ConcurrentAsyncExecutor()
     async with container.enter_scope(None) as state:
         res = await container.execute_async(solved, executor=executor, state=state)

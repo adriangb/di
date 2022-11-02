@@ -1,5 +1,5 @@
 from di.container import Container
-from di.dependant import Dependant
+from di.dependent import Dependent
 from di.executors import SyncExecutor
 
 
@@ -15,7 +15,7 @@ def test_forward_ref_evalutation():
     container = Container()
     with container.enter_scope(None) as state:
         res = container.execute_sync(
-            container.solve(Dependant(Foo.foo), scopes=[None]),
+            container.solve(Dependent(Foo.foo), scopes=[None]),
             executor=SyncExecutor(),
             state=state,
         )

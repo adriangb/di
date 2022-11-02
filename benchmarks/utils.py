@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict
 
 import anyio  # noqa
 
-from di.dependant import Dependant
+from di.dependent import Dependent
 from di.typing import Annotated
 
 random = Random(0)
@@ -52,7 +52,7 @@ def generate_dag(
     globals: Dict[str, Any] = {
         "Annotated": Annotated,
         "sleep": sleep_func,
-        "Dependant": Dependant,
+        "Dependent": Dependent,
     }
 
     funcs: Dict[str, Callable[..., Any]] = {}
@@ -66,7 +66,7 @@ def generate_dag(
             )
             params = ", ".join(
                 [
-                    f"dep_{dep_name}: Annotated[None, Dependant({dep_name})]"
+                    f"dep_{dep_name}: Annotated[None, Dependent({dep_name})]"
                     for dep_name in deps
                 ]
             )
@@ -77,7 +77,7 @@ def generate_dag(
     name = "final"
     deps = list(funcs.keys())
     params = ", ".join(
-        [f"dep_{dep_name}: Annotated[None, Dependant({dep_name})]" for dep_name in deps]
+        [f"dep_{dep_name}: Annotated[None, Dependent({dep_name})]" for dep_name in deps]
     )
     func_def = template.format(name, params, 0)
     exec(func_def, globals, funcs)

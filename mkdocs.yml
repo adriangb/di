@@ -34,7 +34,7 @@ nav:
   - Wiring: wiring.md
   - Scopes: scopes.md
   - Registration and Binding: binds.md
-  - Dependants: dependants.md
+  - Dependents: dependents.md
   - Caching: cache.md
   - Solving: solving.md
   - Contributing: contributing.md

@@ -2,14 +2,14 @@
 
 Wiring is the act of "connecting" together dependencies.
 
-In `di`, wiring is handled by the `Dependant` API.
-The general idea is that `Container` accepts a `Dependant` and then asks it for it's sub-dependencies.
-These sub-dependencies are themselves `Dependant`s, and so the `Container` keeps asking them for _their_ sub-dependenices until there are none.
+In `di`, wiring is handled by the `Dependent` API.
+The general idea is that `Container` accepts a `Dependent` and then asks it for it's sub-dependencies.
+These sub-dependencies are themselves `Dependent`s, and so the `Container` keeps asking them for _their_ sub-dependenices until there are none.
 
-But how does `Dependant` know what it's dependencies are?
-Every `Dependant` has a `call` attribute which is a callable (a class, a function, etc.) that which can be introspected (usually with `inpsect.signature`) to find it's parameters.
-The from these parameters the `Dependant` determine's what it's dependencies are.
-But how do we go from a parameter `param: Foo` to a `Dependant`?
+But how does `Dependent` know what it's dependencies are?
+Every `Dependent` has a `call` attribute which is a callable (a class, a function, etc.) that which can be introspected (usually with `inpsect.signature`) to find it's parameters.
+The from these parameters the `Dependent` determine's what it's dependencies are.
+But how do we go from a parameter `param: Foo` to a `Dependent`?
 There are actually several different mechanisms available:
 
 ## Autowiring
@@ -38,7 +38,7 @@ So metadata is just inherited from the parent dependency: in the example above, 
 
 ## Dependency markers
 
-Dependency markers, in the form of `di.dependant.Marker` serve to hold information about a dependency, for example how to construct it or it's scope.
+Dependency markers, in the form of `di.dependent.Marker` serve to hold information about a dependency, for example how to construct it or it's scope.
 
 Markers are generally useful when:
 
@@ -121,7 +121,7 @@ For example, you may only want to have one `UserRepo` for you entire app:
 
 ### InjectableClass
 
-As a convenience, `di` provides an `InjectableClass` type that you can inherit from so that you can easily pass parameters to `Marker` without implementing `__di_dependant__`:
+As a convenience, `di` provides an `InjectableClass` type that you can inherit from so that you can easily pass parameters to `Marker` without implementing `__di_dependent__`:
 
 ```Python
 --8<-- "docs_src/injectable_class.py"
@@ -136,14 +136,14 @@ They can be used with any of the methods described above.
 
 Reflection (inspecting function signatures for dependencies) _is very slow_.
 For this reason, `di` tries to avoid it as much as possible.
-The best way to avoid extra introspection is to re-use [Solved Dependants].
+The best way to avoid extra introspection is to re-use [Solved Dependents].
 
 ## Conclusion
 
 There are several ways to declare dependencies in `di`.
 Which one makes sense for each use case depends on several factors, but ultimately they all achieve the same outcome.
 
-[Solved Dependants]: solving.md#SolvedDependant
+[Solved Dependents]: solving.md#SolvedDependent
 [binds]: binds.md
 [PEP 593's Annotated]: https://www.python.org/dev/peps/pep-0593/
 [typing_extensions backport]: https://pypi.org/project/typing-extensions/

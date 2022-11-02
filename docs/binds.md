@@ -8,7 +8,7 @@ Provider binding serves two important functions:
 Every bind in `di` consists of:
 
 - A target callable: this can be a function, an interface / protocol or a concrete class
-- A substitute dependency: an object implementing the `DependantBase`, usually just an instance of `Dependant`
+- A substitute dependency: an object implementing the `DependentBase`, usually just an instance of `Dependent`
 
 This means that binds are themselves dependencies:
 
@@ -22,7 +22,7 @@ Binds can be used as a direct function call, in which case they are permanent, o
 
 ## Bind hooks
 
-Binding is implemented as hooks / callbacks: when we solve a dependency graph, every hook is called with every dependant and if the hook "matches" the dependent it returns the substitute dependency (otherwise it just returns `None`).
+Binding is implemented as hooks / callbacks: when we solve a dependency graph, every hook is called with every dependent and if the hook "matches" the dependent it returns the substitute dependency (otherwise it just returns `None`).
 
 This means you can implement any sort of matching you want, including:
 

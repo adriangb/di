@@ -1,5 +1,5 @@
 from di.container import Container
-from di.dependant import Dependant, Marker
+from di.dependent import Dependent, Marker
 from di.typing import Annotated
 
 
@@ -24,4 +24,4 @@ def controller(conn: DBConnDep) -> None:
 
 def framework() -> None:
     container = Container()
-    container.solve(Dependant(controller, scope="request"), scopes=["app", "request"])
+    container.solve(Dependent(controller, scope="request"), scopes=["app", "request"])

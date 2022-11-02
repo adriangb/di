@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from di.container import Container
-from di.dependant import Dependant, Marker
+from di.dependent import Dependent, Marker
 from di.executors import SyncExecutor
 from di.typing import Annotated
 
@@ -26,6 +26,6 @@ def endpoint(conn: Annotated[DBConn, Marker(inject_db, scope="request")]) -> Non
 
 def framework():
     container = Container()
-    solved = container.solve(Dependant(endpoint, scope="request"), scopes=["request"])
+    solved = container.solve(Dependent(endpoint, scope="request"), scopes=["request"])
     with container.enter_scope("request") as state:
         container.execute_sync(solved, executor=SyncExecutor(), state=state)

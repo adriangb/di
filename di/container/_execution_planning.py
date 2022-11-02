@@ -21,7 +21,7 @@ from di.api.executor import SupportsTaskGraph
 from di.api.executor import Task as SupportsTask
 from di.api.providers import DependencyProvider
 from di.api.scopes import Scope
-from di.api.solved import SolvedDependant
+from di.api.solved import SolvedDependent
 
 
 class TaskGraph:
@@ -56,8 +56,8 @@ class TaskGraph:
         return self._static_order
 
 
-class SolvedDependantCache(NamedTuple):
-    """Private data that the Container attaches to SolvedDependant"""
+class SolvedDependentCache(NamedTuple):
+    """Private data that the Container attaches to SolvedDependent"""
 
     root_task: Task
     topological_sorter: TopologicalSorter[Task]
@@ -71,10 +71,10 @@ EMPTY_VALUES: Dict[DependencyProvider, Any] = {}
 def plan_execution(
     stacks: Mapping[Scope, Union[AsyncExitStack, ExitStack]],
     cache: ScopeMap[CacheKey, Any],
-    solved: SolvedDependant[Any],
+    solved: SolvedDependent[Any],
     values: Optional[Mapping[DependencyProvider, Any]] = None,
 ) -> Tuple[List[Any], SupportsTaskGraph[ExecutionState], ExecutionState, Task,]:
-    solved_dependency_cache: SolvedDependantCache = solved.container_cache
+    solved_dependency_cache: SolvedDependentCache = solved.container_cache
     results = solved_dependency_cache.empty_results.copy()
     if values is None:
         values = EMPTY_VALUES

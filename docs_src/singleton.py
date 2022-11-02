@@ -1,14 +1,14 @@
 import inspect
 
 from di.container import Container
-from di.dependant import Dependant
+from di.dependent import Dependent
 from di.executors import SyncExecutor
 
 
 class UsersRepo:
     @classmethod
-    def __di_dependency__(cls, param: inspect.Parameter) -> "Dependant[UsersRepo]":
-        return Dependant(UsersRepo, scope="app")
+    def __di_dependency__(cls, param: inspect.Parameter) -> "Dependent[UsersRepo]":
+        return Dependent(UsersRepo, scope="app")
 
 
 def endpoint(repo: UsersRepo) -> UsersRepo:
@@ -18,7 +18,7 @@ def endpoint(repo: UsersRepo) -> UsersRepo:
 def framework():
     container = Container()
     solved = container.solve(
-        Dependant(endpoint, scope="request"), scopes=["app", "request"]
+        Dependent(endpoint, scope="request"), scopes=["app", "request"]
     )
     executor = SyncExecutor()
     with container.enter_scope("app") as app_state:

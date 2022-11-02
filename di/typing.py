@@ -17,7 +17,7 @@ T = TypeVar("T")
 def get_markers_from_annotation(
     annotation: type, marker_cls: Type[T]
 ) -> Generator[T, None, None]:
-    """Infer a sub-dependant from a parameter of this Dependant's .call
+    """Infer a sub-dependent from a parameter of this Dependent's .call
 
     In the case of multiple markers in PEP 593 Annotated or nested use of Annotated
     (which are equivalent and get flattened by Annoated itself) we return markers from
@@ -25,7 +25,7 @@ def get_markers_from_annotation(
     """
     if get_origin(annotation) is Annotated:
         # reverse the arguments so that in the case of
-        # Annotated[Annotated[T, InnerDependant()], OuterDependant()]
+        # Annotated[Annotated[T, InnerDependent()], OuterDependent()]
         # we discover "outer" first
         # This is a somewhat arbitrary choice, but it is the convention we'll go with
         # See https://www.python.org/dev/peps/pep-0593/#id18 for more details

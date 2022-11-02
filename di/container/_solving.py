@@ -10,11 +10,11 @@ else:
 from graphlib2 import TopologicalSorter
 
 from di._utils.task import Task
-from di.api.dependencies import CacheKey, DependantBase, DependencyParameter
+from di.api.dependencies import CacheKey, DependencyParameter, DependentBase
 from di.api.scopes import Scope
-from di.api.solved import SolvedDependant
+from di.api.solved import SolvedDependent
 from di.container._bind_hook import BindHook
-from di.container._execution_planning import SolvedDependantCache
+from di.container._execution_planning import SolvedDependentCache
 from di.exceptions import (
     DependencyCycleError,
     ScopeViolationError,
@@ -35,35 +35,35 @@ POSITIONAL_PARAMS = (
 class ScopeResolver(Protocol):
     def __call__(
         self,
-        __dependant: DependantBase[Any],
+        __dependent: DependentBase[Any],
         __sub_dependenant_scopes: Sequence[Scope],
         __solver_scopes: Sequence[Scope],
     ) -> Scope:
-        """Infer scopes for a Marker/Dependant that does not have an explicit scope.
+        """Infer scopes for a Marker/Dependent that does not have an explicit scope.
 
         The three paramters given are:
         - `sub_dependenant_scopes`: the scopes of all sub-dependencies (if any).
           This can be used to set a lower bound for the scope.
           For example, if a sub dependency has some "singleton" scope
-          our current dependency (the `dependant` argument) cannot have some "ephemeral"
+          our current dependency (the `dependent` argument) cannot have some "ephemeral"
           scope because that would violate scoping rules.
         - `solver_scopes`: the scopes passed to `Container.solve`. Provided for convenience.
-        - `dependant`: the current dependency we are inferring a scope for.
+        - `dependent`: the current dependency we are inferring a scope for.
         """
 
 
-def get_path_str(path: Iterable[DependantBase[Any]]) -> str:
+def get_path_str(path: Iterable[DependentBase[Any]]) -> str:
     return " -> ".join(
         [repr(item) if item.call is not None else repr(item.call) for item in path]
     )
 
 
 def get_params(
-    dep: DependantBase[Any],
+    dep: DependentBase[Any],
     binds: Iterable[BindHook],
-    path: Iterable[DependantBase[Any]],
+    path: Iterable[DependentBase[Any]],
 ) -> List[DependencyParameter]:
-    """Get Dependants for parameters and resolve binds"""
+    """Get Dependents for parameters and resolve binds"""
     params = dep.get_dependencies().copy()
     for idx, param in enumerate(params):
         for hook in binds:
@@ -93,30 +93,30 @@ def check_task_scope_validity(
     task: Task,
     subtasks: Iterable[Task],
     scopes: Mapping[Scope, int],
-    path: Iterable[DependantBase[Any]],
+    path: Iterable[DependentBase[Any]],
 ) -> None:
     if task.scope not in scopes:
         raise UnknownScopeError(
-            f"Dependency{task.dependant} has an unknown scope {task.scope}."
+            f"Dependency{task.dependent} has an unknown scope {task.scope}."
             f"\nExample Path: {get_path_str(path)}"
         )
     for subtask in subtasks:
         if scopes[task.scope] < scopes[subtask.scope]:
             raise ScopeViolationError(
-                f"{task.dependant.call} cannot depend on {subtask.dependant.call}"
-                f" because {subtask.dependant.call}'s scope ({subtask.scope})"
-                f" is narrower than {task.dependant.call}'s scope ({task.scope})"
+                f"{task.dependent.call} cannot depend on {subtask.dependent.call}"
+                f" because {subtask.dependent.call}'s scope ({subtask.scope})"
+                f" is narrower than {task.dependent.call}'s scope ({task.scope})"
                 f"\nExample Path: {get_path_str(path)}"
             )
 
 
 def build_task(
-    dependency: DependantBase[Any],
+    dependency: DependentBase[Any],
     binds: Iterable[BindHook],
     tasks: Dict[CacheKey, Task],
     task_dag: Dict[Task, List[Task]],
-    dependant_dag: Dict[DependantBase[Any], List[DependencyParameter]],
-    path: Dict[DependantBase[Any], Any],
+    dependent_dag: Dict[DependentBase[Any], List[DependencyParameter]],
+    path: Dict[DependentBase[Any], Any],
     scope_idxs: Mapping[Scope, int],
     scope_resolver: Optional[ScopeResolver],
 ) -> Task:
@@ -148,7 +148,7 @@ def build_task(
                 binds,
                 tasks,
                 task_dag,
-                dependant_dag,
+                dependent_dag,
                 path,
                 scope_idxs,
                 scope_resolver,
@@ -160,10 +160,10 @@ def build_task(
                 else:
                     keyword_parameters[param.parameter.name] = child_task
         if (
-            param.dependency not in dependant_dag
+            param.dependency not in dependent_dag
             and param.dependency.cache_key not in tasks
         ):
-            dependant_dag[param.dependency] = []
+            dependent_dag[param.dependency] = []
     if scope_resolver:
         child_scopes = [st.scope for st in subtasks]
         scope = scope_resolver(dependency, child_scopes, tuple(scope_idxs.keys()))
@@ -178,7 +178,7 @@ def build_task(
         return tasks[dependency.cache_key]
 
     task = Task(
-        dependant=dependency,
+        dependent=dependency,
         scope=scope,
         call=call,
         cache_key=dependency.cache_key,
@@ -187,7 +187,7 @@ def build_task(
         keyword_parameters=keyword_parameters,
         use_cache=dependency.use_cache,
     )
-    dependant_dag[dependency] = dep_params
+    dependent_dag[dependency] = dep_params
     tasks[dependency.cache_key] = task
     task_dag[task] = subtasks
     check_task_scope_validity(
@@ -202,14 +202,14 @@ def build_task(
 
 
 def solve(
-    dependency: DependantBase[T],
+    dependency: DependentBase[T],
     scopes: Sequence[Scope],
     binds: Iterable[BindHook],
     scope_resolver: Optional[ScopeResolver],
-) -> SolvedDependant[T]:
+) -> SolvedDependent[T]:
     """Solve a dependency.
 
-    Returns a SolvedDependant that can be executed to get the dependency's value.
+    Returns a SolvedDependent that can be executed to get the dependency's value.
     """
     # If the dependency itself is a bind, replace it
     for hook in binds:
@@ -218,10 +218,10 @@ def solve(
             dependency = match
 
     if dependency.call is None:  # pragma: no cover
-        raise ValueError("DependantBase.call must not be None")
+        raise ValueError("DependentBase.call must not be None")
 
     task_dag: "Dict[Task, List[Task]]" = {}
-    dep_dag: "Dict[DependantBase[Any], List[DependencyParameter]]" = {}
+    dep_dag: "Dict[DependentBase[Any], List[DependencyParameter]]" = {}
     scope_idxs = dict((scope, idx) for idx, scope in enumerate(scopes))
 
     # this is implemented recursively
@@ -233,7 +233,7 @@ def solve(
         binds=binds,
         tasks={},
         task_dag=task_dag,
-        dependant_dag=dep_dag,
+        dependent_dag=dep_dag,
         # we use a dict to represent the path so that we can have
         # both O(1) lookups, and an ordered mutable sequence (via dict keys)
         # we simply ignore / don't use the dict values
@@ -246,13 +246,13 @@ def solve(
     static_order = tuple(ts.copy().static_order())
     ts.prepare()
     assert dependency.call is not None
-    container_cache = SolvedDependantCache(
+    container_cache = SolvedDependentCache(
         root_task=root_task,
         topological_sorter=ts,
         static_order=static_order,
         empty_results=[None] * len(task_dag),
     )
-    solved = SolvedDependant(
+    solved = SolvedDependent(
         dependency=dependency,
         dag=dep_dag,
         container_cache=container_cache,
