@@ -11,11 +11,11 @@ from typing import (
 )
 
 from di._utils.types import FusedContextManager
-from di.api.dependencies import DependantBase
+from di.api.dependencies import DependentBase
 from di.api.executor import SupportsAsyncExecutor, SupportsSyncExecutor
 from di.api.providers import DependencyProvider
 from di.api.scopes import Scope
-from di.api.solved import SolvedDependant
+from di.api.solved import SolvedDependent
 from di.container._bind_hook import BindHook
 from di.container._execution_planning import plan_execution
 from di.container._solving import ScopeResolver, solve
@@ -30,7 +30,7 @@ class Container:
     Generally you will want one Container per application.
     There is not performance advantage to re-using a container, the only reason to do so is to share binds.
     For each "thing" you want to wire with di and execute you'll want to call `Container.solve()`
-    exactly once and then keep a reference to the returned `SolvedDependant` to pass to `Container.execute`.
+    exactly once and then keep a reference to the returned `SolvedDependent` to pass to `Container.execute`.
     Solving is very expensive so avoid doing it in a hot loop.
     """
 
@@ -64,10 +64,10 @@ class Container:
 
     def solve(
         self,
-        dependency: DependantBase[DependencyType],
+        dependency: DependentBase[DependencyType],
         scopes: Sequence[Scope],
         scope_resolver: Optional[ScopeResolver] = None,
-    ) -> SolvedDependant[DependencyType]:
+    ) -> SolvedDependent[DependencyType]:
         """Build the dependency graph.
 
         Should happen once, maybe during startup.
@@ -78,7 +78,7 @@ class Container:
 
     def execute_sync(
         self,
-        solved: SolvedDependant[DependencyType],
+        solved: SolvedDependent[DependencyType],
         executor: SupportsSyncExecutor,
         *,
         state: ContainerState,
@@ -100,7 +100,7 @@ class Container:
 
     async def execute_async(
         self,
-        solved: SolvedDependant[DependencyType],
+        solved: SolvedDependent[DependencyType],
         executor: SupportsAsyncExecutor,
         *,
         state: ContainerState,

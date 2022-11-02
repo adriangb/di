@@ -38,7 +38,7 @@ In Pytest, a `"session"` scoped fixture cannot depend on a `"function"` scoped f
 
 You may encounter situations where you don't want to make your users explicitly set the scope for each dependency.
 For example, Spring defaults dependencies to the "singleton" scope.
-Our approach is to give you a callback that gets information on the current context (the scopes passed to `Container.solve`, the current `DependantBase` and the scopes of all of it's sub-dependencies) where you can inject your own logic for determining the right scope.
+Our approach is to give you a callback that gets information on the current context (the scopes passed to `Container.solve`, the current `DependentBase` and the scopes of all of it's sub-dependencies) where you can inject your own logic for determining the right scope.
 Some examples of this include:
 
 - A fixed default scope. You ignore all of the inputs and return a fixed value. This allows you to emulate Spring's behavior by returning a "singleton" scope or FastAPI's behavior by returning a "connection"/"request" scope.

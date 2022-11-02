@@ -3,7 +3,7 @@ from typing import Any, Optional
 
 from di.api.providers import DependencyProvider
 from di.api.scopes import Scope
-from di.dependant._dependant import Dependant
+from di.dependent._dependent import Dependent
 
 
 class Injectable:
@@ -18,7 +18,7 @@ class Injectable:
     ) -> None:
         super().__init_subclass__(**kwargs)
 
-        def create_dependant(cls_: Any, param: inspect.Parameter) -> Dependant[Any]:
-            return Dependant(call or cls_, scope=scope, use_cache=use_cache)
+        def create_dependent(cls_: Any, param: inspect.Parameter) -> Dependent[Any]:
+            return Dependent(call or cls_, scope=scope, use_cache=use_cache)
 
-        cls.__di_dependency__ = classmethod(create_dependant)  # type: ignore
+        cls.__di_dependency__ = classmethod(create_dependent)  # type: ignore

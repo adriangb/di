@@ -22,7 +22,7 @@ from di._utils.inspect import (
 )
 from di._utils.scope_map import ScopeMap
 from di._utils.types import CacheKey
-from di.api.dependencies import DependantBase
+from di.api.dependencies import DependentBase
 from di.api.providers import DependencyProvider
 from di.api.scopes import Scope
 from di.exceptions import IncompatibleDependencyError
@@ -47,7 +47,7 @@ class Task:
         "user_function",
         "scope",
         "cache_key",
-        "dependant",
+        "dependent",
         "task_id",
         "call_user_func_with_deps",
         "compute",
@@ -66,7 +66,7 @@ class Task:
         call: DependencyProvider,
         use_cache: bool,
         cache_key: CacheKey,
-        dependant: DependantBase[Any],
+        dependent: DependentBase[Any],
         task_id: int,
         positional_parameters: Iterable[Task],
         keyword_parameters: Mapping[str, Task],
@@ -74,7 +74,7 @@ class Task:
         self.scope = scope
         self.user_function = call
         self.cache_key = cache_key
-        self.dependant = dependant
+        self.dependent = dependent
         self.task_id = task_id
         if is_async_gen_callable(self.user_function):
             self.wrapped_call = contextlib.asynccontextmanager(call)  # type: ignore[arg-type]

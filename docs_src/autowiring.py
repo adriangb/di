@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from di.container import Container
-from di.dependant import Dependant
+from di.dependent import Dependent
 from di.executors import AsyncExecutor
 
 
@@ -21,6 +21,6 @@ async def endpoint(conn: DBConn) -> None:
 
 async def framework():
     container = Container()
-    solved = container.solve(Dependant(endpoint, scope="request"), scopes=["request"])
+    solved = container.solve(Dependent(endpoint, scope="request"), scopes=["request"])
     async with container.enter_scope("request") as state:
         await container.execute_async(solved, executor=AsyncExecutor(), state=state)

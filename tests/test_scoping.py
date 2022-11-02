@@ -4,7 +4,7 @@ import anyio
 import pytest
 
 from di.container import Container
-from di.dependant import Dependant, Marker
+from di.dependent import Dependent, Marker
 from di.exceptions import DuplicateScopeError
 from di.executors import SyncExecutor
 from di.typing import Annotated
@@ -33,10 +33,10 @@ def not_use_cache(v: Annotated[int, Marker(dep1, scope="outer", use_cache=False)
 def test_scoped_execute():
     container = Container()
     use_cache_solved = container.solve(
-        Dependant(use_cache, scope="outer"), scopes=["outer", "inner"]
+        Dependent(use_cache, scope="outer"), scopes=["outer", "inner"]
     )
     not_use_cache_solved = container.solve(
-        Dependant(not_use_cache, scope="outer"), scopes=["outer", "inner"]
+        Dependent(not_use_cache, scope="outer"), scopes=["outer", "inner"]
     )
     with container.enter_scope("outer") as outer_state:
         dep1.value = 1
@@ -89,24 +89,24 @@ def test_nested_caching():
         return holder[0]
 
     MarkerA = Marker(A, scope="app")
-    DepA = Dependant(A, scope="request")
+    DepA = Dependent(A, scope="request")
 
     def B(a: Annotated[str, MarkerA]) -> str:
         return a + holder[1]
 
     MarkerB = Marker(B, scope="request")
-    DepB = Dependant(B, scope="request")
+    DepB = Dependent(B, scope="request")
 
     def C(b: Annotated[str, MarkerB]) -> str:
         return b + holder[2]
 
     MarkerC = Marker(C, scope="request")
-    DepC = Dependant(C, scope="request")
+    DepC = Dependent(C, scope="request")
 
     def endpoint(c: Annotated[str, MarkerC]) -> str:
         return c
 
-    DepEndpoint = Dependant(endpoint, scope="request")
+    DepEndpoint = Dependent(endpoint, scope="request")
 
     container = Container()
     scopes = ["app", "request", "endpoint"]
@@ -189,7 +189,7 @@ def test_nested_lifecycle():
 
     container = Container()
     solved = container.solve(
-        Dependant(endpoint, scope="endpoint"),
+        Dependent(endpoint, scope="endpoint"),
         scopes=["lifespan", "request", "endpoint"],
     )
     with container.enter_scope("lifespan") as app_state:

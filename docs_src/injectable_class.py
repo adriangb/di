@@ -1,5 +1,5 @@
 from di.container import Container
-from di.dependant import Dependant, Injectable
+from di.dependent import Dependent, Injectable
 from di.executors import SyncExecutor
 
 
@@ -14,7 +14,7 @@ def endpoint(repo: UsersRepo) -> UsersRepo:
 def framework():
     container = Container()
     solved = container.solve(
-        Dependant(endpoint, scope="request"), scopes=["app", "request"]
+        Dependent(endpoint, scope="request"), scopes=["app", "request"]
     )
     executor = SyncExecutor()
     with container.enter_scope("app") as app_state:

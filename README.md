@@ -40,7 +40,7 @@ Here is a simple example of how `di` works:
 ```python
 from dataclasses import dataclass
 
-from di import Container, Dependant, SyncExecutor
+from di import Container, Dependent, SyncExecutor
 
 
 class A:
@@ -60,7 +60,7 @@ class C:
 def main():
     container = Container()
     executor = SyncExecutor()
-    solved = container.solve(Dependant(C, scope="request"), scopes=["request"])
+    solved = container.solve(Dependent(C, scope="request"), scopes=["request"])
     with container.enter_scope("request") as state:
         c = container.execute_sync(solved, executor=executor, state=state)
     assert isinstance(c, C)

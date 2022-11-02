@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from di.container import Container
-from di.dependant import Dependant, Marker
+from di.dependent import Dependent, Marker
 from di.executors import AsyncExecutor
 from di.typing import Annotated
 
@@ -22,7 +22,7 @@ async def main() -> None:
 
     container = Container()
     executor = AsyncExecutor()
-    solved = container.solve(Dependant(endpoint), scopes=(None,))
+    solved = container.solve(Dependent(endpoint), scopes=(None,))
     async with container.enter_scope(None) as state:
         res = await container.execute_async(solved, executor=executor, state=state)
         assert res == "👋"

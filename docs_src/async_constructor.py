@@ -2,7 +2,7 @@ import inspect
 from dataclasses import dataclass
 
 from di.container import Container
-from di.dependant import Dependant
+from di.dependent import Dependent
 from di.executors import AsyncExecutor
 
 
@@ -15,13 +15,13 @@ class B:
     msg: str
 
     @classmethod
-    def __di_dependency__(cls, param: inspect.Parameter) -> "Dependant[B]":
+    def __di_dependency__(cls, param: inspect.Parameter) -> "Dependent[B]":
         # note that client is injected by di!
         async def func(client: HTTPClient) -> B:
-            # do an http rquest or something
+            # do an http request or something
             return B(msg=f"👋 from {param.name}")
 
-        return Dependant(func)
+        return Dependent(func)
 
 
 async def main() -> None:
@@ -30,7 +30,7 @@ async def main() -> None:
 
     container = Container()
     executor = AsyncExecutor()
-    solved = container.solve(Dependant(endpoint), scopes=(None,))
+    solved = container.solve(Dependent(endpoint), scopes=(None,))
     async with container.enter_scope(None) as state:
         res = await container.execute_async(solved, executor=executor, state=state)
         assert res == "👋 from b"

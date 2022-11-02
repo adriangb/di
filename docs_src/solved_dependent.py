@@ -1,6 +1,6 @@
-from di.api.solved import SolvedDependant
+from di.api.solved import SolvedDependent
 from di.container import Container
-from di.dependant import Dependant
+from di.dependent import Dependent
 from di.executors import SyncExecutor
 
 
@@ -11,8 +11,8 @@ class Request:
 
 def web_framework():
     container = Container()
-    solved = container.solve(Dependant(controller, scope="request"), scopes=["request"])
-    assert isinstance(solved, SolvedDependant)
+    solved = container.solve(Dependent(controller, scope="request"), scopes=["request"])
+    assert isinstance(solved, SolvedDependent)
 
     with container.enter_scope("request") as state:
         container.execute_sync(
@@ -20,8 +20,8 @@ def web_framework():
         )
 
     dependencies = solved.dag.keys() - {solved.dependency}
-    assert all(isinstance(item, Dependant) for item in dependencies)
-    assert set(dependant.call for dependant in dependencies) == {Request, MyClass}
+    assert all(isinstance(item, Dependent) for item in dependencies)
+    assert set(dependent.call for dependent in dependencies) == {Request, MyClass}
 
 
 # User code

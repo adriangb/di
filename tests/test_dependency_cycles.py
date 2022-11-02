@@ -2,7 +2,7 @@
 import pytest
 
 from di.container import Container
-from di.dependant import Dependant, Marker
+from di.dependent import Dependent, Marker
 from di.exceptions import DependencyCycleError
 from di.typing import Annotated
 
@@ -21,4 +21,4 @@ def test_cycle() -> None:
     container = Container()
     with container.enter_scope(None):
         with pytest.raises(DependencyCycleError, match="are in a cycle"):
-            container.solve(Dependant(dep1), scopes=[None])
+            container.solve(Dependent(dep1), scopes=[None])

@@ -1,6 +1,6 @@
 from typing import Any, List
 
-from di.api.dependencies import DependantBase
+from di.api.dependencies import DependentBase
 
 
 class DependencyInjectionException(Exception):
@@ -12,7 +12,7 @@ class DependencyInjectionException(Exception):
 class WiringError(DependencyInjectionException):
     """Raised when wiring (introspection into types) failed"""
 
-    def __init__(self, msg: str, path: List[DependantBase[Any]]) -> None:
+    def __init__(self, msg: str, path: List[DependentBase[Any]]) -> None:
         super().__init__(msg)
         self.path = path
 
@@ -28,7 +28,7 @@ class DuplicateScopeError(DependencyInjectionException):
 class DependencyCycleError(DependencyInjectionException):
     """Raised when a dependency cycle is detected"""
 
-    def __init__(self, msg: str, path: List[DependantBase[Any]]) -> None:
+    def __init__(self, msg: str, path: List[DependentBase[Any]]) -> None:
         super().__init__(msg)
         self.path = path
 
@@ -43,7 +43,7 @@ class ScopeViolationError(DependencyInjectionException):
 class SolvingError(DependencyInjectionException):
     """Raised when there is an issue solving, for example if a dependency appears twice with different scopes"""
 
-    def __init__(self, msg: str, path: List[DependantBase[Any]]) -> None:
+    def __init__(self, msg: str, path: List[DependentBase[Any]]) -> None:
         super().__init__(msg)
         self.path = path
 

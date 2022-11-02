@@ -2,12 +2,12 @@ import inspect
 from typing import Any, Optional
 
 from di._utils.inspect import get_type
-from di.api.dependencies import DependantBase
+from di.api.dependencies import DependentBase
 from di.container._bind_hook import BindHook
 
 
 def bind_by_type(
-    provider: DependantBase[Any],
+    provider: DependentBase[Any],
     dependency: type,
     *,
     covariant: bool = False,
@@ -15,9 +15,9 @@ def bind_by_type(
     """Hook to substitute the matched dependency"""
 
     def hook(
-        param: Optional[inspect.Parameter], dependant: DependantBase[Any]
-    ) -> Optional[DependantBase[Any]]:
-        if dependant.call is dependency:
+        param: Optional[inspect.Parameter], dependent: DependentBase[Any]
+    ) -> Optional[DependentBase[Any]]:
+        if dependent.call is dependency:
             return provider
         if param is None:
             return None

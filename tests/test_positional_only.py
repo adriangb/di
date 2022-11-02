@@ -3,7 +3,7 @@ import sys
 import pytest
 
 from di.container import Container
-from di.dependant import Dependant
+from di.dependent import Dependent
 from di.executors import SyncExecutor
 
 
@@ -23,6 +23,6 @@ def test_positional_only_parameters():
     exec(func_def, globals())
 
     container = Container()
-    solved = container.solve(Dependant(func), scopes=[None])
+    solved = container.solve(Dependent(func), scopes=[None])
     with container.enter_scope(None) as state:
         container.execute_sync(solved, executor=SyncExecutor(), state=state)

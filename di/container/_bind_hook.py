@@ -8,11 +8,11 @@ else:  # pragma: no cover
     from typing import Protocol
 
 
-from di.api.dependencies import DependantBase
+from di.api.dependencies import DependentBase
 
 
 class BindHook(Protocol):
     def __call__(
-        self, param: Optional[inspect.Parameter], dependant: DependantBase[Any]
-    ) -> Optional[DependantBase[Any]]:  # pragma: no cover
+        self, param: Optional[inspect.Parameter], dependent: DependentBase[Any]
+    ) -> Optional[DependentBase[Any]]:  # pragma: no cover
         ...
