@@ -188,7 +188,7 @@ def test_non_parameter_dependency():
 
 class CannotBeWired:
     def __init__(self, arg) -> None:  # type: ignore # for Pylance
-        assert arg == 1  # a sentinal value to make sure a bug didn't inject something
+        assert arg == 1  # a sentinel value to make sure a bug didn't inject something
 
 
 def test_no_wire() -> None:
