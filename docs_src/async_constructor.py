@@ -18,7 +18,7 @@ class B:
     def __di_dependency__(cls, param: inspect.Parameter) -> "Dependent[B]":
         # note that client is injected by di!
         async def func(client: HTTPClient) -> B:
-            # do an http rquest or something
+            # do an http request or something
             return B(msg=f"👋 from {param.name}")
 
         return Dependent(func)

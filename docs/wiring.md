@@ -42,12 +42,12 @@ Dependency markers, in the form of `di.dependent.Marker` serve to hold informati
 
 Markers are generally useful when:
 
-- Injecting a non-identifiabletype, like a `list[str]`
+- Injecting a non-identifiable type, like a `list[str]`
 - Injecting the result of a function (`param: some_function` is not valid in Python)
 - The type being injected is not well-behaved and you need to tell `di` how to construct it
 - You want to attach metadata to the target (like explicitly setting the `scope`)
 
-Let's take our previous example and look at how we would have used markers if `DBConn` accepted a `host: str` paramter instead of our `Config` class directly:
+Let's take our previous example and look at how we would have used markers if `DBConn` accepted a `host: str` parameter instead of our `Config` class directly:
 
 ```Python
 --8<-- "docs_src/markers.py"
@@ -94,7 +94,7 @@ This means that while `Annotated` can sometimes be verbose, it can also be made 
 
 If you are writing and injecting your own classes, you also have the option of putting the dependency injection metadata into the class itself, via the `__di_dependency__(cls) -> Marker` protocol. This obviously doesn't work if you are injecting a 3rd party class you are importing (unless you subclass it).
 
-The main advantage of this method is that the consumers of this class (wich may be your own codebase) don't have to apply markers everywhere or worry about inconsistent scopes (see [scopes]).
+The main advantage of this method is that the consumers of this class (which may be your own codebase) don't have to apply markers everywhere or worry about inconsistent scopes (see [scopes]).
 
 For example, we can tell `di` constructing a class asynchronously`:
 

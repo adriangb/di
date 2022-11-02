@@ -41,7 +41,7 @@ class ScopeResolver(Protocol):
     ) -> Scope:
         """Infer scopes for a Marker/Dependent that does not have an explicit scope.
 
-        The three paramters given are:
+        The three parameters given are:
         - `sub_dependenant_scopes`: the scopes of all sub-dependencies (if any).
           This can be used to set a lower bound for the scope.
           For example, if a sub dependency has some "singleton" scope

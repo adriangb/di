@@ -96,7 +96,7 @@ def test_dependency_can_catch_exception_concurrent_sync() -> None:
             state=state,
         )
     # one of the dependencies catches and swallows the exception
-    # so the other one nevers sees it
+    # so the other one never sees it
     # there is no promises as to the order, both cases are valid
     assert rec.caught == {"dep1": True} or rec.caught == {"dep2": True}
 
@@ -143,7 +143,7 @@ async def test_dependency_can_catch_exception_concurrent_mixed() -> None:
             state=state,
         )
     # one of the dependencies catches and swallows the exception
-    # so the other one nevers sees it
+    # so the other one never sees it
     # there is no promises as to the order, both cases are valid
     assert rec.caught == {"async_dep1": True} or rec.caught == {"dep2": True}
 
