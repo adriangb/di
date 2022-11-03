@@ -37,6 +37,7 @@ nav:
   - Dependents: dependents.md
   - Caching: cache.md
   - Solving: solving.md
+  - API Interface: api.md
   - Contributing: contributing.md
 
 markdown_extensions:
@@ -59,6 +60,7 @@ extra:
     provider: mike
 
 plugins:
+  - mkdocstrings
   - mike:
       version_selector: true
   - search:
