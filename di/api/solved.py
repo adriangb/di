@@ -1,31 +1,31 @@
 import typing
 from typing import Any, Generic, Iterable, Mapping, TypeVar
 
-from di.api.dependencies import DependantBase, DependencyParameter
+from di.api.dependencies import DependencyParameter, DependentBase
 
 Dependency = Any
 
 DependencyType = TypeVar("DependencyType")
 
 
-class SolvedDependant(Generic[DependencyType]):
+class SolvedDependent(Generic[DependencyType]):
     """Representation of a fully solved dependency as DAG.
 
-    A SolvedDependant could be a user's endpoint/controller function.
+    A SolvedDependent could be a user's endpoint/controller function.
     """
 
     __slots__ = ("dependency", "dag", "container_cache")
 
-    dependency: DependantBase[DependencyType]
-    dag: Mapping[DependantBase[Any], Iterable[DependencyParameter]]
+    dependency: DependentBase[DependencyType]
+    dag: Mapping[DependentBase[Any], Iterable[DependencyParameter]]
     # container_cache can be used by the creating container to store data that is tied
-    # to the SolvedDependant
+    # to the SolvedDependent
     container_cache: typing.Any
 
     def __init__(
         self,
-        dependency: DependantBase[DependencyType],
-        dag: Mapping[DependantBase[Any], Iterable[DependencyParameter]],
+        dependency: DependentBase[DependencyType],
+        dag: Mapping[DependentBase[Any], Iterable[DependencyParameter]],
         container_cache: typing.Any,
     ):
         self.dependency = dependency

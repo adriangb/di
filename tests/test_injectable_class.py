@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from di.container import Container
-from di.dependant import Dependant, Injectable
+from di.dependent import Dependent, Injectable
 from di.executors import SyncExecutor
 
 
@@ -14,7 +14,7 @@ def test_injectable_class_scope() -> None:
         return item
 
     container = Container()
-    dep = Dependant(func, scope="app")
+    dep = Dependent(func, scope="app")
     solved = container.solve(dep, scopes=["app"])
 
     assert next(iter(solved.dag[dep])).dependency.scope == "app"
@@ -29,7 +29,7 @@ def test_injectable_class_call() -> None:
         return item
 
     container = Container()
-    dep = Dependant(func)
+    dep = Dependent(func)
     solved = container.solve(dep, scopes=[None])
     executor = SyncExecutor()
     with container.enter_scope(None) as state:

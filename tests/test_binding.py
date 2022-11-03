@@ -3,7 +3,7 @@ from typing import List
 import pytest
 
 from di.container import Container, bind_by_type
-from di.dependant import Dependant, Marker
+from di.dependent import Dependent, Marker
 from di.executors import SyncExecutor
 from di.typing import Annotated
 
@@ -24,26 +24,26 @@ def test_bind():
         def __init__(self, v: int = 1) -> None:
             self.v = v
 
-    dependant = Dependant(Test)
+    dependent = Dependent(Test)
 
     with container.enter_scope(None) as state:
         res = container.execute_sync(
-            container.solve(dependant, scopes=[None]),
+            container.solve(dependent, scopes=[None]),
             executor=SyncExecutor(),
             state=state,
         )
         assert res.v == 1
-    with container.bind(bind_by_type(Dependant(lambda: Test(2)), Test)):
+    with container.bind(bind_by_type(Dependent(lambda: Test(2)), Test)):
         with container.enter_scope(None) as state:
             res = container.execute_sync(
-                container.solve(dependant, scopes=[None]),
+                container.solve(dependent, scopes=[None]),
                 executor=SyncExecutor(),
                 state=state,
             )
             assert res.v == 2
     with container.enter_scope(None) as state:
         res = container.execute_sync(
-            container.solve(dependant, scopes=[None]),
+            container.solve(dependent, scopes=[None]),
             executor=SyncExecutor(),
             state=state,
         )
@@ -70,7 +70,7 @@ def test_bind_transitive_dependency_results_skips_subdpendencies():
         # we get an error from raises_exception
         with pytest.raises(ValueError):
             container.execute_sync(
-                container.solve(Dependant(dep), scopes=[None]),
+                container.solve(Dependent(dep), scopes=[None]),
                 executor=SyncExecutor(),
                 state=state,
             )
@@ -81,10 +81,10 @@ def test_bind_transitive_dependency_results_skips_subdpendencies():
     def not_error() -> None:
         ...
 
-    with container.bind(bind_by_type(Dependant(not_error), Transitive)):
+    with container.bind(bind_by_type(Dependent(not_error), Transitive)):
         with container.enter_scope(None) as state:
             container.execute_sync(
-                container.solve(Dependant(dep), scopes=[None]),
+                container.solve(Dependent(dep), scopes=[None]),
                 executor=SyncExecutor(),
                 state=state,
             )
@@ -92,14 +92,14 @@ def test_bind_transitive_dependency_results_skips_subdpendencies():
     with container.enter_scope(None) as state:
         with pytest.raises(ValueError):
             container.execute_sync(
-                container.solve(Dependant(dep), scopes=[None]),
+                container.solve(Dependent(dep), scopes=[None]),
                 executor=SyncExecutor(),
                 state=state,
             )
 
 
 def test_bind_with_dependencies():
-    """When we bind a new dependant, we resolve it's dependencies as well"""
+    """When we bind a new dependent, we resolve it's dependencies as well"""
 
     def return_one() -> int:
         return 1
@@ -117,19 +117,19 @@ def test_bind_with_dependencies():
     with container.enter_scope(None) as state:
         assert (
             container.execute_sync(
-                container.solve(Dependant(return_four), scopes=[None]),
+                container.solve(Dependent(return_four), scopes=[None]),
                 executor=SyncExecutor(),
                 state=state,
             )
         ) == 4
     container.bind(
-        lambda param, dependant: None
-        if dependant.call is not return_two
-        else Dependant(return_three)
+        lambda param, dependent: None
+        if dependent.call is not return_two
+        else Dependent(return_three)
     )
     with container.enter_scope(None) as state:
         val = container.execute_sync(
-            container.solve(Dependant(return_four), scopes=[None]),
+            container.solve(Dependent(return_four), scopes=[None]),
             executor=SyncExecutor(),
             state=state,
         )
@@ -146,7 +146,7 @@ def test_bind_covariant() -> None:
     container = Container()
     container.bind(
         bind_by_type(
-            Dependant(lambda: Dog()),
+            Dependent(lambda: Dog()),
             Animal,
             covariant=True,
         )
@@ -157,7 +157,7 @@ def test_bind_covariant() -> None:
     def dep(animal: Animal, generic: Annotated[List[int], Marker(list)]) -> Animal:
         return animal
 
-    solved = container.solve(Dependant(dep), scopes=[None])
+    solved = container.solve(Dependent(dep), scopes=[None])
 
     with container.enter_scope(None) as state:
         instance = container.execute_sync(solved, executor=SyncExecutor(), state=state)

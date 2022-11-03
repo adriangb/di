@@ -1,5 +1,5 @@
-from docs_src import solved_dependant
+from docs_src import solved_dependent
 
 
 def test_solved() -> None:
-    solved_dependant.web_framework()
+    solved_dependent.web_framework()

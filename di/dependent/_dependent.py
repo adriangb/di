@@ -6,8 +6,8 @@ from typing import Any, List, Optional, TypeVar, overload
 from di._utils.inspect import get_parameters, get_type
 from di.api.dependencies import (
     CacheKey,
-    DependantBase,
     DependencyParameter,
+    DependentBase,
     InjectableClassProvider,
 )
 from di.api.providers import (
@@ -58,7 +58,6 @@ class Marker:
     scope: Scope
     use_cache: bool
     wire: bool
-    sync_to_thread: bool
 
     def __init__(
         self,
@@ -67,7 +66,6 @@ class Marker:
         scope: Scope = None,
         use_cache: bool = True,
         wire: bool = True,
-        sync_to_thread: bool = False,
     ) -> None:
         # by default we assume that call and dependency are the same thing
         # but we don't enforce this on subclasses so that they can assign
@@ -77,15 +75,14 @@ class Marker:
         self.scope = scope
         self.use_cache = use_cache
         self.wire = wire
-        self.sync_to_thread = sync_to_thread
 
-    def register_parameter(self, param: inspect.Parameter) -> DependantBase[Any]:
-        """Hook to register the parameter this Dependant corresponds to.
+    def register_parameter(self, param: inspect.Parameter) -> DependentBase[Any]:
+        """Hook to register the parameter this Dependent corresponds to.
 
         This can be used to inferr self.call from a type annotation (autowiring),
         or to just register the type annotation.
 
-        This method can return the same or a new instance of a Dependant to avoid modifying itself.
+        This method can return the same or a new instance of a Dependent to avoid modifying itself.
         """
         call = self.call
         if call is None and param.default is not param.empty:
@@ -104,33 +101,30 @@ class Marker:
                 else:
                     # a class type, a callable class instance or a function
                     call = annotation_type_option.value
-        return Dependant[Any](
+        return Dependent[Any](
             call=call,
             scope=self.scope,
             use_cache=self.use_cache,
             wire=self.wire,
-            sync_to_thread=self.sync_to_thread,
         )
 
 
-class Dependant(DependantBase[T]):
+class Dependent(DependentBase[T]):
     """Connect dependencies together.
 
-    A `Dependant` can have sub-dependencies (also `Dependant`s).
+    A `Dependent` can have sub-dependencies (also `Dependent`s).
     The first argument is a `Callable`, which is used to find the
     sub-dependencies.
 
     Arguments:
         call: used to find subdependencies
         wire: if True then `call` is introspected to find sub-dependencies.
-        sync_to_thread: if True synchronous dependencies are run in a separate thread to avoid blocking the event loop
         scope: the Scope for this dependency (see https://www.adriangb.com/di/latest/scopes/)
         marker: the Marker from which this Defendant was constructed. This is included only for introspection purposes.
     """
 
     call: Optional[DependencyProviderType[T]]
     wire: bool
-    sync_to_thread: bool
     scope: Scope
     marker: Optional[Marker]
 
@@ -143,7 +137,6 @@ class Dependant(DependantBase[T]):
         scope: Scope = ...,
         use_cache: bool = ...,
         wire: bool = ...,
-        sync_to_thread: bool = ...,
     ) -> None:
         ...
 
@@ -156,7 +149,6 @@ class Dependant(DependantBase[T]):
         scope: Scope = ...,
         use_cache: bool = ...,
         wire: bool = ...,
-        sync_to_thread: bool = ...,
     ) -> None:
         ...
 
@@ -169,7 +161,6 @@ class Dependant(DependantBase[T]):
         scope: Scope = ...,
         use_cache: bool = ...,
         wire: bool = ...,
-        sync_to_thread: bool = ...,
     ) -> None:
         ...
 
@@ -182,7 +173,6 @@ class Dependant(DependantBase[T]):
         scope: Scope = ...,
         use_cache: bool = ...,
         wire: bool = ...,
-        sync_to_thread: bool = ...,
     ) -> None:
         ...
 
@@ -194,13 +184,11 @@ class Dependant(DependantBase[T]):
         scope: Scope = None,
         use_cache: bool = True,
         wire: bool = True,
-        sync_to_thread: bool = False,
     ) -> None:
         self.call = call
         self.scope = scope
         self.use_cache = use_cache
         self.wire = wire
-        self.sync_to_thread = sync_to_thread
         self.marker = marker
 
     @property
@@ -215,18 +203,18 @@ class Dependant(DependantBase[T]):
             return []
         res: "List[DependencyParameter]" = []
         for param in get_parameters(self.call).values():
-            sub_dependant: DependantBase[Any]
+            sub_dependent: DependentBase[Any]
             if param.kind in _VARIABLE_PARAMETER_KINDS:
                 continue
             else:
-                maybe_sub_dependant_marker = next(
+                maybe_sub_dependent_marker = next(
                     get_markers_from_annotation(param.annotation, Marker), None
                 )
-                if maybe_sub_dependant_marker is not None:
-                    sub_dependant = maybe_sub_dependant_marker.register_parameter(param)
+                if maybe_sub_dependent_marker is not None:
+                    sub_dependent = maybe_sub_dependent_marker.register_parameter(param)
                 else:
-                    sub_dependant = self.get_default_marker().register_parameter(param)
-            res.append(DependencyParameter(dependency=sub_dependant, parameter=param))
+                    sub_dependent = self.get_default_marker().register_parameter(param)
+            res.append(DependencyParameter(dependency=sub_dependent, parameter=param))
         return res
 
     def get_default_marker(self) -> Marker:

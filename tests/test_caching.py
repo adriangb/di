@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Any, Tuple
 
 from di.container import Container
-from di.dependant import Dependant, Marker
+from di.dependent import Dependent, Marker
 from di.executors import SyncExecutor
 from di.typing import Annotated
 
@@ -15,7 +15,7 @@ def test_test_caching_within_execution_scope_use_cache_true() -> None:
 
     container = Container()
     executor = SyncExecutor()
-    solved = container.solve(Dependant(dep), scopes=[None])
+    solved = container.solve(Dependent(dep), scopes=[None])
 
     with container.enter_scope(None) as state:
         val = container.execute_sync(solved, executor=executor, state=state)
@@ -38,7 +38,7 @@ def test_test_caching_within_execution_scope_use_cache_false() -> None:
 
     container = Container()
     executor = SyncExecutor()
-    solved = container.solve(Dependant(dep, use_cache=False), scopes=[None])
+    solved = container.solve(Dependent(dep, use_cache=False), scopes=[None])
 
     with container.enter_scope(None) as state:
         val = container.execute_sync(solved, executor=executor, state=state)
@@ -61,7 +61,7 @@ def test_test_caching_above_execution_scope_use_cache_true() -> None:
 
     container = Container()
     executor = SyncExecutor()
-    solved = container.solve(Dependant(dep, scope="outer"), scopes=["outer", "inner"])
+    solved = container.solve(Dependent(dep, scope="outer"), scopes=["outer", "inner"])
 
     with container.enter_scope("outer") as outer_state:
         with container.enter_scope("inner", state=outer_state) as inner_state:
@@ -99,7 +99,7 @@ def test_test_caching_above_execution_scope_use_cache_false() -> None:
     container = Container()
     executor = SyncExecutor()
     solved = container.solve(
-        Dependant(dep, scope="outer", use_cache=False), scopes=["outer", "inner"]
+        Dependent(dep, scope="outer", use_cache=False), scopes=["outer", "inner"]
     )
 
     with container.enter_scope("outer") as outer_state:
@@ -142,18 +142,18 @@ def test_sharing_within_execution_scope() -> None:
 
     container = Container()
     executor = SyncExecutor()
-    solved = container.solve(Dependant(dep), scopes=[None])
+    solved = container.solve(Dependent(dep), scopes=[None])
     with container.enter_scope(None) as state:
         one, two, three = container.execute_sync(solved, executor=executor, state=state)
         assert one is three
         assert two is not one
 
 
-def test_dependant_custom_cache_key() -> None:
+def test_dependent_custom_cache_key() -> None:
 
-    # we make a dependant that does not care about the scope
+    # we make a dependent that does not care about the scope
     # so a "request" scoped dependency will pick up cache from an "app" scoped one
-    class CustomDependant(Dependant[Any]):
+    class CustomDependent(Dependent[Any]):
         @property
         def cache_key(self) -> Any:
             return (self.__class__, self.call)
@@ -163,9 +163,9 @@ def test_dependant_custom_cache_key() -> None:
         foo: str = "bar"
 
     container = Container()
-    app_scoped_state_dep = CustomDependant(State, scope="app")
+    app_scoped_state_dep = CustomDependent(State, scope="app")
     app_scoped_state_solved = container.solve(app_scoped_state_dep, scopes=["app"])
-    request_scoped_state_dep = CustomDependant(State, scope="request")
+    request_scoped_state_dep = CustomDependent(State, scope="request")
     request_scoped_state_solved = container.solve(
         request_scoped_state_dep, scopes=["app", "request"]
     )

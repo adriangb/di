@@ -8,13 +8,13 @@ The fundamental design principle of `di` is to split up the complexity of depend
 
 We map these responsibilities to well-defined classes/interfaces:
 
-- Wiring: this is handled by [Dependant]
+- Wiring: this is handled by [Dependent]
 - Solving: this is handled by [Container]
 - Execution: this is handled by [Executor]s
 
 There are also some auxiliary support classes:
 
-- [SolvedDependant] holds a reference of the result of solving (an executable DAG) that can then be executed at a later time.
+- [SolvedDependent] holds a reference of the result of solving (an executable DAG) that can then be executed at a later time.
 
 Fundamentally, our class diagram looks like this:
 
@@ -25,17 +25,17 @@ Fundamentally, our class diagram looks like this:
 <br>
 ``` mermaid
 classDiagram
-    SolvedDependant "1..n" --o Dependant: aggregates into a DAG
-    Container --> Dependant: visits sub-dependencies
+    SolvedDependent "1..n" --o Dependent: aggregates into a DAG
+    Container --> Dependent: visits sub-dependencies
     Container --> Executor: delegates execution
-    Container --> SolvedDependant: stores solved DAG
-    Container --> SolvedDependant: executes solved DAG
-    class Dependant{
-      +get_dependencies() list~Dependant~
-      +register_parameter() Dependant
+    Container --> SolvedDependent: stores solved DAG
+    Container --> SolvedDependent: executes solved DAG
+    class Dependent{
+      +get_dependencies() list~Dependent~
+      +register_parameter() Dependent
     }
-    class SolvedDependant{
-      +dag Mapping~Dependant, SetOfDependant~
+    class SolvedDependent{
+      +dag Mapping~Dependent, SetOfDependent~
     }
     class Executor{
       +execute()
@@ -43,13 +43,13 @@ classDiagram
     class Container{
       +bind()
       +enter_scope(Scope) Container
-      +solve(Dependant) SolvedDependant
-      +execute(SolvedDependant, Executor) Result
+      +solve(Dependent) SolvedDependent
+      +execute(SolvedDependent, Executor) Result
     }
 ```
 </details>
 
-[Dependant]: https://github.com/adriangb/di/blob/main/di/api/dependencies.py
+[Dependent]: https://github.com/adriangb/di/blob/main/di/api/dependencies.py
 [Container]: https://github.com/adriangb/di/blob/main/di/api/container.py
 [Executor]: https://github.com/adriangb/di/blob/main/di/api/executor.py
-[SolvedDependant]: https://github.com/adriangb/di/blob/main/di/api/solved.py
+[SolvedDependent]: https://github.com/adriangb/di/blob/main/di/api/solved.py

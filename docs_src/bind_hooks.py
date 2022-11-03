@@ -2,9 +2,9 @@ import inspect
 import typing
 from dataclasses import dataclass
 
-from di.api.dependencies import DependantBase
+from di.api.dependencies import DependentBase
 from di.container import Container
-from di.dependant import Dependant
+from di.dependent import Dependent
 from di.executors import SyncExecutor
 
 
@@ -14,10 +14,10 @@ class Foo:
 
 
 def match_by_parameter_name(
-    param: typing.Optional[inspect.Parameter], dependant: DependantBase[typing.Any]
-) -> typing.Optional[DependantBase[typing.Any]]:
+    param: typing.Optional[inspect.Parameter], dependent: DependentBase[typing.Any]
+) -> typing.Optional[DependentBase[typing.Any]]:
     if param is not None and param.name == "bar":
-        return Dependant(lambda: "baz", scope=None)
+        return Dependent(lambda: "baz", scope=None)
     return None
 
 
@@ -25,7 +25,7 @@ container = Container()
 
 container.bind(match_by_parameter_name)
 
-solved = container.solve(Dependant(Foo, scope=None), scopes=[None])
+solved = container.solve(Dependent(Foo, scope=None), scopes=[None])
 
 
 def main():

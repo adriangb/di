@@ -8,13 +8,13 @@ if sys.version_info < (3, 8):
 else:
     from typing import Protocol
 
-from di.api.dependencies import DependantBase
+from di.api.dependencies import DependentBase
 
 StateType = TypeVar("StateType")
 
 
 class Task(Hashable, Protocol[StateType]):
-    dependant: DependantBase[StateType]
+    dependent: DependentBase[StateType]
 
     @property
     def compute(self) -> Callable[[StateType], Union[Awaitable[None], None]]:

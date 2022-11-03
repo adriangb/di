@@ -23,7 +23,7 @@ Key features:
 - **Auto-wiring**: `di` supports auto-wiring using type annotations.
 - **Scopes**: inspired by [pytest scopes], but defined by users (no fixed "request" or "session" scopes).
 - **Composable**: decoupled internal APIs give you the flexibility to customize wiring, execution and binding.
-- **Performant**: `di` can execute dependencies in parallel, move sync dependencies to threads and cache results. Performance critical parts are written in [🦀] via [graphlib2].
+- **Performant**: `di` can execute dependencies in parallel and cache results ins scopes. Performance critical parts are written in [🦀] via [graphlib2].
 
 ## Installation
 
@@ -40,7 +40,7 @@ Here is a simple example of how `di` works:
 ```python
 from dataclasses import dataclass
 
-from di import Container, Dependant, SyncExecutor
+from di import Container, Dependent, SyncExecutor
 
 
 class A:
@@ -60,7 +60,7 @@ class C:
 def main():
     container = Container()
     executor = SyncExecutor()
-    solved = container.solve(Dependant(C, scope="request"), scopes=["request"])
+    solved = container.solve(Dependent(C, scope="request"), scopes=["request"])
     with container.enter_scope("request") as state:
         c = container.execute_sync(solved, executor=executor, state=state)
     assert isinstance(c, C)

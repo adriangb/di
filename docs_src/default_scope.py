@@ -1,10 +1,10 @@
 import os
 from typing import Any, Sequence
 
-from di.api.dependencies import DependantBase
+from di.api.dependencies import DependentBase
 from di.api.scopes import Scope
 from di.container import Container
-from di.dependant import Dependant, Marker
+from di.dependent import Dependent, Marker
 from di.executors import AsyncExecutor
 from di.typing import Annotated
 
@@ -18,13 +18,13 @@ class Request:
 async def web_framework() -> None:
     container = Container()
     container.bind(
-        lambda param, dependant: Dependant(Request, scope="request", wire=False)
-        if dependant.call is Request
+        lambda param, dependent: Dependent(Request, scope="request", wire=False)
+        if dependent.call is Request
         else None
     )
 
     def scope_resolver(
-        dep: DependantBase[Any],
+        dep: DependentBase[Any],
         subdep_scopes: Sequence[Scope],
         scopes: Sequence[Scope],
     ) -> Scope:
@@ -33,7 +33,7 @@ async def web_framework() -> None:
         return dep.scope
 
     solved = container.solve(
-        Dependant(controller, scope="request"),
+        Dependent(controller, scope="request"),
         scopes=["singleton", "request"],
         scope_resolver=scope_resolver,
     )

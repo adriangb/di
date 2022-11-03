@@ -16,7 +16,7 @@ T = TypeVar("T")
 
 __all__ = (
     "CacheKey",
-    "DependantBase",
+    "DependentBase",
     "DependencyParameter",
     "InjectableClassProvider",
 )
@@ -25,13 +25,13 @@ __all__ = (
 @runtime_checkable
 class InjectableClassProvider(Protocol):
     @classmethod
-    def __di_dependency__(cls, param: inspect.Parameter) -> "DependantBase[Any]":
+    def __di_dependency__(cls, param: inspect.Parameter) -> "DependentBase[Any]":
         ...
 
 
-class DependantBase(Generic[T]):
-    """A dependant is an object that can provide the container with:
-    - A hash, to compare itself against other dependants
+class DependentBase(Generic[T]):
+    """A dependent is an object that can provide the container with:
+    - A hash, to compare itself against other dependents
     - A scope
     - A callable who's returned value is the dependency
     """
@@ -45,10 +45,10 @@ class DependantBase(Generic[T]):
         raise NotImplementedError
 
     def get_dependencies(self) -> "List[DependencyParameter]":
-        """Collect all of the sub dependencies for this dependant"""
+        """Collect all of the sub dependencies for this dependent"""
         raise NotImplementedError
 
 
 class DependencyParameter(NamedTuple):
-    dependency: DependantBase[Any]
+    dependency: DependentBase[Any]
     parameter: Optional[inspect.Parameter]

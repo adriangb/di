@@ -6,7 +6,7 @@ import pytest
 from di.api.dependencies import DependencyParameter
 from di.api.providers import DependencyProvider
 from di.container import Container, bind_by_type
-from di.dependant import Dependant, JoinedDependant, Marker
+from di.dependent import Dependent, JoinedDependent, Marker
 from di.exceptions import (
     ScopeViolationError,
     SolvingError,
@@ -24,7 +24,7 @@ def test_no_annotations_no_default_value_no_marker():
     def root(v: Annotated[None, Marker(badfunc)]) -> None:  # type: ignore
         raise AssertionError("This function should never be called")
 
-    dep_root = Dependant(root)
+    dep_root = Dependent(root)
 
     container = Container()
 
@@ -46,7 +46,7 @@ def test_default_argument():
 
     with container.enter_scope(None) as state:
         res = container.execute_sync(
-            container.solve(Dependant(default_func), scopes=[None]),
+            container.solve(Dependent(default_func), scopes=[None]),
             executor=SyncExecutor(),
             state=state,
         )
@@ -63,7 +63,7 @@ def test_marker():
 
     with container.enter_scope(None) as state:
         res = container.execute_sync(
-            container.solve(Dependant(marker_default_func), scopes=[None]),
+            container.solve(Dependent(marker_default_func), scopes=[None]),
             executor=SyncExecutor(),
             state=state,
         )
@@ -81,7 +81,7 @@ def test_dissalow_depending_on_inner_scope():
 
     container = Container()
 
-    dep = Dependant(B, scope="outer")
+    dep = Dependent(B, scope="outer")
 
     match = r"scope \(inner\) is narrower than .+'s scope \(outer\)"
     with pytest.raises(ScopeViolationError, match=match):
@@ -100,7 +100,7 @@ def test_dependency_with_multiple_scopes():
 
     container = Container()
     with pytest.raises(SolvingError, match="used with multiple scopes"):
-        container.solve(Dependant(B, scope="request"), scopes=["app", "request"])
+        container.solve(Dependent(B, scope="request"), scopes=["app", "request"])
 
 
 def test_siblings() -> None:
@@ -126,7 +126,7 @@ def test_siblings() -> None:
     container = Container()
 
     siblings = [Sibling(), Sibling()]
-    dep = JoinedDependant(Dependant(dep2), siblings=[Dependant(s) for s in siblings])
+    dep = JoinedDependent(Dependent(dep2), siblings=[Dependent(s) for s in siblings])
     solved = container.solve(dep, scopes=[None])
     with container.enter_scope(None) as state:
         container.execute_sync(solved, executor=SyncExecutor(), state=state)
@@ -138,9 +138,9 @@ def test_non_executable_siblings_is_included_in_dag_but_not_executed() -> None:
     container = Container()
 
     # sibling should be ignored and excluded from the dag
-    main_dep = Dependant(lambda: 1)
-    sibling = Dependant[Any](None)
-    dep = JoinedDependant(main_dep, siblings=[sibling])
+    main_dep = Dependent(lambda: 1)
+    sibling = Dependent[Any](None)
+    dep = JoinedDependent(main_dep, siblings=[sibling])
     solved = container.solve(dep, scopes=[None])
     assert [p.dependency for p in solved.dag[dep]] == [sibling]
     assert sibling in solved.dag
@@ -158,13 +158,13 @@ def test_non_parameter_dependency():
         nonlocal calls
         calls += 1
 
-    class CustomDependant(Dependant[None]):
+    class CustomDependent(Dependent[None]):
         called: bool = False
 
         def get_dependencies(self) -> List[DependencyParameter]:
             return [
                 DependencyParameter(
-                    dependency=Dependant(should_be_called), parameter=None
+                    dependency=Dependent(should_be_called), parameter=None
                 )
             ]
 
@@ -173,7 +173,7 @@ def test_non_parameter_dependency():
     def takes_no_parameters() -> None:
         pass
 
-    solved = container.solve(CustomDependant(takes_no_parameters), scopes=[None])
+    solved = container.solve(CustomDependent(takes_no_parameters), scopes=[None])
 
     # should_be_called is called, but it's return value is not passed into
     # takes_no_parameters since the DependencyParameter has parameter=None
@@ -188,7 +188,7 @@ def test_non_parameter_dependency():
 
 class CannotBeWired:
     def __init__(self, arg) -> None:  # type: ignore # for Pylance
-        assert arg == 1  # a sentinal value to make sure a bug didn't inject something
+        assert arg == 1  # a sentinel value to make sure a bug didn't inject something
 
 
 def test_no_wire() -> None:
@@ -202,8 +202,8 @@ def test_no_wire() -> None:
 
     container = Container()
     with pytest.raises(WiringError):
-        container.solve(Dependant(without_flag), scopes=[None])
-    container.solve(Dependant(with_flag), scopes=[None])
+        container.solve(Dependent(without_flag), scopes=[None])
+    container.solve(Dependent(with_flag), scopes=[None])
 
 
 def test_wiring_from_binds() -> None:
@@ -214,13 +214,13 @@ def test_wiring_from_binds() -> None:
             super().__init__(1)
 
     container = Container()
-    # container.register_by_type(Dependant(CanBeWired), CannotBeWired)
+    # container.register_by_type(Dependent(CanBeWired), CannotBeWired)
     with pytest.raises(WiringError):
-        container.solve(Dependant(CannotBeWired), scopes=[None])
-    container.bind(bind_by_type(Dependant(CanBeWired), CannotBeWired))
+        container.solve(Dependent(CannotBeWired), scopes=[None])
+    container.bind(bind_by_type(Dependent(CanBeWired), CannotBeWired))
     with container.enter_scope(None) as state:
         c = container.execute_sync(
-            container.solve(Dependant(CannotBeWired), scopes=[None]),
+            container.solve(Dependent(CannotBeWired), scopes=[None]),
             executor=SyncExecutor(),
             state=state,
         )
@@ -233,7 +233,7 @@ def test_unknown_scope():
 
     container = Container()
     with pytest.raises(UnknownScopeError):
-        container.solve(Dependant(bad_dep), scopes=[None])
+        container.solve(Dependent(bad_dep), scopes=[None])
 
 
 RandomInt = Annotated[float, Marker(lambda: random(), use_cache=False)]
@@ -250,7 +250,7 @@ def test_re_used_marker() -> None:
         assert num_2 != new_num
 
     container = Container()
-    solved = container.solve(Dependant(dep3, scope=None), scopes=[None])
+    solved = container.solve(Dependent(dep3, scope=None), scopes=[None])
     with container.enter_scope(None) as state:
         container.execute_sync(solved, SyncExecutor(), state=state)
 
@@ -329,7 +329,7 @@ def test_solved_dag(
 ) -> None:
     container = Container()
 
-    dag = container.solve(Dependant(call=dep), scopes=[None]).dag
+    dag = container.solve(Dependent(call=dep), scopes=[None]).dag
     got = {d.call: [s.dependency.call for s in dag[d]] for d in dag}
 
     assert got == expected

@@ -1,13 +1,13 @@
 from random import random
 
 from di.container import Container
-from di.dependant import Dependant, Marker
+from di.dependent import Dependent, Marker
 from di.executors import SyncExecutor
 from di.typing import Annotated
 
 
 def controller(
-    # no marker is equivalent to Dependant(object)
+    # no marker is equivalent to Dependent(object)
     v1: object,
     # the default value is use_cache=True
     v2: Annotated[object, Marker(object, scope="request")],
@@ -20,6 +20,6 @@ def controller(
 
 def main() -> None:
     container = Container()
-    solved = container.solve(Dependant(controller, scope="request"), scopes=["request"])
+    solved = container.solve(Dependent(controller, scope="request"), scopes=["request"])
     with container.enter_scope("request") as state:
         container.execute_sync(solved, executor=SyncExecutor(), state=state)

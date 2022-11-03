@@ -83,7 +83,7 @@ def get_parameters(call: Callable[..., Any]) -> Dict[str, inspect.Parameter]:
     return processed_params
 
 
-def get_type(param: inspect.Parameter) -> Optional[Some]:
+def get_type(param: inspect.Parameter) -> Optional[Some[Any]]:
     annotation = param.annotation
     if annotation is param.empty:
         return None

@@ -1,7 +1,7 @@
 from typing import Any, Callable
 
 from di.container import Container
-from di.dependant import Dependant
+from di.dependent import Dependent
 from di.executors import SyncExecutor
 
 
@@ -15,7 +15,7 @@ class App:
     def __init__(self, controller: Callable[..., Any]) -> None:
         self.container = Container()
         self.solved = self.container.solve(
-            Dependant(controller, scope="request"),
+            Dependent(controller, scope="request"),
             scopes=["request"],
         )
         self.executor = SyncExecutor()
