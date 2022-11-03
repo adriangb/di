@@ -10,14 +10,14 @@
       
       
       
-        <link rel="canonical" href="https://www.adriangb.com/di/0.73.0/contributing/">
+        <link rel="canonical" href="https://www.adriangb.com/di/0.73.0/api/">
       
       <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.3.0, mkdocs-material-8.3.9">
     
     
       
-        <title>Contributing - di</title>
+        <title>API Interface - di</title>
       
     
     
@@ -74,7 +74,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#developer-setup" class="md-skip">
+        <a href="#classes" class="md-skip">
           Skip to content
         </a>
       
@@ -123,7 +123,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Contributing
+              API Interface
             
           </span>
         </div>
@@ -388,11 +388,169 @@
 
   
   
+    
   
-    <li class="md-nav__item">
-      <a href="../api/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          API Interface
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         API Interface
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#classes" class="md-nav__link">
+    Classes
+  </a>
+  
+    <nav class="md-nav" aria-label="Classes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#di.container.Container" class="md-nav__link">
+    Container
+  </a>
+  
+    <nav class="md-nav" aria-label="Container">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#di.container._container.Container.bind" class="md-nav__link">
+    bind()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#di.container._container.Container.execute_async" class="md-nav__link">
+    execute_async()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#di.container._container.Container.execute_sync" class="md-nav__link">
+    execute_sync()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#di.container._container.Container.solve" class="md-nav__link">
+    solve()
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#di.dependent.Marker" class="md-nav__link">
+    Marker
+  </a>
+  
+    <nav class="md-nav" aria-label="Marker">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#di.dependent._dependent.Marker.register_parameter" class="md-nav__link">
+    register_parameter()
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#di.dependent.Dependent" class="md-nav__link">
+    Dependent
+  </a>
+  
+    <nav class="md-nav" aria-label="Dependent">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#di.dependent._dependent.Dependent.get_dependencies" class="md-nav__link">
+    get_dependencies()
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#di.executors.SyncExecutor" class="md-nav__link">
+    SyncExecutor
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#di.executors.AsyncExecutor" class="md-nav__link">
+    AsyncExecutor
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    Functions
+  </a>
+  
+    <nav class="md-nav" aria-label="Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#di.container.bind_by_type" class="md-nav__link">
+    bind_by_type()
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -403,80 +561,11 @@
 
   
   
-    
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          Contributing
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
         Contributing
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#project-setup" class="md-nav__link">
-    Project setup
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#running-tests" class="md-nav__link">
-    Running tests
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#running-linting" class="md-nav__link">
-    Running linting
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#documentation" class="md-nav__link">
-    Documentation
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#releases" class="md-nav__link">
-    Releases
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -498,8 +587,6 @@
   
   
   
-    
-  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
@@ -508,37 +595,130 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#project-setup" class="md-nav__link">
-    Project setup
+  <a href="#classes" class="md-nav__link">
+    Classes
   </a>
+  
+    <nav class="md-nav" aria-label="Classes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#di.container.Container" class="md-nav__link">
+    Container
+  </a>
+  
+    <nav class="md-nav" aria-label="Container">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#di.container._container.Container.bind" class="md-nav__link">
+    bind()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#di.container._container.Container.execute_async" class="md-nav__link">
+    execute_async()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#di.container._container.Container.execute_sync" class="md-nav__link">
+    execute_sync()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#di.container._container.Container.solve" class="md-nav__link">
+    solve()
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#di.dependent.Marker" class="md-nav__link">
+    Marker
+  </a>
+  
+    <nav class="md-nav" aria-label="Marker">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#di.dependent._dependent.Marker.register_parameter" class="md-nav__link">
+    register_parameter()
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#di.dependent.Dependent" class="md-nav__link">
+    Dependent
+  </a>
+  
+    <nav class="md-nav" aria-label="Dependent">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#di.dependent._dependent.Dependent.get_dependencies" class="md-nav__link">
+    get_dependencies()
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#di.executors.SyncExecutor" class="md-nav__link">
+    SyncExecutor
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#di.executors.AsyncExecutor" class="md-nav__link">
+    AsyncExecutor
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#running-tests" class="md-nav__link">
-    Running tests
+  <a href="#functions" class="md-nav__link">
+    Functions
+  </a>
+  
+    <nav class="md-nav" aria-label="Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#di.container.bind_by_type" class="md-nav__link">
+    bind_by_type()
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#running-linting" class="md-nav__link">
-    Running linting
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#documentation" class="md-nav__link">
-    Documentation
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#releases" class="md-nav__link">
-    Releases
-  </a>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -554,84 +734,423 @@
             <article class="md-content__inner md-typeset">
               
                 
-  <a href="https://github.com/adriangb/di/blob/main/docs/contributing.md" title="Edit this page" class="md-content__button md-icon">
+  <a href="https://github.com/adriangb/di/blob/main/docs/api.md" title="Edit this page" class="md-content__button md-icon">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25Z"/></svg>
   </a>
 
 
 
-<h1 id="developer-setup">Developer setup</h1>
-<p>This is a pure Python project and should be straightforward to set up on Linux or MacOS.
-We do not support Windows for development, if you use Windows you'll have to use <a href="https://code.visualstudio.com/docs/remote/containers">VSCode DevContainers</a> or a similar solution.</p>
-<p>We use <a href="https://python-poetry.org/docs/master/">Poetry</a> for dependency management, and most of the config is the <a href="https://github.com/adriangb/di/blob/main/pyproject.toml">pyproject.toml</a>.</p>
-<p>Linting is done via git hooks, managed by <a href="https://pre-commit.com">pre-commit</a>.
-The linters may change over time, but they are configured in our <a href="https://github.com/adriangb/di/blob/main/.pre-commit-config.yaml">pre-commit-config.yaml</a>.</p>
-<p>Most of the setup and interaction with these systems is encapsulated in our <a href="https://github.com/adriangb/di/blob/main/Makefile">Makefile</a>.</p>
-<h2 id="project-setup">Project setup</h2>
-<p>First, fork the repo and then clone your fork:</p>
-<div class="termy">
+  <h1>API Interface</h1>
 
-<div class="highlight"><pre><span></span><code><span class="gp">$ </span>git clone https://github.com/adriangb/di.git
-<span class="go">---&gt; 100%</span>
-<span class="gp">$ </span><span class="nb">cd</span> di
-</code></pre></div>
+<h2 id="classes">Classes</h2>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="di.container.Container" class="doc doc-heading">
+        <code>di.container.Container</code>
+
+
+</h3>
+
+
+  <div class="doc doc-contents first">
+
+  
+      <p>Solve and execute dependencies.</p>
+<p>Generally you will want one Container per application.
+There is not performance advantage to re-using a container, the only reason to do so is to share binds.
+For each "thing" you want to wire with di and execute you'll want to call <code>Container.solve()</code>
+exactly once and then keep a reference to the returned <code>SolvedDependent</code> to pass to <code>Container.execute</code>.
+Solving is very expensive so avoid doing it in a hot loop.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="di.container._container.Container.bind" class="doc doc-heading">
+<code class="highlight language-python"><span class="n">bind</span><span class="p">(</span><span class="n">hook</span><span class="p">)</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Replace a dependency provider with a new one.</p>
+<p>This can be used as a function (for a permanent bind, cleared when <code>scope</code> is exited)
+or as a context manager (the bind will be cleared when the context manager exits).</p>
+
+  </div>
 
 </div>
 
-<p>Now install the project dependencies.
-You will need <a href="https://www.gnu.org/software/make/">Make</a> installed along with a compatible Python version (currently, 3.9.X).</p>
-<p>To set up the project, simply run:</p>
-<div class="termy">
+<div class="doc doc-object doc-function">
 
-<div class="highlight"><pre><span></span><code><span class="gp">$ </span>make init
-</code></pre></div>
 
-</div>
 
-<p>This will create a <code>.venv</code> virtualenv that you can configure your IDE to use.</p>
-<h2 id="running-tests">Running tests</h2>
-<div class="termy">
+<h4 id="di.container._container.Container.execute_async" class="doc doc-heading">
+<code class="highlight language-python"><span class="n">execute_async</span><span class="p">(</span><span class="n">solved</span><span class="p">,</span> <span class="n">executor</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-async"><code>async</code></small>
+  </span>
 
-<div class="highlight"><pre><span></span><code><span class="gp">$ </span>make <span class="nb">test</span>
-</code></pre></div>
+</h4>
 
-</div>
 
-<p>Tests are run with pytest, so you can also run them manually or configure your IDE to run them.
-The tests are stored in the <code>tests/</code> directory.</p>
-<h2 id="running-linting">Running linting</h2>
-<p>Linting will run automatically on every commit.
-To disable this, you can commit with <code>git commit --no-verify</code>.</p>
-<p>You can also run linting manually:</p>
-<div class="termy">
+  <div class="doc doc-contents ">
+  
+      <p>Execute an already solved dependency.</p>
 
-<div class="highlight"><pre><span></span><code><span class="gp">$ </span>make lint
-</code></pre></div>
+  </div>
 
 </div>
 
-<h2 id="documentation">Documentation</h2>
-<p>The docs are written as markdown and built with MkDocs.
-Both the docs and their source code are stored in the <code>docs/</code> directory.</p>
-<p>To preview the docs locally as you edit them, run</p>
-<div class="termy">
+<div class="doc doc-object doc-function">
 
-<div class="highlight"><pre><span></span><code><span class="gp">$ </span>make docs-serve
-</code></pre></div>
+
+
+<h4 id="di.container._container.Container.execute_sync" class="doc doc-heading">
+<code class="highlight language-python"><span class="n">execute_sync</span><span class="p">(</span><span class="n">solved</span><span class="p">,</span> <span class="n">executor</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Execute an already solved dependency.</p>
+<p>This method is synchronous and uses a synchronous executor,
+but the executor may still be able to execute async dependencies.</p>
+
+  </div>
 
 </div>
 
-<p>All the code fragments in the docs are stored as <code>.py</code> files in <code>docs/src</code>.
-These code fragments are tested as part of unit tests to ensure that the documentation stays up to date with the API.</p>
-<h2 id="releases">Releases</h2>
-<p>This project uses continuous integration and continuous delivery on a trunk based workflow.
-Every merge into <code>main</code> should be fully functional code in a releasable state.
-As part of your pull request, you should propose what type of change is being made and determine the right version bump appropriately.
-While <a href="https://www.conventionalcommits.org/en/v1.0.0/">conventional commits</a> are appreciated as a means of communication, especially for the merge commit, they are not <em>required</em> or enforced.
-You are however required to bump the package version in <a href="https://github.com/adriangb/di/blob/main/pyproject.toml">pyproject.toml</a>.
-Every commit into <code>main</code> needs a version bump so that a release can be made, even if it is a refactor or "chore" type change.</p>
-<p>Once your change is merged, the new docs and PyPi package will be released automatically.
-Every time a release is made on PyPi, a corresponding GitHub release will be created to correlate PyPi versions to git commits.</p>
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="di.container._container.Container.solve" class="doc doc-heading">
+<code class="highlight language-python"><span class="n">solve</span><span class="p">(</span><span class="n">dependency</span><span class="p">,</span> <span class="n">scopes</span><span class="p">,</span> <span class="n">scope_resolver</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Build the dependency graph.</p>
+<p>Should happen once, maybe during startup.</p>
+<p>Solving dependencies can be slow.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="di.dependent.Marker" class="doc doc-heading">
+        <code>di.dependent.Marker</code>
+
+
+</h3>
+
+
+  <div class="doc doc-contents first">
+
+  
+      <p>A dependency marker holds information about a dependency.</p>
+<p>Used to tell <code>di</code> how to construct another class.</p>
+<p>For example:</p>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">endpoint</span><span class="p">(</span><span class="n">conn</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">DBConn</span><span class="p">,</span> <span class="n">Marker</span><span class="p">(</span><span class="n">inject_db</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">&quot;request&quot;</span><span class="p">)]):</span>
+    <span class="o">...</span>
+</code></pre></div>
+<p>Building your own <code>Marker</code> can be critical to enable nice functionality.
+You could for example create a custom <code>Marker</code> "Header" than knows how to construct a <code>str</code>
+from the headers of a request. Resulting in:</p>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">endpoint</span><span class="p">(</span><span class="n">content_type</span><span class="p">:</span> <span class="n">FromHeader</span><span class="p">[</span><span class="nb">str</span><span class="p">]):</span>
+    <span class="o">...</span>
+</code></pre></div>
+<p>See more in <a href="https://www.adriangb.com/di/latest/wiring/#dependency-markers">dependency-markers</a>.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="di.dependent._dependent.Marker.register_parameter" class="doc doc-heading">
+<code class="highlight language-python"><span class="n">register_parameter</span><span class="p">(</span><span class="n">param</span><span class="p">)</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Hook to register the parameter this Dependent corresponds to.</p>
+<p>This can be used to inferr self.call from a type annotation (autowiring),
+or to just register the type annotation.</p>
+<p>This method can return the same or a new instance of a Dependent to avoid modifying itself.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="di.dependent.Dependent" class="doc doc-heading">
+        <code>di.dependent.Dependent</code>
+
+
+</h3>
+
+
+  <div class="doc doc-contents first">
+
+  
+      <p>Connect dependencies together.</p>
+<p>A <code>Dependent</code> can have sub-dependencies (also <code>Dependent</code>s).
+The first argument is a <code>Callable</code>, which is used to find the
+sub-dependencies.</p>
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>call</code></td>
+          <td>
+                <code><span title="typing.Optional">Optional</span>[<span title="di.api.providers.DependencyProviderType">DependencyProviderType</span>[<span title="di.dependent._dependent.T">T</span>]]</code>
+          </td>
+          <td><p>used to find subdependencies</p></td>
+          <td>
+                <code>None</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>wire</code></td>
+          <td>
+                <code>bool</code>
+          </td>
+          <td><p>if True then <code>call</code> is introspected to find sub-dependencies.</p></td>
+          <td>
+                <code>True</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>scope</code></td>
+          <td>
+                <code><span title="di.api.scopes.Scope">Scope</span></code>
+          </td>
+          <td><p>the Scope for this dependency (see https://www.adriangb.com/di/latest/scopes/)</p></td>
+          <td>
+                <code>None</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>marker</code></td>
+          <td>
+                <code><span title="typing.Optional">Optional</span>[<a class="autorefs autorefs-internal" title="di.dependent._dependent.Marker" href="#di.dependent.Marker">Marker</a>]</code>
+          </td>
+          <td><p>the Marker from which this Defendant was constructed. This is included only for introspection purposes.</p></td>
+          <td>
+                <code>None</code>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="di.dependent._dependent.Dependent.get_dependencies" class="doc doc-heading">
+<code class="highlight language-python"><span class="n">get_dependencies</span><span class="p">()</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Collect all of our sub-dependencies as parameters</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="di.executors.SyncExecutor" class="doc doc-heading">
+        <code>di.executors.SyncExecutor</code>
+
+
+</h3>
+
+
+  <div class="doc doc-contents first">
+
+  
+      <p>An executor that executes only sync dependencies.</p>
+<p>Dependencies are executed sequentially.
+If any async dependencies are encountered a RuntimeError will be raised.
+If there are no async dependencies, this will be faster than using <code>AsyncExecutor</code> because there is no event loop overhead.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="di.executors.AsyncExecutor" class="doc doc-heading">
+        <code>di.executors.AsyncExecutor</code>
+
+
+</h3>
+
+
+  <div class="doc doc-contents first">
+
+  
+      <p>An executor that executes sync and async dependencies sequentially.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+</div><h2 id="functions">Functions</h2>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h3 id="di.container.bind_by_type" class="doc doc-heading">
+<code class="highlight language-python"><span class="n">di</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">bind_by_type</span><span class="p">(</span><span class="n">provider</span><span class="p">,</span> <span class="n">dependency</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">covariant</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+
+</h3>
+
+
+  <div class="doc doc-contents first">
+  
+      <p>Hook to substitute the matched dependency</p>
+
+  </div>
+
+</div>
 
               
             </article>
@@ -647,7 +1166,7 @@ Every time a release is made on PyPi, a corresponding GitHub release will be cre
     <nav class="md-footer__inner md-grid" aria-label="Footer" >
       
         
-        <a href="../api/" class="md-footer__link md-footer__link--prev" aria-label="Previous: API Interface" rel="prev">
+        <a href="../solving/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Solving" rel="prev">
           <div class="md-footer__button md-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
           </div>
@@ -656,11 +1175,26 @@ Every time a release is made on PyPi, a corresponding GitHub release will be cre
               <span class="md-footer__direction">
                 Previous
               </span>
-              API Interface
+              Solving
             </div>
           </div>
         </a>
       
+      
+        
+        <a href="../contributing/" class="md-footer__link md-footer__link--next" aria-label="Next: Contributing" rel="next">
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              Contributing
+            </div>
+          </div>
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
+          </div>
+        </a>
       
     </nav>
   
