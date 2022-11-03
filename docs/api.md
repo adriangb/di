@@ -8,7 +8,7 @@
         show_source: false
         heading_level: 3
 
-::: di.dependant.Marker
+::: di.dependent.Marker
     options:
         show_root_heading: true
         docstring_section_style: table
@@ -16,7 +16,7 @@
         show_source: false
         heading_level: 3
 
-::: di.dependant.Dependant
+::: di.dependent.Dependent
     options:
         show_root_heading: true
         docstring_section_style: table
