@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from di.container import Container
+from di import Container
 from di.dependent import Dependent, Injectable
 from di.executors import SyncExecutor
 
@@ -33,5 +33,5 @@ def test_injectable_class_call() -> None:
     solved = container.solve(dep, scopes=[None])
     executor = SyncExecutor()
     with container.enter_scope(None) as state:
-        item = container.execute_sync(solved, executor, state=state)
+        item = solved.execute_sync(executor, state=state)
         assert item.foo == "123"

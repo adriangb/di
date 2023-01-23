@@ -1,4 +1,4 @@
-from di.container import Container
+from di import Container
 from di.dependent import Dependent, JoinedDependent
 from di.executors import SyncExecutor
 
@@ -22,6 +22,6 @@ def main():
     )
     solved = container.solve(dependent, scopes=["request"])
     with container.enter_scope("request") as state:
-        a = container.execute_sync(solved, executor=SyncExecutor(), state=state)
+        a = solved.execute_sync(executor=SyncExecutor(), state=state)
     assert isinstance(a, A)
     assert B.executed

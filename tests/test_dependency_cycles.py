@@ -1,7 +1,7 @@
 """Tested only when using Annotated since it's impossible to create a cycle using default values"""
 import pytest
 
-from di.container import Container
+from di import Container
 from di.dependent import Dependent, Marker
 from di.exceptions import DependencyCycleError
 from di.typing import Annotated

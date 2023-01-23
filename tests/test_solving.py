@@ -3,9 +3,9 @@ from typing import Any, List, Mapping
 
 import pytest
 
+from di import Container, bind_by_type
 from di.api.dependencies import DependencyParameter
 from di.api.providers import DependencyProvider
-from di.container import Container, bind_by_type
 from di.dependent import Dependent, JoinedDependent, Marker
 from di.exceptions import (
     ScopeViolationError,
@@ -45,8 +45,7 @@ def test_default_argument():
     container = Container()
 
     with container.enter_scope(None) as state:
-        res = container.execute_sync(
-            container.solve(Dependent(default_func), scopes=[None]),
+        res = container.solve(Dependent(default_func), scopes=[None]).execute_sync(
             executor=SyncExecutor(),
             state=state,
         )
@@ -62,8 +61,9 @@ def test_marker():
     container = Container()
 
     with container.enter_scope(None) as state:
-        res = container.execute_sync(
-            container.solve(Dependent(marker_default_func), scopes=[None]),
+        res = container.solve(
+            Dependent(marker_default_func), scopes=[None]
+        ).execute_sync(
             executor=SyncExecutor(),
             state=state,
         )
@@ -129,7 +129,7 @@ def test_siblings() -> None:
     dep = JoinedDependent(Dependent(dep2), siblings=[Dependent(s) for s in siblings])
     solved = container.solve(dep, scopes=[None])
     with container.enter_scope(None) as state:
-        container.execute_sync(solved, executor=SyncExecutor(), state=state)
+        solved.execute_sync(executor=SyncExecutor(), state=state)
     assert all(s.called for s in siblings)
     assert dep1.calls == 1  # they all use_cached the dependency
 
@@ -145,7 +145,7 @@ def test_non_executable_siblings_is_included_in_dag_but_not_executed() -> None:
     assert [p.dependency for p in solved.dag[dep]] == [sibling]
     assert sibling in solved.dag
     with container.enter_scope(None) as state:
-        res = container.execute_sync(solved, executor=SyncExecutor(), state=state)
+        res = solved.execute_sync(executor=SyncExecutor(), state=state)
         assert 1 == res
 
 
@@ -178,8 +178,7 @@ def test_non_parameter_dependency():
     # should_be_called is called, but it's return value is not passed into
     # takes_no_parameters since the DependencyParameter has parameter=None
     with container.enter_scope(None) as state:
-        container.execute_sync(
-            solved,
+        solved.execute_sync(
             executor=SyncExecutor(),
             state=state,
         )
@@ -218,9 +217,9 @@ def test_wiring_from_binds() -> None:
     with pytest.raises(WiringError):
         container.solve(Dependent(CannotBeWired), scopes=[None])
     container.bind(bind_by_type(Dependent(CanBeWired), CannotBeWired))
+    solved = container.solve(Dependent(CannotBeWired), scopes=[None])
     with container.enter_scope(None) as state:
-        c = container.execute_sync(
-            container.solve(Dependent(CannotBeWired), scopes=[None]),
+        c = solved.execute_sync(
             executor=SyncExecutor(),
             state=state,
         )
@@ -252,7 +251,7 @@ def test_re_used_marker() -> None:
     container = Container()
     solved = container.solve(Dependent(dep3, scope=None), scopes=[None])
     with container.enter_scope(None) as state:
-        container.execute_sync(solved, SyncExecutor(), state=state)
+        solved.execute_sync(SyncExecutor(), state=state)
 
 
 def call1():

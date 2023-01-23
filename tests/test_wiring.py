@@ -1,6 +1,6 @@
 from typing import Optional
 
-from di.container import Container, bind_by_type
+from di import Container, bind_by_type
 from di.dependent import Dependent, Marker
 from di.executors import SyncExecutor
 from di.typing import Annotated
@@ -44,7 +44,7 @@ def test_autowiring_class_with_default_builtin() -> None:
     solved = container.solve(dep, scopes=[None])
 
     with container.enter_scope(None) as state:
-        injected_value = container.execute_sync(solved, SyncExecutor(), state=state)
+        injected_value = solved.execute_sync(SyncExecutor(), state=state)
 
     assert injected_value == "default"
 
@@ -66,7 +66,7 @@ def test_autowiring_class_with_default_class() -> None:
     solved = container.solve(dep, scopes=[None])
 
     with container.enter_scope(None) as state:
-        injected_value = container.execute_sync(solved, SyncExecutor(), state=state)
+        injected_value = solved.execute_sync(SyncExecutor(), state=state)
 
     assert injected_value == "default"
 
@@ -89,6 +89,6 @@ def test_autowiring_class_with_default_class_from_bind() -> None:
     solved = container.solve(dep, scopes=[None])
 
     with container.enter_scope(None) as state:
-        injected_value = container.execute_sync(solved, SyncExecutor(), state=state)
+        injected_value = solved.execute_sync(SyncExecutor(), state=state)
 
     assert injected_value == "bound"

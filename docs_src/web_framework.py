@@ -1,6 +1,6 @@
 from typing import Any, Callable
 
-from di.container import Container
+from di import Container
 from di.dependent import Dependent
 from di.executors import SyncExecutor
 
@@ -22,8 +22,7 @@ class App:
 
     def run(self, request: Request) -> int:
         with self.container.enter_scope("request") as state:
-            return self.container.execute_sync(
-                self.solved,
+            return self.solved.execute_sync(
                 values={Request: request},
                 executor=self.executor,
                 state=state,

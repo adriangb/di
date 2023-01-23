@@ -22,4 +22,4 @@ async def framework():
     container = Container()
     solved = container.solve(Dependent(endpoint, scope="request"), scopes=["request"])
     async with container.enter_scope("request") as state:
-        await container.execute_async(solved, executor=AsyncExecutor(), state=state)
+        await solved.execute_async(executor=AsyncExecutor(), state=state)

@@ -1,7 +1,7 @@
 import inspect
 from typing import Mapping, Optional, TypeVar
 
-from di.container import Container, bind_by_type
+from di import Container, bind_by_type
 from di.dependent import Dependent, Marker
 from di.executors import AsyncExecutor
 from di.typing import Annotated
@@ -45,9 +45,7 @@ async def web_framework() -> None:
             Dependent(controller, scope="request"), scopes=["request"]
         )
     with container.enter_scope("request") as state:
-        await container.execute_async(
-            solved, executor=AsyncExecutor(), state=state
-        )  # success
+        await solved.execute_async(executor=AsyncExecutor(), state=state)  # success
 
     invalid_request = Request(headers={"x-header-one": "one"})
     with container.bind(
@@ -59,9 +57,7 @@ async def web_framework() -> None:
 
     with container.enter_scope("request") as state:
         try:
-            await container.execute_async(
-                solved, executor=AsyncExecutor(), state=state
-            )  # fails
+            await solved.execute_async(executor=AsyncExecutor(), state=state)  # fails
         except KeyError:
             pass
         else:
