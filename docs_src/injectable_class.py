@@ -1,4 +1,4 @@
-from di.container import Container
+from di import Container
 from di.dependent import Dependent, Injectable
 from di.executors import SyncExecutor
 
@@ -19,11 +19,7 @@ def framework():
     executor = SyncExecutor()
     with container.enter_scope("app") as app_state:
         with container.enter_scope("request", state=app_state) as request_state:
-            repo1 = container.execute_sync(
-                solved, executor=executor, state=request_state
-            )
+            repo1 = solved.execute_sync(executor=executor, state=request_state)
         with container.enter_scope("request"):
-            repo2 = container.execute_sync(
-                solved, executor=executor, state=request_state
-            )
+            repo2 = solved.execute_sync(executor=executor, state=request_state)
         assert repo1 is repo2

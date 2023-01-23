@@ -3,7 +3,7 @@ import typing
 import anyio
 import pytest
 
-from di.container import Container
+from di import Container
 from di.dependent import Dependent, Marker
 from di.exceptions import DuplicateScopeError
 from di.executors import SyncExecutor
@@ -41,30 +41,22 @@ def test_scoped_execute():
     with container.enter_scope("outer") as outer_state:
         dep1.value = 1
         with container.enter_scope(None, state=outer_state) as state:
-            r = container.execute_sync(
-                use_cache_solved, executor=SyncExecutor(), state=state
-            )
+            r = use_cache_solved.execute_sync(executor=SyncExecutor(), state=state)
         assert r == 1, r
         # we change the value to 2, but we should still get back 1
         # since the value is cached
         dep1.value = 2
         with container.enter_scope(None, state=outer_state) as state:
-            r = container.execute_sync(
-                use_cache_solved, executor=SyncExecutor(), state=state
-            )
+            r = use_cache_solved.execute_sync(executor=SyncExecutor(), state=state)
         assert r == 1, r
         # but if we execute a non-use_cache dependency, we get the current value
         with container.enter_scope(None, state=outer_state) as state:
-            r = container.execute_sync(
-                not_use_cache_solved, executor=SyncExecutor(), state=state
-            )
+            r = not_use_cache_solved.execute_sync(executor=SyncExecutor(), state=state)
         assert r == 2, r
     with container.enter_scope("outer") as outer_state:
         # now that we exited and re-entered the scope the cache was cleared
         with container.enter_scope(None, state=outer_state) as state:
-            r = container.execute_sync(
-                use_cache_solved, executor=SyncExecutor(), state=state
-            )
+            r = use_cache_solved.execute_sync(executor=SyncExecutor(), state=state)
         assert r == 2, r
 
 
@@ -117,8 +109,8 @@ def test_nested_caching():
 
     with container.enter_scope("app") as app_state:
         with container.enter_scope("request", state=app_state) as request_state:
-            res = container.execute_sync(
-                endpoint_solved, executor=SyncExecutor(), state=request_state
+            res = endpoint_solved.execute_sync(
+                executor=SyncExecutor(), state=request_state
             )
             assert res == "ABC"
             # values should be cached as long as we're within the request scope
@@ -127,8 +119,7 @@ def test_nested_caching():
                 "endpoint", state=request_state
             ) as endpoint_state:
                 assert (
-                    container.execute_sync(
-                        endpoint_solved,
+                    endpoint_solved.execute_sync(
                         executor=SyncExecutor(),
                         state=endpoint_state,
                     )
@@ -137,27 +128,19 @@ def test_nested_caching():
                 "endpoint", state=request_state
             ) as endpoint_state:
                 assert (
-                    container.execute_sync(
-                        c_solved, executor=SyncExecutor(), state=endpoint_state
-                    )
+                    c_solved.execute_sync(executor=SyncExecutor(), state=endpoint_state)
                 ) == "ABC"
             with container.enter_scope("endpoint"):
                 assert (
-                    container.execute_sync(
-                        b_solved, executor=SyncExecutor(), state=endpoint_state
-                    )
+                    b_solved.execute_sync(executor=SyncExecutor(), state=endpoint_state)
                 ) == "AB"
             with container.enter_scope("endpoint"):
                 assert (
-                    container.execute_sync(
-                        a_solved, executor=SyncExecutor(), state=endpoint_state
-                    )
+                    a_solved.execute_sync(executor=SyncExecutor(), state=endpoint_state)
                 ) == "A"
         # A is still cached because it is lifespan scoped
         assert (
-            container.execute_sync(
-                a_solved, executor=SyncExecutor(), state=endpoint_state
-            )
+            a_solved.execute_sync(executor=SyncExecutor(), state=endpoint_state)
         ) == "A"
 
 
@@ -198,8 +181,7 @@ def test_nested_lifecycle():
             with container.enter_scope(
                 "endpoint", state=request_state
             ) as endpoint_state:
-                container.execute_sync(
-                    solved,
+                solved.execute_sync(
                     executor=SyncExecutor(),
                     state=endpoint_state,
                 )

@@ -1,7 +1,7 @@
 import inspect
 from dataclasses import dataclass
 
-from di.container import Container
+from di import Container
 from di.dependent import Dependent
 from di.executors import AsyncExecutor
 
@@ -32,5 +32,5 @@ async def main() -> None:
     executor = AsyncExecutor()
     solved = container.solve(Dependent(endpoint), scopes=(None,))
     async with container.enter_scope(None) as state:
-        res = await container.execute_async(solved, executor=executor, state=state)
+        res = await solved.execute_async(executor=executor, state=state)
         assert res == "👋 from b"

@@ -1,9 +1,9 @@
 import os
 from typing import Any, Sequence
 
+from di import Container
 from di.api.dependencies import DependentBase
 from di.api.scopes import Scope
-from di.container import Container
 from di.dependent import Dependent, Marker
 from di.executors import AsyncExecutor
 from di.typing import Annotated
@@ -42,8 +42,7 @@ async def web_framework() -> None:
         async with container.enter_scope(
             "request", state=singleton_state
         ) as request_state:
-            status = await container.execute_async(
-                solved,
+            status = await solved.execute_async(
                 values={Request: Request("bar.example.com")},
                 executor=AsyncExecutor(),
                 state=request_state,
@@ -53,8 +52,7 @@ async def web_framework() -> None:
         async with container.enter_scope(
             "request", state=singleton_state
         ) as request_state:
-            status = await container.execute_async(
-                solved,
+            status = await solved.execute_async(
                 values={Request: Request("foo.example.com")},
                 executor=AsyncExecutor(),
                 state=request_state,

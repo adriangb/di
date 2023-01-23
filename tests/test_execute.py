@@ -12,8 +12,8 @@ else:
 import anyio
 import pytest
 
+from di import Container, ScopeState, bind_by_type
 from di.concurrency import as_async
-from di.container import Container, ContainerState, bind_by_type
 from di.dependent import Dependent, Marker
 from di.exceptions import IncompatibleDependencyError, UnknownScopeError
 from di.executors import AsyncExecutor, ConcurrentAsyncExecutor, SyncExecutor
@@ -85,8 +85,7 @@ v5 = vFive()
 def test_execute():
     container = Container()
     with container.enter_scope(None) as state:
-        res = container.execute_sync(
-            container.solve(Dependent(v5), scopes=[None]),
+        res = container.solve(Dependent(v5), scopes=[None]).execute_sync(
             executor=SyncExecutor(),
             state=state,
         )
@@ -226,8 +225,7 @@ async def test_concurrency_async(dep1: Any, sync1: bool, dep2: Any, sync2: bool)
     async with anyio.create_task_group() as tg:
         async with container.enter_scope(None) as state:
             tg.start_soon(monitor)
-            await container.execute_async(
-                container.solve(Dependent(collector), scopes=[None]),
+            await container.solve(Dependent(collector), scopes=[None]).execute_async(
                 executor=ConcurrentAsyncExecutor(),
                 state=state,
             )
@@ -267,9 +265,7 @@ async def test_concurrent_executions_do_not_use_cache_results():
     async def execute_in_ctx(id: int) -> None:
         ctx.set(id)
         async with container.enter_scope(None) as state:
-            await container.execute_async(
-                solved, executor=ConcurrentAsyncExecutor(), state=state
-            )
+            await solved.execute_async(executor=ConcurrentAsyncExecutor(), state=state)
 
     async with anyio.create_task_group() as tg:
         async with container.enter_scope("app"):
@@ -303,16 +299,16 @@ async def test_concurrent_executions_use_cache(
     solved1 = container.solve(Dependent(collect1), scopes=["app", None])
     solved2 = container.solve(Dependent(collect2), scopes=["app", None])
 
-    async def execute_1(state: ContainerState):
+    async def execute_1(state: ScopeState):
         async with container.enter_scope(None, state=state) as state:
-            return await container.execute_async(
-                solved1, executor=ConcurrentAsyncExecutor(), state=state
+            return await solved1.execute_async(
+                executor=ConcurrentAsyncExecutor(), state=state
             )
 
-    async def execute_2(state: ContainerState):
+    async def execute_2(state: ScopeState):
         async with container.enter_scope(None, state=state) as state:
-            return await container.execute_async(
-                solved2, executor=ConcurrentAsyncExecutor(), state=state
+            return await solved2.execute_async(
+                executor=ConcurrentAsyncExecutor(), state=state
             )
 
     async with container.enter_scope("app") as state:
@@ -336,8 +332,9 @@ async def test_async_cm_de_in_sync_scope():
         with pytest.raises(
             IncompatibleDependencyError, match="cannot be used in the sync scope"
         ):
-            await container.execute_async(
-                container.solve(Dependent(dep, scope=None), scopes=[None]),
+            await container.solve(
+                Dependent(dep, scope=None), scopes=[None]
+            ).execute_async(
                 executor=AsyncExecutor(),
                 state=state,
             )

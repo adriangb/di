@@ -1,5 +1,4 @@
-from di.api.solved import SolvedDependent
-from di.container import Container
+from di import Container, SolvedDependent
 from di.dependent import Dependent
 from di.executors import SyncExecutor
 
@@ -15,8 +14,8 @@ def web_framework():
     assert isinstance(solved, SolvedDependent)
 
     with container.enter_scope("request") as state:
-        container.execute_sync(
-            solved, values={Request: Request()}, executor=SyncExecutor(), state=state
+        solved.execute_sync(
+            values={Request: Request()}, executor=SyncExecutor(), state=state
         )
 
     dependencies = solved.dag.keys() - {solved.dependency}

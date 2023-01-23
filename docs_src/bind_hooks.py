@@ -2,8 +2,8 @@ import inspect
 import typing
 from dataclasses import dataclass
 
+from di import Container
 from di.api.dependencies import DependentBase
-from di.container import Container
 from di.dependent import Dependent
 from di.executors import SyncExecutor
 
@@ -30,5 +30,5 @@ solved = container.solve(Dependent(Foo, scope=None), scopes=[None])
 
 def main():
     with container.enter_scope(None) as state:
-        foo = container.execute_sync(solved, executor=SyncExecutor(), state=state)
+        foo = solved.execute_sync(executor=SyncExecutor(), state=state)
     assert foo.bar == "baz"

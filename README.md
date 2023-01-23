@@ -62,7 +62,7 @@ def main():
     executor = SyncExecutor()
     solved = container.solve(Dependent(C, scope="request"), scopes=["request"])
     with container.enter_scope("request") as state:
-        c = container.execute_sync(solved, executor=executor, state=state)
+        c = solved.execute_sync(executor=executor, state=state)
     assert isinstance(c, C)
     assert isinstance(c.a, A)
     assert isinstance(c.b, B)

@@ -8,8 +8,8 @@ import anyio
 from pyinstrument.profiler import Profiler  # type: ignore[import]
 
 from benchmarks.utils import GraphSize, SleepTimes, generate_dag
+from di import Container
 from di.api.executor import SupportsAsyncExecutor, SupportsSyncExecutor
-from di.container import Container
 from di.dependent import Dependent
 from di.executors import AsyncExecutor, ConcurrentAsyncExecutor, SyncExecutor
 
@@ -29,11 +29,11 @@ async def async_bench(
     )
     p = Profiler()
     async with container.enter_scope(None) as state:
-        await container.execute_async(solved, executor=executor, state=state)
+        await solved.execute_async(executor=executor, state=state)
     p.start()
     for _ in range(iters):
         async with container.enter_scope(None) as state:
-            await container.execute_async(solved, executor=executor, state=state)
+            await solved.execute_async(executor=executor, state=state)
     p.stop()
     p.print()
     with open(f"bench_html/{name}.html", mode="w") as f:
@@ -54,11 +54,11 @@ def sync_bench(
     executor = SyncExecutor()
     p = Profiler()
     with container.enter_scope(None) as state:
-        container.execute_sync(solved, executor=executor, state=state)
+        solved.execute_sync(executor=executor, state=state)
     p.start()
     for _ in range(iters):
         with container.enter_scope(None) as state:
-            container.execute_sync(solved, executor=executor, state=state)
+            solved.execute_sync(executor=executor, state=state)
     p.stop()
     p.print()
     with open(f"bench_html/{name}.html", mode="w") as f:

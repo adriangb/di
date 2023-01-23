@@ -1,6 +1,6 @@
 from random import random
 
-from di.container import Container
+from di import Container
 from di.dependent import Dependent, Marker
 from di.executors import SyncExecutor
 from di.typing import Annotated
@@ -22,4 +22,4 @@ def main() -> None:
     container = Container()
     solved = container.solve(Dependent(controller, scope="request"), scopes=["request"])
     with container.enter_scope("request") as state:
-        container.execute_sync(solved, executor=SyncExecutor(), state=state)
+        solved.execute_sync(executor=SyncExecutor(), state=state)

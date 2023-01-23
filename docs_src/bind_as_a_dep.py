@@ -6,7 +6,7 @@ if sys.version_info < (3, 8):
 else:
     from typing import Protocol
 
-from di.container import Container, bind_by_type
+from di import Container, bind_by_type
 from di.dependent import Dependent
 from di.executors import AsyncExecutor
 
@@ -39,12 +39,13 @@ async def framework() -> None:
     solved = container.solve(Dependent(controller, scope="request"), scopes=["request"])
     # this next line would fail without the bind
     async with container.enter_scope("request") as state:
-        await container.execute_async(solved, executor=AsyncExecutor(), state=state)
+        await solved.execute_async(executor=AsyncExecutor(), state=state)
     # and we can double check that the bind worked
     # by requesting the instance directly
     async with container.enter_scope("request") as state:
-        db = await container.execute_async(
-            container.solve(Dependent(DBProtocol), scopes=["request"]),
+        db = await container.solve(
+            Dependent(DBProtocol), scopes=["request"]
+        ).execute_async(
             executor=AsyncExecutor(),
             state=state,
         )
