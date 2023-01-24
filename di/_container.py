@@ -356,7 +356,7 @@ def build_task(
             task = CachedAsyncContextManagerTask(
                 scope=scope,
                 dependent=dependency,
-                call=call,
+                call=call,  # type: ignore[arg-type]
                 cache_key=dependency.cache_key,
                 task_id=len(tasks),
                 positional_parameters=positional_parameters,
@@ -365,7 +365,7 @@ def build_task(
         else:
             task = NotCachedAsyncContextManagerTask(
                 scope=scope,
-                call=call,
+                call=call,  # type: ignore[arg-type]
                 dependent=dependency,
                 task_id=len(tasks),
                 positional_parameters=positional_parameters,
@@ -375,7 +375,7 @@ def build_task(
         if dependency.use_cache:
             task = CachedSyncContextManagerTask(
                 scope=scope,
-                call=call,
+                call=call,  # type: ignore[arg-type]
                 dependent=dependency,
                 cache_key=dependency.cache_key,
                 task_id=len(tasks),
@@ -385,7 +385,7 @@ def build_task(
         else:
             task = NotCachedSyncContextManagerTask(
                 scope=scope,
-                call=call,
+                call=call,  # type: ignore[arg-type]
                 dependent=dependency,
                 task_id=len(tasks),
                 positional_parameters=positional_parameters,
@@ -395,7 +395,7 @@ def build_task(
         if dependency.use_cache:
             task = CachedAsyncTask(
                 scope=scope,
-                call=call,
+                call=call,  # type: ignore[arg-type]
                 dependent=dependency,
                 cache_key=dependency.cache_key,
                 task_id=len(tasks),
@@ -405,7 +405,7 @@ def build_task(
         else:
             task = NotCachedAsyncTask(
                 scope=scope,
-                call=call,
+                call=call,  # type: ignore[arg-type]
                 dependent=dependency,
                 task_id=len(tasks),
                 positional_parameters=positional_parameters,
