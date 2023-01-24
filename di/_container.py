@@ -26,9 +26,25 @@ from warnings import warn
 
 from graphlib2 import TopologicalSorter
 
-from di._utils.inspect import get_type
+from di._task import (
+    CachedAsyncContextManagerTask,
+    CachedAsyncTask,
+    CachedSyncContextManagerTask,
+    CachedSyncTask,
+    ExecutionState,
+    NotCachedAsyncContextManagerTask,
+    NotCachedAsyncTask,
+    NotCachedSyncContextManagerTask,
+    NotCachedSyncTask,
+    Task,
+)
+from di._utils.inspect import (
+    get_type,
+    is_async_gen_callable,
+    is_coroutine_callable,
+    is_gen_callable,
+)
 from di._utils.scope_map import ScopeMap
-from di._utils.task import ExecutionState, Task
 from di._utils.types import CacheKey, FusedContextManager
 from di.api.dependencies import DependencyParameter, DependentBase
 from di.api.executor import (
@@ -163,7 +179,7 @@ class TaskGraph:
             self._copied_ts = self._uncopied_ts.copy()
         return self._copied_ts.get_ready()
 
-    def done(self, task: SupportsTask[ExecutionState]) -> None:
+    def done(self, task: SupportsTask) -> None:
         if self._copied_ts is None:
             self._copied_ts = self._uncopied_ts.copy()
         self._copied_ts.done(cast(Task, task))
@@ -254,15 +270,15 @@ def check_task_scope_validity(
 ) -> None:
     if task.scope not in scopes:
         raise UnknownScopeError(
-            f"Dependency{task.dependent} has an unknown scope {task.scope}."
+            f"Dependency{task.unwrapped_call} has an unknown scope {task.scope}."
             f"\nExample Path: {get_path_str(path)}"
         )
     for subtask in subtasks:
         if scopes[task.scope] < scopes[subtask.scope]:
             raise ScopeViolationError(
-                f"{task.dependent.call} cannot depend on {subtask.dependent.call}"
-                f" because {subtask.dependent.call}'s scope ({subtask.scope})"
-                f" is narrower than {task.dependent.call}'s scope ({task.scope})"
+                f"{task.unwrapped_call} cannot depend on {subtask.unwrapped_call}"
+                f" because {subtask.unwrapped_call}'s scope ({subtask.scope})"
+                f" is narrower than {task.unwrapped_call}'s scope ({task.scope})"
                 f"\nExample Path: {get_path_str(path)}"
             )
 
@@ -334,16 +350,88 @@ def build_task(
         path.pop(dependency)
         return tasks[dependency.cache_key]
 
-    task = Task(
-        dependent=dependency,
-        scope=scope,
-        call=call,
-        cache_key=dependency.cache_key,
-        task_id=len(tasks),
-        positional_parameters=positional_parameters,
-        keyword_parameters=keyword_parameters,
-        use_cache=dependency.use_cache,
-    )
+    task: Task
+    if is_async_gen_callable(call):
+        if dependency.use_cache:
+            task = CachedAsyncContextManagerTask(
+                scope=scope,
+                dependent=dependency,
+                call=call,  # type: ignore[arg-type]
+                cache_key=dependency.cache_key,
+                task_id=len(tasks),
+                positional_parameters=positional_parameters,
+                keyword_parameters=keyword_parameters,
+            )
+        else:
+            task = NotCachedAsyncContextManagerTask(
+                scope=scope,
+                call=call,  # type: ignore[arg-type]
+                dependent=dependency,
+                task_id=len(tasks),
+                positional_parameters=positional_parameters,
+                keyword_parameters=keyword_parameters,
+            )
+    elif is_gen_callable(call):
+        if dependency.use_cache:
+            task = CachedSyncContextManagerTask(
+                scope=scope,
+                call=call,  # type: ignore[arg-type]
+                dependent=dependency,
+                cache_key=dependency.cache_key,
+                task_id=len(tasks),
+                positional_parameters=positional_parameters,
+                keyword_parameters=keyword_parameters,
+            )
+        else:
+            task = NotCachedSyncContextManagerTask(
+                scope=scope,
+                call=call,  # type: ignore[arg-type]
+                dependent=dependency,
+                task_id=len(tasks),
+                positional_parameters=positional_parameters,
+                keyword_parameters=keyword_parameters,
+            )
+    elif is_coroutine_callable(call):
+        if dependency.use_cache:
+            task = CachedAsyncTask(
+                scope=scope,
+                call=call,  # type: ignore[arg-type]
+                dependent=dependency,
+                cache_key=dependency.cache_key,
+                task_id=len(tasks),
+                positional_parameters=positional_parameters,
+                keyword_parameters=keyword_parameters,
+            )
+        else:
+            task = NotCachedAsyncTask(
+                scope=scope,
+                call=call,  # type: ignore[arg-type]
+                dependent=dependency,
+                task_id=len(tasks),
+                positional_parameters=positional_parameters,
+                keyword_parameters=keyword_parameters,
+            )
+    else:
+        if dependency.use_cache:
+            task = CachedSyncTask(
+                scope=scope,
+                call=call,
+                dependent=dependency,
+                cache_key=dependency.cache_key,
+                task_id=len(tasks),
+                positional_parameters=positional_parameters,
+                keyword_parameters=keyword_parameters,
+            )
+        else:
+            task = NotCachedSyncTask(
+                scope=scope,
+                call=call,
+                dependent=dependency,
+                task_id=len(tasks),
+                positional_parameters=positional_parameters,
+                keyword_parameters=keyword_parameters,
+            )
+
     dependent_dag[dependency] = dep_params
     tasks[dependency.cache_key] = task
     task_dag[task] = subtasks
@@ -452,7 +540,7 @@ class SolvedDependent(Generic[DependencyType]):
         stacks: Mapping[Scope, Union[AsyncExitStack, ExitStack]],
         cache: ScopeMap[CacheKey, Any],
         values: Optional[Mapping[DependencyProvider, Any]] = None,
-    ) -> Tuple[List[Any], SupportsTaskGraph[ExecutionState], ExecutionState, Task,]:
+    ) -> Tuple[List[Any], SupportsTaskGraph, ExecutionState, Task,]:
         results = self._empty_results.copy()
         if values is None:
             values = EMPTY_VALUES

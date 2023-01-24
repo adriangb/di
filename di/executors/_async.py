@@ -7,14 +7,19 @@ except ImportError as e:
     ) from e
 import anyio.abc
 
-from di.api.executor import StateType, SupportsAsyncExecutor, SupportsTaskGraph, Task
+from di.api.executor import (
+    ExecutionState,
+    SupportsAsyncExecutor,
+    SupportsTaskGraph,
+    Task,
+)
 
 
 class AsyncExecutor(SupportsAsyncExecutor):
     """An executor that executes sync and async dependencies sequentially."""
 
     async def execute_async(
-        self, tasks: SupportsTaskGraph[StateType], state: StateType
+        self, tasks: SupportsTaskGraph, state: ExecutionState
     ) -> None:
         for task in tasks.static_order():
             maybe_aw = task.compute(state)
@@ -23,9 +28,9 @@ class AsyncExecutor(SupportsAsyncExecutor):
 
 
 async def async_worker(
-    task: Task[StateType],
-    tasks: SupportsTaskGraph[StateType],
-    state: StateType,
+    task: Task,
+    tasks: SupportsTaskGraph,
+    state: ExecutionState,
     taskgroup: anyio.abc.TaskGroup,
 ) -> None:
     maybe_aw = task.compute(state)
@@ -38,7 +43,7 @@ async def async_worker(
 
 class ConcurrentAsyncExecutor(SupportsAsyncExecutor):
     async def execute_async(
-        self, tasks: SupportsTaskGraph[StateType], state: StateType
+        self, tasks: SupportsTaskGraph, state: ExecutionState
     ) -> None:
         async with anyio.create_task_group() as taskgroup:
             for task in tasks.get_ready():
