@@ -2,30 +2,35 @@ from __future__ import annotations
 
 import contextlib
 from contextlib import AsyncExitStack, ExitStack
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    Mapping,
-    NamedTuple,
-    TypeVar,
-    Union,
-)
+from typing import Any, Callable, Dict, Iterable, List, Mapping, TypeVar, Union
 
 from di._utils.scope_map import ScopeMap
 from di._utils.types import CacheKey
+from di.api.dependencies import DependentBase
 from di.api.providers import CallableProvider, DependencyProvider
 from di.api.scopes import Scope
 from di.exceptions import IncompatibleDependencyError
 
 
-class ExecutionState(NamedTuple):
-    stacks: Mapping[Scope, Union[AsyncExitStack, ExitStack]]
-    results: List[Any]
-    cache: ScopeMap[CacheKey, Any]
-    values: Mapping[DependencyProvider, Any]
+class ExecutionState:
+    __slots__ = (
+        "_stacks",
+        "_results",
+        "_cache",
+        "_values",
+    )
+
+    def __init__(
+        self,
+        stacks: Mapping[Scope, Union[AsyncExitStack, ExitStack]],
+        results: List[Any],
+        cache: ScopeMap[CacheKey, Any],
+        values: Mapping[DependencyProvider, Any],
+    ) -> None:
+        self._stacks = stacks
+        self._results = results
+        self._cache = cache
+        self._values = values
 
 
 DependencyType = TypeVar("DependencyType")
@@ -58,14 +63,16 @@ class _TaskBase:
     def __init__(
         self,
         scope: Scope,
+        dependent: DependentBase[Any],
         call: DependencyProvider,
-        unwrapped_call: Any,
         task_id: int,
         positional_parameters: Iterable[_TaskBase],
         keyword_parameters: Mapping[str, _TaskBase],
     ) -> None:
+        self.dependent = dependent
         self.scope = scope
-        self.unwrapped_call = unwrapped_call
+        assert dependent.call is not None
+        self.unwrapped_call = dependent.call
         self.task_id = task_id
         self.call_user_func_with_deps = generate_call_with_deps_from_results(
             call, positional_parameters, keyword_parameters
@@ -84,32 +91,34 @@ class NotCachedSyncTask(_TaskBase):
     def __init__(
         self,
         scope: Scope,
+        dependent: DependentBase[Any],
         call: CallableProvider[Any],
         task_id: int,
         positional_parameters: Iterable[_TaskBase],
         keyword_parameters: Mapping[str, _TaskBase],
     ) -> None:
         super().__init__(
+            dependent=dependent,
             scope=scope,
             call=call,
-            unwrapped_call=call,
             task_id=task_id,
             positional_parameters=positional_parameters,
             keyword_parameters=keyword_parameters,
         )
 
     def compute(self, state: ExecutionState) -> None:
-        if self.unwrapped_call in state.values:
-            state.results[self.task_id] = state.values[self.unwrapped_call]
+        if self.unwrapped_call in state._values:
+            state._results[self.task_id] = state._values[self.unwrapped_call]
             return
-        val = self.call_user_func_with_deps(state.results)
-        state.results[self.task_id] = val
+        val = self.call_user_func_with_deps(state._results)
+        state._results[self.task_id] = val
 
 
 class CachedSyncTask(_TaskBase):
     def __init__(
         self,
         scope: Scope,
+        dependent: DependentBase[Any],
         call: CallableProvider[Any],
         cache_key: CacheKey,
         task_id: int,
@@ -117,9 +126,9 @@ class CachedSyncTask(_TaskBase):
         keyword_parameters: Mapping[str, _TaskBase],
     ) -> None:
         super().__init__(
+            dependent=dependent,
             scope=scope,
             call=call,
-            unwrapped_call=call,
             task_id=task_id,
             positional_parameters=positional_parameters,
             keyword_parameters=keyword_parameters,
@@ -127,50 +136,52 @@ class CachedSyncTask(_TaskBase):
         self.cache_key = cache_key
 
     def compute(self, state: ExecutionState) -> None:
-        if self.unwrapped_call in state.values:
-            state.results[self.task_id] = state.values[self.unwrapped_call]
+        if self.unwrapped_call in state._values:
+            state._results[self.task_id] = state._values[self.unwrapped_call]
             return
-        value = state.cache.get_key(self.cache_key, scope=self.scope, default=UNSET)
+        value = state._cache.get_key(self.cache_key, scope=self.scope, default=UNSET)
         if value is not UNSET:
-            state.results[self.task_id] = value
+            state._results[self.task_id] = value
             return
-        val = self.call_user_func_with_deps(state.results)
-        state.results[self.task_id] = val
-        state.cache.set(self.cache_key, val, scope=self.scope)
+        val = self.call_user_func_with_deps(state._results)
+        state._results[self.task_id] = val
+        state._cache.set(self.cache_key, val, scope=self.scope)
 
 
 class NotCachedSyncContextManagerTask(_TaskBase):
     def __init__(
         self,
         scope: Scope,
+        dependent: DependentBase[Any],
         call: CallableProvider[Any],
         task_id: int,
         positional_parameters: Iterable[_TaskBase],
         keyword_parameters: Mapping[str, _TaskBase],
     ) -> None:
         super().__init__(
+            dependent=dependent,
             scope=scope,
             call=contextlib.contextmanager(call),
-            unwrapped_call=call,
             task_id=task_id,
             positional_parameters=positional_parameters,
             keyword_parameters=keyword_parameters,
         )
 
     def compute(self, state: ExecutionState) -> None:
-        if self.unwrapped_call in state.values:
-            state.results[self.task_id] = state.values[self.unwrapped_call]
+        if self.unwrapped_call in state._values:
+            state._results[self.task_id] = state._values[self.unwrapped_call]
             return
-        val = state.stacks[self.scope].enter_context(
-            self.call_user_func_with_deps(state.results)
+        val = state._stacks[self.scope].enter_context(
+            self.call_user_func_with_deps(state._results)
         )
-        state.results[self.task_id] = val
+        state._results[self.task_id] = val
 
 
 class CachedSyncContextManagerTask(_TaskBase):
     def __init__(
         self,
         scope: Scope,
+        dependent: DependentBase[Any],
         call: CallableProvider[Any],
         cache_key: CacheKey,
         task_id: int,
@@ -178,9 +189,9 @@ class CachedSyncContextManagerTask(_TaskBase):
         keyword_parameters: Mapping[str, _TaskBase],
     ) -> None:
         super().__init__(
+            dependent=dependent,
             scope=scope,
             call=contextlib.contextmanager(call),
-            unwrapped_call=call,
             task_id=task_id,
             positional_parameters=positional_parameters,
             keyword_parameters=keyword_parameters,
@@ -188,50 +199,52 @@ class CachedSyncContextManagerTask(_TaskBase):
         self.cache_key = cache_key
 
     def compute(self, state: ExecutionState) -> None:
-        if self.unwrapped_call in state.values:
-            state.results[self.task_id] = state.values[self.unwrapped_call]
+        if self.unwrapped_call in state._values:
+            state._results[self.task_id] = state._values[self.unwrapped_call]
             return
-        value = state.cache.get_key(self.cache_key, scope=self.scope, default=UNSET)
+        value = state._cache.get_key(self.cache_key, scope=self.scope, default=UNSET)
         if value is not UNSET:
-            state.results[self.task_id] = value
+            state._results[self.task_id] = value
             return
-        val = state.stacks[self.scope].enter_context(
-            self.call_user_func_with_deps(state.results)
+        val = state._stacks[self.scope].enter_context(
+            self.call_user_func_with_deps(state._results)
         )
-        state.results[self.task_id] = val
-        state.cache.set(self.cache_key, val, scope=self.scope)
+        state._results[self.task_id] = val
+        state._cache.set(self.cache_key, val, scope=self.scope)
 
 
 class NotCachedAsyncTask(_TaskBase):
     def __init__(
         self,
         scope: Scope,
+        dependent: DependentBase[Any],
         call: CallableProvider[Any],
         task_id: int,
         positional_parameters: Iterable[_TaskBase],
         keyword_parameters: Mapping[str, _TaskBase],
     ) -> None:
         super().__init__(
+            dependent=dependent,
             scope=scope,
             call=call,
-            unwrapped_call=call,
             task_id=task_id,
             positional_parameters=positional_parameters,
             keyword_parameters=keyword_parameters,
         )
 
     async def compute(self, state: ExecutionState) -> None:
-        if self.unwrapped_call in state.values:
-            state.results[self.task_id] = state.values[self.unwrapped_call]
+        if self.unwrapped_call in state._values:
+            state._results[self.task_id] = state._values[self.unwrapped_call]
             return
-        val = await self.call_user_func_with_deps(state.results)
-        state.results[self.task_id] = val
+        val = await self.call_user_func_with_deps(state._results)
+        state._results[self.task_id] = val
 
 
 class CachedAsyncTask(_TaskBase):
     def __init__(
         self,
         scope: Scope,
+        dependent: DependentBase[Any],
         call: CallableProvider[Any],
         cache_key: CacheKey,
         task_id: int,
@@ -239,9 +252,9 @@ class CachedAsyncTask(_TaskBase):
         keyword_parameters: Mapping[str, _TaskBase],
     ) -> None:
         super().__init__(
+            dependent=dependent,
             scope=scope,
             call=call,
-            unwrapped_call=call,
             task_id=task_id,
             positional_parameters=positional_parameters,
             keyword_parameters=keyword_parameters,
@@ -249,56 +262,58 @@ class CachedAsyncTask(_TaskBase):
         self.cache_key = cache_key
 
     async def compute(self, state: ExecutionState) -> None:
-        if self.unwrapped_call in state.values:
-            state.results[self.task_id] = state.values[self.unwrapped_call]
+        if self.unwrapped_call in state._values:
+            state._results[self.task_id] = state._values[self.unwrapped_call]
             return
-        value = state.cache.get_key(self.cache_key, scope=self.scope, default=UNSET)
+        value = state._cache.get_key(self.cache_key, scope=self.scope, default=UNSET)
         if value is not UNSET:
-            state.results[self.task_id] = value
+            state._results[self.task_id] = value
             return
-        val = await self.call_user_func_with_deps(state.results)
-        state.results[self.task_id] = val
-        state.cache.set(self.cache_key, val, scope=self.scope)
+        val = await self.call_user_func_with_deps(state._results)
+        state._results[self.task_id] = val
+        state._cache.set(self.cache_key, val, scope=self.scope)
 
 
 class NotCachedAsyncContextManagerTask(_TaskBase):
     def __init__(
         self,
         scope: Scope,
+        dependent: DependentBase[Any],
         call: CallableProvider[Any],
         task_id: int,
         positional_parameters: Iterable[_TaskBase],
         keyword_parameters: Mapping[str, _TaskBase],
     ) -> None:
         super().__init__(
+            dependent=dependent,
             scope=scope,
             call=contextlib.asynccontextmanager(call),
-            unwrapped_call=call,
             task_id=task_id,
             positional_parameters=positional_parameters,
             keyword_parameters=keyword_parameters,
         )
 
     async def compute(self, state: ExecutionState) -> None:
-        if self.unwrapped_call in state.values:
-            state.results[self.task_id] = state.values[self.unwrapped_call]
+        if self.unwrapped_call in state._values:
+            state._results[self.task_id] = state._values[self.unwrapped_call]
             return
         try:
-            val = await state.stacks[self.scope].enter_async_context(  # type: ignore[union-attr]
-                self.call_user_func_with_deps(state.results)
+            val = await state._stacks[self.scope].enter_async_context(  # type: ignore[union-attr]
+                self.call_user_func_with_deps(state._results)
             )
         except AttributeError:
             raise IncompatibleDependencyError(
                 f"The dependency {self.unwrapped_call} is an awaitable dependency"
                 f" and cannot be used in the sync scope {self.scope}"
             ) from None
-        state.results[self.task_id] = val
+        state._results[self.task_id] = val
 
 
 class CachedAsyncContextManagerTask(_TaskBase):
     def __init__(
         self,
         scope: Scope,
+        dependent: DependentBase[Any],
         call: CallableProvider[Any],
         cache_key: CacheKey,
         task_id: int,
@@ -306,9 +321,9 @@ class CachedAsyncContextManagerTask(_TaskBase):
         keyword_parameters: Mapping[str, _TaskBase],
     ) -> None:
         super().__init__(
+            dependent=dependent,
             scope=scope,
             call=contextlib.asynccontextmanager(call),
-            unwrapped_call=call,
             task_id=task_id,
             positional_parameters=positional_parameters,
             keyword_parameters=keyword_parameters,
@@ -316,24 +331,24 @@ class CachedAsyncContextManagerTask(_TaskBase):
         self.cache_key = cache_key
 
     async def compute(self, state: ExecutionState) -> None:
-        if self.unwrapped_call in state.values:
-            state.results[self.task_id] = state.values[self.unwrapped_call]
+        if self.unwrapped_call in state._values:
+            state._results[self.task_id] = state._values[self.unwrapped_call]
             return
-        value = state.cache.get_key(self.cache_key, scope=self.scope, default=UNSET)
+        value = state._cache.get_key(self.cache_key, scope=self.scope, default=UNSET)
         if value is not UNSET:
-            state.results[self.task_id] = value
+            state._results[self.task_id] = value
             return
         try:
-            val = await state.stacks[self.scope].enter_async_context(  # type: ignore[union-attr]
-                self.call_user_func_with_deps(state.results)
+            val = await state._stacks[self.scope].enter_async_context(  # type: ignore[union-attr]
+                self.call_user_func_with_deps(state._results)
             )
         except AttributeError:
             raise IncompatibleDependencyError(
                 f"The dependency {self.unwrapped_call} is an awaitable dependency"
                 f" and cannot be used in the sync scope {self.scope}"
             ) from None
-        state.results[self.task_id] = val
-        state.cache.set(self.cache_key, val, scope=self.scope)
+        state._results[self.task_id] = val
+        state._cache.set(self.cache_key, val, scope=self.scope)
 
 
 Task = Union[

@@ -179,7 +179,7 @@ class TaskGraph:
             self._copied_ts = self._uncopied_ts.copy()
         return self._copied_ts.get_ready()
 
-    def done(self, task: SupportsTask[ExecutionState]) -> None:
+    def done(self, task: SupportsTask) -> None:
         if self._copied_ts is None:
             self._copied_ts = self._uncopied_ts.copy()
         self._copied_ts.done(cast(Task, task))
@@ -355,6 +355,7 @@ def build_task(
         if dependency.use_cache:
             task = CachedAsyncContextManagerTask(
                 scope=scope,
+                dependent=dependency,
                 call=call,
                 cache_key=dependency.cache_key,
                 task_id=len(tasks),
@@ -365,6 +366,7 @@ def build_task(
             task = NotCachedAsyncContextManagerTask(
                 scope=scope,
                 call=call,
+                dependent=dependency,
                 task_id=len(tasks),
                 positional_parameters=positional_parameters,
                 keyword_parameters=keyword_parameters,
@@ -374,6 +376,7 @@ def build_task(
             task = CachedSyncContextManagerTask(
                 scope=scope,
                 call=call,
+                dependent=dependency,
                 cache_key=dependency.cache_key,
                 task_id=len(tasks),
                 positional_parameters=positional_parameters,
@@ -383,6 +386,7 @@ def build_task(
             task = NotCachedSyncContextManagerTask(
                 scope=scope,
                 call=call,
+                dependent=dependency,
                 task_id=len(tasks),
                 positional_parameters=positional_parameters,
                 keyword_parameters=keyword_parameters,
@@ -392,6 +396,7 @@ def build_task(
             task = CachedAsyncTask(
                 scope=scope,
                 call=call,
+                dependent=dependency,
                 cache_key=dependency.cache_key,
                 task_id=len(tasks),
                 positional_parameters=positional_parameters,
@@ -401,6 +406,7 @@ def build_task(
             task = NotCachedAsyncTask(
                 scope=scope,
                 call=call,
+                dependent=dependency,
                 task_id=len(tasks),
                 positional_parameters=positional_parameters,
                 keyword_parameters=keyword_parameters,
@@ -410,6 +416,7 @@ def build_task(
             task = CachedSyncTask(
                 scope=scope,
                 call=call,
+                dependent=dependency,
                 cache_key=dependency.cache_key,
                 task_id=len(tasks),
                 positional_parameters=positional_parameters,
@@ -419,6 +426,7 @@ def build_task(
             task = NotCachedSyncTask(
                 scope=scope,
                 call=call,
+                dependent=dependency,
                 task_id=len(tasks),
                 positional_parameters=positional_parameters,
                 keyword_parameters=keyword_parameters,
@@ -532,7 +540,7 @@ class SolvedDependent(Generic[DependencyType]):
         stacks: Mapping[Scope, Union[AsyncExitStack, ExitStack]],
         cache: ScopeMap[CacheKey, Any],
         values: Optional[Mapping[DependencyProvider, Any]] = None,
-    ) -> Tuple[List[Any], SupportsTaskGraph[ExecutionState], ExecutionState, Task,]:
+    ) -> Tuple[List[Any], SupportsTaskGraph, ExecutionState, Task,]:
         results = self._empty_results.copy()
         if values is None:
             values = EMPTY_VALUES
@@ -548,7 +556,7 @@ class SolvedDependent(Generic[DependencyType]):
         )
         return (
             results,
-            ts,  # type: ignore
+            ts,
             execution_state,
             self._root_task,
         )

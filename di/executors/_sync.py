@@ -1,4 +1,4 @@
-from di.api.executor import StateType, SupportsSyncExecutor, SupportsTaskGraph
+from di.api.executor import ExecutionState, SupportsSyncExecutor, SupportsTaskGraph
 
 
 class SyncExecutor(SupportsSyncExecutor):
@@ -9,9 +9,7 @@ class SyncExecutor(SupportsSyncExecutor):
     If there are no async dependencies, this will be faster than using `AsyncExecutor` because there is no event loop overhead.
     """
 
-    def execute_sync(
-        self, tasks: SupportsTaskGraph[StateType], state: StateType
-    ) -> None:
+    def execute_sync(self, tasks: SupportsTaskGraph, state: ExecutionState) -> None:
         for task in tasks.static_order():
             maybe_aw = task.compute(state)
             if maybe_aw is not None:
