@@ -1,6 +1,6 @@
 ## Classes
 
-::: di.container.Container
+::: di.Container
     options:
         show_root_heading: true
         docstring_section_style: table
@@ -40,10 +40,9 @@
         show_source: false
         heading_level: 3
 
-
 ## Functions
 
-::: di.container.bind_by_type
+::: di.bind_by_type
     options:
         show_root_heading: true
         docstring_section_style: table
