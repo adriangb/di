@@ -1,23 +1,16 @@
 from __future__ import annotations
 
 import sys
-from typing import Any, Awaitable, Callable, Hashable, Iterable, Union
+from typing import Iterable, Union
 
 if sys.version_info < (3, 8):
     from typing_extensions import Protocol
 else:
     from typing import Protocol
 
-from di._task import ExecutionState
-from di.api.dependencies import DependentBase
+from di._task import AsyncTask, ExecutionState, SyncTask
 
-
-class Task(Hashable, Protocol):
-    dependent: DependentBase[Any]
-
-    @property
-    def compute(self) -> Callable[[ExecutionState], Union[Awaitable[None], None]]:
-        ...
+Task = Union[SyncTask, AsyncTask]
 
 
 class SupportsTaskGraph(Protocol):

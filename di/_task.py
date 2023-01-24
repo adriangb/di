@@ -91,6 +91,24 @@ _ExecutableCallable = Union[
 ]
 
 
+class AsyncTask:
+    __slots__ = ()
+
+    dependant: DependentBase[Any]
+
+    async def compute(self, state: ExecutionState) -> None:
+        ...
+
+
+class SyncTask:
+    __slots__ = ()
+
+    dependant: DependentBase[Any]
+
+    def compute(self, state: ExecutionState) -> None:
+        ...
+
+
 class _TaskBase(Generic[ProviderType]):
     __slots__ = (
         "scope",
@@ -172,7 +190,7 @@ class _TransformAsyncCM:
         return contextlib.asynccontextmanager(call)
 
 
-class NotCachedSyncTask(_TaskBase[CallableProvider[Any]]):
+class NotCachedSyncTask(_TaskBase[CallableProvider[Any]], SyncTask):
     def compute(self, state: ExecutionState) -> None:
         if self.unwrapped_call in state._values:
             state._results[self.task_id] = state._values[self.unwrapped_call]
@@ -181,7 +199,7 @@ class NotCachedSyncTask(_TaskBase[CallableProvider[Any]]):
         state._results[self.task_id] = val
 
 
-class CachedSyncTask(_CachedTaskBase[CallableProvider[Any]]):
+class CachedSyncTask(_CachedTaskBase[CallableProvider[Any]], SyncTask):
     def compute(self, state: ExecutionState) -> None:
         if self.unwrapped_call in state._values:
             state._results[self.task_id] = state._values[self.unwrapped_call]
@@ -196,8 +214,7 @@ class CachedSyncTask(_CachedTaskBase[CallableProvider[Any]]):
 
 
 class NotCachedSyncContextManagerTask(
-    _TransformSyncCM,
-    _TaskBase[GeneratorProvider[Any]],
+    _TransformSyncCM, _TaskBase[GeneratorProvider[Any]], SyncTask
 ):
     def compute(self, state: ExecutionState) -> None:
         if self.unwrapped_call in state._values:
@@ -210,7 +227,7 @@ class NotCachedSyncContextManagerTask(
 
 
 class CachedSyncContextManagerTask(
-    _TransformSyncCM, _CachedTaskBase[GeneratorProvider[Any]]
+    _TransformSyncCM, _CachedTaskBase[GeneratorProvider[Any]], SyncTask
 ):
     def compute(self, state: ExecutionState) -> None:
         if self.unwrapped_call in state._values:
@@ -227,7 +244,7 @@ class CachedSyncContextManagerTask(
         state._cache.set(self.cache_key, val, scope=self.scope)
 
 
-class NotCachedAsyncTask(_TaskBase[CoroutineProvider[Any]]):
+class NotCachedAsyncTask(_TaskBase[CoroutineProvider[Any]], AsyncTask):
     async def compute(self, state: ExecutionState) -> None:
         if self.unwrapped_call in state._values:
             state._results[self.task_id] = state._values[self.unwrapped_call]
@@ -236,7 +253,7 @@ class NotCachedAsyncTask(_TaskBase[CoroutineProvider[Any]]):
         state._results[self.task_id] = val
 
 
-class CachedAsyncTask(_CachedTaskBase[CoroutineProvider[Any]]):
+class CachedAsyncTask(_CachedTaskBase[CoroutineProvider[Any]], AsyncTask):
     async def compute(self, state: ExecutionState) -> None:
         if self.unwrapped_call in state._values:
             state._results[self.task_id] = state._values[self.unwrapped_call]
@@ -251,7 +268,7 @@ class CachedAsyncTask(_CachedTaskBase[CoroutineProvider[Any]]):
 
 
 class NotCachedAsyncContextManagerTask(
-    _TransformAsyncCM, _TaskBase[AsyncGeneratorProvider[Any]]
+    _TransformAsyncCM, _TaskBase[AsyncGeneratorProvider[Any]], AsyncTask
 ):
     async def compute(self, state: ExecutionState) -> None:
         if self.unwrapped_call in state._values:
@@ -270,7 +287,7 @@ class NotCachedAsyncContextManagerTask(
 
 
 class CachedAsyncContextManagerTask(
-    _TransformAsyncCM, _CachedTaskBase[AsyncGeneratorProvider[Any]]
+    _TransformAsyncCM, _CachedTaskBase[AsyncGeneratorProvider[Any]], AsyncTask
 ):
     async def compute(self, state: ExecutionState) -> None:
         if self.unwrapped_call in state._values:
