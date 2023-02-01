@@ -606,7 +606,7 @@ class Container:
     Solving is very expensive so avoid doing it in a hot loop.
     """
 
-    __slots__ = ("_bind_hooks", "_state")
+    __slots__ = ("_bind_hooks",)
 
     _bind_hooks: List[BindHook]
 
