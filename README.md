@@ -40,7 +40,9 @@ Here is a simple example of how `di` works:
 ```python
 from dataclasses import dataclass
 
-from di import Container, Dependent, SyncExecutor
+from di import Container
+from di.dependent import Dependent
+from di.executors import SyncExecutor
 
 
 class A:
