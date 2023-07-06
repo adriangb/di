@@ -89,7 +89,13 @@ For a more comprehensive overview of Python projects related to dependency injec
 
 This project aims to be a dependency injection toolkit, with a focus on providing the underlying dependency injection functionality for other libraries.
 
-In other words, while you could use this as a standalone dependency injection framework, you may find it to be a bit terse and verbose. There are also much more mature standalone dependency injection frameworks; I would recommend at least looking into [python-dependency-injector] since it is currently the most popular / widely used of the bunch.
+In other words, while you could use this as a standalone dependency injection framework, you may find it to be a bit terse and verbose.
+
+There are also much more mature standalone dependency injection frameworks:
+
+I would recommend at least looking into [python-dependency-injector] since it is currently the most popular / widely used of the bunch.
+
+Also, if you need no to use scopes, wirings and other advanced tools you can try [fast-depends] too. This project allows you to validate all function parameters by **pydantic** and use a **Depends** (same as [FastAPI]), that should be enought for the most widely cases.
 
 For more background, see our [docs].
 
@@ -106,5 +112,7 @@ For more background, see our [docs].
 [BlackSheep]: https://www.neoteroi.dev/blacksheep/dependency-injection/
 [Awesome Dependency Injection in Python]: https://github.com/sfermigier/awesome-dependency-injection-in-python
 [python-dependency-injector]: https://github.com/ets-labs/python-dependency-injector
+[fast-depends]: https://github.com/Lancetnik/FastDepends
+[pydantic]: https://github.com/pydantic/pydantic
 [pytest scopes]: https://docs.pytest.org/en/6.2.x/fixture.html#scope-sharing-fixtures-across-classes-modules-packages-or-session
 [pytest fixtures]: https://docs.pytest.org/en/6.2.x/fixture.html
