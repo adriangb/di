@@ -95,7 +95,7 @@ There are also much more mature standalone dependency injection frameworks:
 
 I would recommend at least looking into [python-dependency-injector] since it is currently the most popular / widely used of the bunch.
 
-Also, if you need no to use scopes, wirings and other advanced tools you can try [fast-depends] too. This project allows you to validate all function parameters by **pydantic** and use a **Depends** (same as [FastAPI]), that should be enought for the most widely cases.
+Also, if you need no to use scopes, wirings and other advanced tools you can try [fast-depends] too. This project allows you to validate all function parameters by [pydantic] and use a **Depends** (same as [FastAPI]), that should be enought for the most widely cases.
 
 For more background, see our [docs].
 
