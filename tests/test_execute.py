@@ -92,32 +92,6 @@ def test_execute():
     assert res.three.zero is res.zero
 
 
-def sync_callable_func() -> int:
-    return 1
-
-
-async def async_callable_func() -> int:
-    return 1
-
-
-def sync_gen_func() -> Generator[int, None, None]:
-    yield 1
-
-
-async def async_gen_func() -> AsyncGenerator[int, None]:
-    yield 1
-
-
-class SyncCallableCls:
-    def __call__(self) -> int:
-        return 1
-
-
-class AsyncCallableCls:
-    async def __call__(self) -> int:
-        return 1
-
-
 @dataclass
 class Synchronizer:
     started: List[anyio.Event]
