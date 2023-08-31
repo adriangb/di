@@ -47,9 +47,11 @@ def is_gen_callable(call: Any) -> bool:
 
 def get_annotations(call: Callable[..., Any]) -> Dict[str, Any]:
     types_from: Callable[..., Any]
-    if not (
-        inspect.isclass(call) or inspect.isfunction(call) or inspect.ismethod(call)
-    ) and hasattr(call, "__call__"):
+    if inspect.isclass(call):
+        types_from = call.__init__
+    elif not (inspect.isfunction(call) or inspect.ismethod(call)) and hasattr(
+        call, "__call__"
+    ):
         # callable class
         types_from = call.__call__  # type: ignore[misc,operator] # accessing __init__ directly
     else:
