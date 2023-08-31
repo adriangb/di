@@ -1,5 +1,5 @@
 """Black box tests that check the high level API but in practice are written to fully
-test all of the execution paths in di/_utils/task.py
+test all of the execution paths in di/_task.py
 """
 import functools
 from typing import Any, AsyncGenerator, Callable, Generator
