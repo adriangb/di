@@ -49,17 +49,29 @@ def get_annotations(call: Callable[..., Any]) -> Dict[str, Any]:
     types_from: Callable[..., Any]
     if inspect.isclass(call):
         types_from = call.__init__
-    elif not (inspect.isfunction(call) or inspect.ismethod(call)) and hasattr(
-        call, "__call__"
-    ):
-        # callable class
-        types_from = call.__call__  # type: ignore[misc,operator] # accessing __init__ directly
+    elif is_callable_class(call):
+        types_from = call.__call__  # type: ignore[operator] # mypy issue #5079
     else:
-        # method
         types_from = call
+
     hints = get_type_hints(types_from, include_extras=True)
-    # for no apparent reason, Annotated[Optional[T]] comes back as Optional[Annotated[Optional[T]]]
-    # so remove the outer Optional if this is the case
+    hints = fix_annotated_optional_type_hints(hints)
+
+    return hints
+
+
+def is_callable_class(call: Callable[..., Any]) -> bool:
+    function_or_method = inspect.isfunction(call) or inspect.ismethod(call)
+    has_call = hasattr(call, "__call__")
+    return not function_or_method and has_call
+
+
+def fix_annotated_optional_type_hints(hints: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    For no apparent reason, `Annotated[Optional[T]]` comes back as `Optional[Annotated[Optional[T]]]`
+    so remove the outer `Optional` if this is the case.
+    """
+
     for param_name, hint in hints.items():
         args = get_args(hint)
         if get_origin(hint) is Union and get_origin(next(iter(args))) is Annotated:
