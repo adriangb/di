@@ -38,11 +38,19 @@ def is_coroutine_callable(call: Any) -> bool:
 
 
 def is_async_gen_callable(call: Callable[..., Any]) -> bool:
-    return inspect.isasyncgenfunction(unwrap_callable(call))
+    unwrapped_call = unwrap_callable(call)
+    if inspect.isasyncgenfunction(unwrapped_call):
+        return True
+    dunder_call = getattr(unwrapped_call, "__call__", None)
+    return inspect.isasyncgenfunction(dunder_call)
 
 
 def is_gen_callable(call: Any) -> bool:
-    return inspect.isgeneratorfunction(unwrap_callable(call))
+    unwrapped_call = unwrap_callable(call)
+    if inspect.isgeneratorfunction(unwrapped_call):
+        return True
+    dunder_call = getattr(unwrapped_call, "__call__", None)
+    return inspect.isgeneratorfunction(dunder_call)
 
 
 def get_annotations(call: Callable[..., Any]) -> Dict[str, Any]:
