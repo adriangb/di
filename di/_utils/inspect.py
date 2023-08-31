@@ -30,11 +30,11 @@ def unwrap_callable(call: Any) -> Any:
 def is_coroutine_callable(call: Any) -> bool:
     if inspect.isclass(call):
         return False
-    call = unwrap_callable(call)
-    if inspect.iscoroutinefunction(call):
+    unwrapped_call = unwrap_callable(call)
+    if inspect.iscoroutinefunction(unwrapped_call):
         return True
-    # not a class but has a __call__, so maybe a callable class instance
-    return inspect.iscoroutinefunction(getattr(call, "__call__"))
+    dunder_call = getattr(unwrapped_call, "__call__", None)
+    return inspect.iscoroutinefunction(dunder_call)
 
 
 def is_async_gen_callable(call: Callable[..., Any]) -> bool:
