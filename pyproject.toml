@@ -34,19 +34,17 @@ graphlib2 = "^0.4.1"
 [tool.poetry.extras]
 anyio = ["anyio"]
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 # linting
-black = "~22"
-flake8 = "~3.9"
-isort = "~5.10"
-mypy = "v0.940"
+black = "~23"
+mypy = "~1"
 pre-commit = "~2"
 # testing
-pytest = "~6"
-pytest-cov = { version = "~2" }
+pytest = "~7"
+pytest-cov = { version = "~3" }
 pytest-sugar = "~0"
 trio = "~0"
-coverage = { extras = ["toml"], version = "^6.0" }
+coverage = { extras = ["toml"], version = "~6" }
 # docs
 mkdocs = "~1"
 mkdocs-material = "~8,!=8.1.3"
@@ -54,6 +52,7 @@ mike = "~1"
 # benchmarking
 pyinstrument = "~4"
 mkdocstrings = {version = "^0.19.0", extras = ["python"]}
+ruff = "^0.0.286"
 
 [build-system]
 requires = ["poetry-core"]
@@ -84,6 +83,7 @@ files = "di/**/*.py,tests/**/*.py,docs_src/**/*.py"
 show_error_codes = true
 pretty = true
 warn_unreachable = true
+check_untyped_defs = true
 
 [[tool.mypy.overrides]]
 module = "di.*"
@@ -96,3 +96,12 @@ disallow_untyped_defs = true
 disallow_untyped_calls = true
 disallow_subclassing_any = true
 warn_unused_ignores = false
+
+[tool.ruff]
+extend-select = ['Q', 'RUF', 'C', 'UP', 'I', 'T']
+extend-ignore = [
+    # E501 is handled by black
+    'E501',
+]
+isort = { known-first-party = ['di', 'tests'] }
+target-version = "py37"
