@@ -8,10 +8,8 @@ from typing import (
     Awaitable,
     Callable,
     ContextManager,
-    Dict,
     Generic,
     Iterable,
-    List,
     Mapping,
     TypeVar,
     Union,
@@ -41,8 +39,8 @@ class ExecutionState:
 
     def __init__(
         self,
-        stacks: Mapping[Scope, Union[AsyncExitStack, ExitStack]],
-        results: List[Any],
+        stacks: Mapping[Scope, AsyncExitStack | ExitStack],
+        results: list[Any],
         cache: ScopeMap[CacheKey, Any],
         values: Mapping[DependencyProvider, Any],
     ) -> None:
@@ -62,17 +60,17 @@ def generate_call_with_deps_from_results(
     call: _ExecutableCallable,
     positional_parameters: PositionalTaskParameters,
     keyword_parameters: KeywordTaskParameters,
-) -> Callable[[List[Any]], Any]:
+) -> Callable[[list[Any]], Any]:
     # this codegen speeds up argument collection and passing
     # by avoiding creation of intermediary containers to store the values
     positional_arg_template = "results[{}]"
     keyword_arg_template = "{}=results[{}]"
-    args: List[str] = []
+    args: list[str] = []
     for task in positional_parameters:
         args.append(positional_arg_template.format(task.task_id))
     for keyword, task in keyword_parameters.items():
         args.append(keyword_arg_template.format(keyword, task.task_id))
-    locals: Dict[str, Any] = {}
+    locals: dict[str, Any] = {}
     globals = {"call": call}
     exec(f'def execute(results): return call({",".join(args)})', globals, locals)
     return locals["execute"]  # type: ignore[no-any-return]

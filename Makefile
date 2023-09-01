@@ -20,15 +20,16 @@ install-poetry: .install-poetry
 	touch .init
 
 .clean:
-	rm -rf .init .mypy_cache .pytest_cache
+	rm -rf .init .pytest_cache
 	poetry -V || rm -rf .install-poetry
 
 init: .clean .init
 	@echo ---- 🔧 Re-initialized project ----
 
 lint: .init
-	@echo ---- ⏳ Running linters ----
-	@(poetry run pre-commit run --all-files && echo "---- ✅ Linting passed ----" && exit 0|| echo "---- ❌ Linting failed ----" && exit 1)
+	poetry run ruff --fix di tests
+	poetry run black di tests
+	poetry run mypy di tests
 
 test: .init
 	@echo ---- ⏳ Running tests ----

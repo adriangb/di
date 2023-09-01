@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, List, Optional, TypeVar, overload
+from typing import Any, TypeVar, overload
 
 from di._utils.inspect import get_parameters, get_type
 from di.api.dependencies import (
@@ -53,15 +53,15 @@ class Marker:
     See more in [dependency-markers](https://www.adriangb.com/di/latest/wiring/#dependency-markers).
     """
 
-    call: Optional[DependencyProvider]
-    dependency: Optional[Any]
+    call: DependencyProvider | None
+    dependency: Any | None
     scope: Scope
     use_cache: bool
     wire: bool
 
     def __init__(
         self,
-        call: Optional[DependencyProviderType[Any]] = None,
+        call: DependencyProviderType[Any] | None = None,
         *,
         scope: Scope = None,
         use_cache: bool = True,
@@ -123,17 +123,17 @@ class Dependent(DependentBase[T]):
         marker: the Marker from which this Defendant was constructed. This is included only for introspection purposes.
     """
 
-    call: Optional[DependencyProviderType[T]]
+    call: DependencyProviderType[T] | None
     wire: bool
     scope: Scope
-    marker: Optional[Marker]
+    marker: Marker | None
 
     @overload
     def __init__(
         self,
-        call: Optional[AsyncGeneratorProvider[T]] = ...,
+        call: AsyncGeneratorProvider[T] | None = ...,
         *,
-        marker: Optional[Marker] = ...,
+        marker: Marker | None = ...,
         scope: Scope = ...,
         use_cache: bool = ...,
         wire: bool = ...,
@@ -143,9 +143,9 @@ class Dependent(DependentBase[T]):
     @overload
     def __init__(
         self,
-        call: Optional[CoroutineProvider[T]] = ...,
+        call: CoroutineProvider[T] | None = ...,
         *,
-        marker: Optional[Marker] = ...,
+        marker: Marker | None = ...,
         scope: Scope = ...,
         use_cache: bool = ...,
         wire: bool = ...,
@@ -155,9 +155,9 @@ class Dependent(DependentBase[T]):
     @overload
     def __init__(
         self,
-        call: Optional[GeneratorProvider[T]] = ...,
+        call: GeneratorProvider[T] | None = ...,
         *,
-        marker: Optional[Marker] = ...,
+        marker: Marker | None = ...,
         scope: Scope = ...,
         use_cache: bool = ...,
         wire: bool = ...,
@@ -167,9 +167,9 @@ class Dependent(DependentBase[T]):
     @overload
     def __init__(
         self,
-        call: Optional[CallableProvider[T]] = None,
+        call: CallableProvider[T] | None = None,
         *,
-        marker: Optional[Marker] = ...,
+        marker: Marker | None = ...,
         scope: Scope = ...,
         use_cache: bool = ...,
         wire: bool = ...,
@@ -178,9 +178,9 @@ class Dependent(DependentBase[T]):
 
     def __init__(
         self,
-        call: Optional[DependencyProviderType[T]] = None,
+        call: DependencyProviderType[T] | None = None,
         *,
-        marker: Optional[Marker] = None,
+        marker: Marker | None = None,
         scope: Scope = None,
         use_cache: bool = True,
         wire: bool = True,
@@ -197,11 +197,11 @@ class Dependent(DependentBase[T]):
             return (self.__class__, id(self))
         return (self.__class__, self.call)
 
-    def get_dependencies(self) -> List[DependencyParameter]:
+    def get_dependencies(self) -> list[DependencyParameter]:
         """Collect all of our sub-dependencies as parameters"""
         if self.wire is False or self.call is None:
             return []
-        res: "List[DependencyParameter]" = []
+        res: list[DependencyParameter] = []
         for param in get_parameters(self.call).values():
             sub_dependent: DependentBase[Any]
             if param.kind in _VARIABLE_PARAMETER_KINDS:

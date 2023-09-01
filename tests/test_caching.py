@@ -150,7 +150,6 @@ def test_sharing_within_execution_scope() -> None:
 
 
 def test_dependent_custom_cache_key() -> None:
-
     # we make a dependent that does not care about the scope
     # so a "request" scoped dependency will pick up cache from an "app" scoped one
     class CustomDependent(Dependent[Any]):
