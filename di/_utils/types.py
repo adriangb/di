@@ -24,7 +24,7 @@ class FusedContextManager(Generic[T]):
     __slots__ = ()
 
     def __enter__(self) -> T:
-        ...
+        raise NotImplementedError
 
     def __exit__(
         self,
@@ -32,10 +32,10 @@ class FusedContextManager(Generic[T]):
         exc_value: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> Union[None, bool]:
-        ...
+        raise NotImplementedError
 
     async def __aenter__(self) -> T:
-        ...
+        raise NotImplementedError
 
     async def __aexit__(
         self,
@@ -43,7 +43,7 @@ class FusedContextManager(Generic[T]):
         exc_value: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> Union[None, bool]:
-        ...
+        raise NotImplementedError
 
 
 @dataclass

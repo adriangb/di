@@ -42,5 +42,5 @@ class ScopeMap(Dict[Scope, Dict[KT, VT]]):
         values: List[str] = []
         for scope, mapping in self.items():
             for k, v in mapping.items():
-                values.append(f'{repr(k)}: {repr(v)} @ scope="{scope}"')
+                values.append(f'{k!r}: {v!r} @ scope="{scope}"')
         return "{" + ", ".join(values) + "}"

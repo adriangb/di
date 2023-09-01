@@ -74,7 +74,6 @@ def test_duplicate_global_scope(outer: str, inner: str):
 
 
 def test_nested_caching():
-
     holder: typing.List[str] = ["A", "B", "C"]
 
     def A() -> str:
@@ -145,7 +144,6 @@ def test_nested_caching():
 
 
 def test_nested_lifecycle():
-
     state: typing.Dict[str, str] = dict.fromkeys(("A", "B", "C"), "uninitialized")
 
     def A() -> typing.Generator[None, None, None]:

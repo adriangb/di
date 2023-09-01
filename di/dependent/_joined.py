@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Iterable, List, TypeVar
+from typing import Any, Iterable, TypeVar
 
 from di.api.dependencies import CacheKey, DependencyParameter, DependentBase
 
@@ -24,7 +24,7 @@ class JoinedDependent(DependentBase[T]):
         self.scope = dependent.scope
         self.use_cache = dependent.use_cache
 
-    def get_dependencies(self) -> List[DependencyParameter]:
+    def get_dependencies(self) -> list[DependencyParameter]:
         """Get the dependencies of our main dependent and all siblings"""
         return [
             *self.dependent.get_dependencies(),
@@ -33,7 +33,7 @@ class JoinedDependent(DependentBase[T]):
 
     @property
     def cache_key(self) -> CacheKey:
-        return (self.dependent.cache_key, tuple((s.cache_key for s in self.siblings)))
+        return (self.dependent.cache_key, tuple(s.cache_key for s in self.siblings))
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(dependent={self.dependent}, siblings={self.siblings})"
