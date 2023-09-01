@@ -2,57 +2,57 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://www.adriangb.com/di/0.75.3/</loc>
-         <lastmod>2023-03-25</lastmod>
+         <lastmod>2023-09-01</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://www.adriangb.com/di/0.75.3/api/</loc>
-         <lastmod>2023-03-25</lastmod>
+         <lastmod>2023-09-01</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://www.adriangb.com/di/0.75.3/architecture/</loc>
-         <lastmod>2023-03-25</lastmod>
+         <lastmod>2023-09-01</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://www.adriangb.com/di/0.75.3/binds/</loc>
-         <lastmod>2023-03-25</lastmod>
+         <lastmod>2023-09-01</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://www.adriangb.com/di/0.75.3/cache/</loc>
-         <lastmod>2023-03-25</lastmod>
+         <lastmod>2023-09-01</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://www.adriangb.com/di/0.75.3/contributing/</loc>
-         <lastmod>2023-03-25</lastmod>
+         <lastmod>2023-09-01</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://www.adriangb.com/di/0.75.3/dependents/</loc>
-         <lastmod>2023-03-25</lastmod>
+         <lastmod>2023-09-01</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://www.adriangb.com/di/0.75.3/examples/</loc>
-         <lastmod>2023-03-25</lastmod>
+         <lastmod>2023-09-01</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://www.adriangb.com/di/0.75.3/scopes/</loc>
-         <lastmod>2023-03-25</lastmod>
+         <lastmod>2023-09-01</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://www.adriangb.com/di/0.75.3/solving/</loc>
-         <lastmod>2023-03-25</lastmod>
+         <lastmod>2023-09-01</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://www.adriangb.com/di/0.75.3/wiring/</loc>
-         <lastmod>2023-03-25</lastmod>
+         <lastmod>2023-09-01</lastmod>
          <changefreq>daily</changefreq>
     </url>
 </urlset>
