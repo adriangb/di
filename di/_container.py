@@ -8,18 +8,12 @@ from types import TracebackType
 from typing import (
     Any,
     ContextManager,
-    Dict,
     Generator,
     Generic,
     Iterable,
-    List,
     Mapping,
-    Optional,
     Sequence,
-    Tuple,
-    Type,
     TypeVar,
-    Union,
     cast,
 )
 from warnings import warn
@@ -71,8 +65,8 @@ else:  # pragma: no cover
 
 class BindHook(Protocol):
     def __call__(
-        self, param: Optional[inspect.Parameter], dependent: DependentBase[Any]
-    ) -> Optional[DependentBase[Any]]:  # pragma: no cover
+        self, param: inspect.Parameter | None, dependent: DependentBase[Any]
+    ) -> DependentBase[Any] | None:  # pragma: no cover
         ...
 
 
@@ -85,8 +79,8 @@ def bind_by_type(
     """Hook to substitute the matched dependency"""
 
     def hook(
-        param: Optional[inspect.Parameter], dependent: DependentBase[Any]
-    ) -> Optional[DependentBase[Any]]:
+        param: inspect.Parameter | None, dependent: DependentBase[Any]
+    ) -> DependentBase[Any] | None:
         if dependent.call is dependency:
             return provider
         if param is None:
@@ -111,13 +105,13 @@ class ScopeState:
 
     def __init__(
         self,
-        cached_values: Optional[ScopeMap[CacheKey, Any]] = None,
-        stacks: Optional[Dict[Scope, Union[AsyncExitStack, ExitStack]]] = None,
+        cached_values: ScopeMap[CacheKey, Any] | None = None,
+        stacks: dict[Scope, AsyncExitStack | ExitStack] | None = None,
     ) -> None:
         self.cached_values = cached_values or ScopeMap()
         self.stacks = stacks or {}
 
-    def enter_scope(self, scope: Scope) -> "FusedContextManager[ScopeState]":
+    def enter_scope(self, scope: Scope) -> FusedContextManager[ScopeState]:
         """Enter a scope and get back a new ScopeState object that you can use to execute dependencies."""
         new = ScopeState(
             cached_values=ScopeMap(self.cached_values.copy()),
@@ -128,7 +122,7 @@ class ScopeState:
 
 class ScopeContext(FusedContextManager[ScopeState]):
     __slots__ = ("state", "scope", "stack")
-    stack: Union[AsyncExitStack, ExitStack]
+    stack: AsyncExitStack | ExitStack
 
     def __init__(self, state: ScopeState, scope: Scope) -> None:
         self.state = state
@@ -141,10 +135,10 @@ class ScopeContext(FusedContextManager[ScopeState]):
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
-    ) -> Union[None, bool]:
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None | bool:
         return self.stack.__exit__(exc_type, exc_value, traceback)  # type: ignore[union-attr,no-any-return]
 
     async def __aenter__(self) -> ScopeState:
@@ -154,16 +148,16 @@ class ScopeContext(FusedContextManager[ScopeState]):
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
-    ) -> Union[None, bool]:
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None | bool:
         return await self.stack.__aexit__(exc_type, exc_value, traceback)  # type: ignore[union-attr,no-any-return]
 
 
 class TaskGraph:
     __slots__ = ("_uncopied_ts", "_copied_ts", "_static_order")
-    _copied_ts: Optional[TopologicalSorter[Task]]
+    _copied_ts: TopologicalSorter[Task] | None
 
     def __init__(
         self,
@@ -193,7 +187,7 @@ class TaskGraph:
         return self._static_order
 
 
-EMPTY_VALUES: Dict[DependencyProvider, Any] = {}
+EMPTY_VALUES: dict[DependencyProvider, Any] = {}
 
 
 T = TypeVar("T")
@@ -235,7 +229,7 @@ def get_params(
     dep: DependentBase[Any],
     binds: Iterable[BindHook],
     path: Iterable[DependentBase[Any]],
-) -> List[DependencyParameter]:
+) -> list[DependencyParameter]:
     """Get Dependents for parameters and resolve binds"""
     params = dep.get_dependencies().copy()
     for idx, param in enumerate(params):
@@ -283,17 +277,16 @@ def check_task_scope_validity(
             )
 
 
-def build_task(
+def build_task(  # noqa: C901
     dependency: DependentBase[Any],
     binds: Iterable[BindHook],
-    tasks: Dict[CacheKey, Task],
-    task_dag: Dict[Task, List[Task]],
-    dependent_dag: Dict[DependentBase[Any], List[DependencyParameter]],
-    path: Dict[DependentBase[Any], Any],
+    tasks: dict[CacheKey, Task],
+    task_dag: dict[Task, list[Task]],
+    dependent_dag: dict[DependentBase[Any], list[DependencyParameter]],
+    path: dict[DependentBase[Any], Any],
     scope_idxs: Mapping[Scope, int],
-    scope_resolver: Optional[ScopeResolver],
+    scope_resolver: ScopeResolver | None,
 ) -> Task:
-
     call = dependency.call
     assert call is not None
     scope = dependency.scope
@@ -306,10 +299,10 @@ def build_task(
 
     params = get_params(dependency, binds, path)
 
-    positional_parameters: "List[Task]" = []
-    keyword_parameters: "Dict[str, Task]" = {}
-    subtasks: "List[Task]" = []
-    dep_params: "List[DependencyParameter]" = []
+    positional_parameters: list[Task] = []
+    keyword_parameters: dict[str, Task] = {}
+    subtasks: list[Task] = []
+    dep_params: list[DependencyParameter] = []
 
     path[dependency] = None  # any value will do, we only use the keys
 
@@ -450,7 +443,7 @@ def solve(
     dependency: DependentBase[T],
     scopes: Sequence[Scope],
     binds: Iterable[BindHook],
-    scope_resolver: Optional[ScopeResolver],
+    scope_resolver: ScopeResolver | None,
 ) -> SolvedDependent[T]:
     """Solve a dependency.
 
@@ -465,9 +458,9 @@ def solve(
     if dependency.call is None:  # pragma: no cover
         raise ValueError("DependentBase.call must not be None")
 
-    task_dag: "Dict[Task, List[Task]]" = {}
-    dep_dag: "Dict[DependentBase[Any], List[DependencyParameter]]" = {}
-    scope_idxs = dict((scope, idx) for idx, scope in enumerate(scopes))
+    task_dag: dict[Task, list[Task]] = {}
+    dep_dag: dict[DependentBase[Any], list[DependencyParameter]] = {}
+    scope_idxs = {scope: idx for idx, scope in enumerate(scopes)}
 
     # this is implemented recursively
     # which will crash on DAGs with depth > 1000 (default recursion limit)
@@ -526,7 +519,7 @@ class SolvedDependent(Generic[DependencyType]):
         root_task: Task,
         topological_sorter: TopologicalSorter[Task],
         static_order: Iterable[Task],
-        empty_results: List[Any],
+        empty_results: list[Any],
     ):
         self.dependency = dependency
         self.dag = dag
@@ -537,10 +530,10 @@ class SolvedDependent(Generic[DependencyType]):
 
     def _prepare_execution(
         self,
-        stacks: Mapping[Scope, Union[AsyncExitStack, ExitStack]],
+        stacks: Mapping[Scope, AsyncExitStack | ExitStack],
         cache: ScopeMap[CacheKey, Any],
-        values: Optional[Mapping[DependencyProvider, Any]] = None,
-    ) -> Tuple[List[Any], SupportsTaskGraph, ExecutionState, Task,]:
+        values: Mapping[DependencyProvider, Any] | None = None,
+    ) -> tuple[list[Any], SupportsTaskGraph, ExecutionState, Task,]:
         results = self._empty_results.copy()
         if values is None:
             values = EMPTY_VALUES
@@ -565,7 +558,7 @@ class SolvedDependent(Generic[DependencyType]):
         self,
         executor: SupportsSyncExecutor,
         state: ScopeState,
-        values: Optional[Mapping[DependencyProvider, Any]] = None,
+        values: Mapping[DependencyProvider, Any] | None = None,
     ) -> DependencyType:
         """Execute an already solved dependency.
 
@@ -584,7 +577,7 @@ class SolvedDependent(Generic[DependencyType]):
         self,
         executor: SupportsAsyncExecutor,
         state: ScopeState,
-        values: Optional[Mapping[DependencyProvider, Any]] = None,
+        values: Mapping[DependencyProvider, Any] | None = None,
     ) -> DependencyType:
         """Execute an already solved dependency."""
         results, ts, execution_state, root_task = self._prepare_execution(
@@ -608,7 +601,7 @@ class Container:
 
     __slots__ = ("_bind_hooks",)
 
-    _bind_hooks: List[BindHook]
+    _bind_hooks: list[BindHook]
 
     def __init__(self) -> None:
         self._bind_hooks = []
@@ -626,7 +619,7 @@ class Container:
         self._bind_hooks.append(hook)
 
         @contextmanager
-        def unbind() -> "Generator[None, None, None]":
+        def unbind() -> Generator[None, None, None]:
             try:
                 yield
             finally:
@@ -638,7 +631,7 @@ class Container:
         self,
         dependency: DependentBase[DependencyType],
         scopes: Sequence[Scope],
-        scope_resolver: Optional[ScopeResolver] = None,
+        scope_resolver: ScopeResolver | None = None,
     ) -> SolvedDependent[DependencyType]:
         """Build the dependency graph.
 
@@ -649,7 +642,7 @@ class Container:
         return solve(dependency, scopes, self._bind_hooks, scope_resolver)
 
     def enter_scope(
-        self, scope: Scope, state: Optional[ScopeState] = None
+        self, scope: Scope, state: ScopeState | None = None
     ) -> FusedContextManager[ScopeState]:
         state = state or ScopeState()
         return state.enter_scope(scope)
@@ -660,7 +653,7 @@ class Container:
         executor: SupportsSyncExecutor,
         *,
         state: ScopeState,
-        values: Optional[Mapping[DependencyProvider, Any]] = None,
+        values: Mapping[DependencyProvider, Any] | None = None,
     ) -> DependencyType:
         """Execute an already solved dependency.
         This method is synchronous and uses a synchronous executor,
@@ -681,7 +674,7 @@ class Container:
         executor: SupportsAsyncExecutor,
         *,
         state: ScopeState,
-        values: Optional[Mapping[DependencyProvider, Any]] = None,
+        values: Mapping[DependencyProvider, Any] | None = None,
     ) -> DependencyType:
         """Execute an already solved dependency."""
         warn(
