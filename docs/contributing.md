@@ -82,7 +82,7 @@ $ make docs-serve
 
 </div>
 
-All the code fragments in the docs are stored as `.py` files in `docs/src`.
+All the code fragments in the docs are stored as `.py` files in `docs_src/`.
 These code fragments are tested as part of unit tests to ensure that the documentation stays up to date with the API.
 
 ## Releases

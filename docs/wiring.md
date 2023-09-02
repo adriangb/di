@@ -14,7 +14,7 @@ There are actually several different mechanisms available:
 
 ## Autowiring
 
-Autowiring is available when the parameter's type annotation is a well-behaved type/class. Well behaved in this case means just means that it's parameters can be understood by `di`, for example that they are type annotated and are uniquely identifiable (`param: int` won't work properly).
+Autowiring is available when the parameter's type annotation is a well-behaved type/class. Well behaved in this case just means that it's parameters can be understood by `di`, for example that they are type annotated and are uniquely identifiable (`param: int` won't work properly).
 
 Here is an example showing auto-wiring in action.
 
