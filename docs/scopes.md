@@ -25,7 +25,7 @@ When a scope exits, all dependencies linked to it are destroyed (if they have te
 This means that dependencies scoped to an outer scope cannot depend on dependencies scoped to an inner scope:
 
 ```Python
---8<-- "docs_src/invalid_scope_dependance.py"
+--8<-- "docs_src/invalid_scope_dependence.py"
 ```
 
 This example will fail with `di.exceptions.ScopeViolationError` because an `DBConnection` is scoped to `"app"` so it cannot depend on `Request` which is scoped to `"request"`.

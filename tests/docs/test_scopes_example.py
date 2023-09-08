@@ -4,7 +4,7 @@ from di.exceptions import ScopeViolationError
 from docs_src import default_scope, invalid_scope_dependence
 
 
-def test_invalid_scope_dependance() -> None:
+def test_invalid_scope_dependence() -> None:
     with pytest.raises(ScopeViolationError):
         invalid_scope_dependence.framework()
 
