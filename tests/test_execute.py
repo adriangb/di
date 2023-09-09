@@ -152,16 +152,16 @@ class AsyncGenCallableClsSlow:
 
 
 @pytest.mark.parametrize(
-    "dep1,sync1",
+    "dep1",
     [
-        (sync_callable_func_slow, True),
-        (async_callable_func_slow, False),
-        (sync_gen_func_slow, True),
-        (async_gen_func_slow, False),
-        (SyncCallableClsSlow(), True),
-        (AsyncCallableClsSlow(), False),
-        (SyncGenCallableClsSlow(), True),
-        (AsyncGenCallableClsSlow(), False),
+        sync_callable_func_slow,
+        async_callable_func_slow,
+        sync_gen_func_slow,
+        async_gen_func_slow,
+        SyncCallableClsSlow(),
+        AsyncCallableClsSlow(),
+        SyncGenCallableClsSlow(),
+        AsyncGenCallableClsSlow(),
     ],
     ids=[
         "sync_callable_func",
@@ -175,16 +175,16 @@ class AsyncGenCallableClsSlow:
     ],
 )
 @pytest.mark.parametrize(
-    "dep2,sync2",
+    "dep2",
     [
-        (sync_callable_func_slow, True),
-        (async_callable_func_slow, False),
-        (sync_gen_func_slow, True),
-        (async_gen_func_slow, False),
-        (SyncCallableClsSlow(), True),
-        (AsyncCallableClsSlow(), False),
-        (SyncGenCallableClsSlow(), True),
-        (AsyncGenCallableClsSlow(), False),
+        sync_callable_func_slow,
+        async_callable_func_slow,
+        sync_gen_func_slow,
+        async_gen_func_slow,
+        SyncCallableClsSlow(),
+        AsyncCallableClsSlow(),
+        SyncGenCallableClsSlow(),
+        AsyncGenCallableClsSlow(),
     ],
     ids=[
         "sync_callable_func",
@@ -198,7 +198,7 @@ class AsyncGenCallableClsSlow:
     ],
 )
 @pytest.mark.anyio
-async def test_concurrency_async(dep1: Any, sync1: bool, dep2: Any, sync2: bool):
+async def test_concurrency_async(dep1: Any, dep2: Any):
     container = Container()
 
     synchronizer = Synchronizer([anyio.Event(), anyio.Event()], anyio.Event())
