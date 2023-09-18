@@ -1,5 +1,5 @@
 """Black box tests that check the high level API but in practice are written to fully
-test all of the execution paths in di/_utils/task.py
+test all of the execution paths in di/_task.py
 """
 import functools
 from typing import Any, AsyncGenerator, Callable, Generator
@@ -37,6 +37,16 @@ class AsyncCallableCls:
         return 1
 
 
+class SyncGenCallableCls:
+    def __call__(self) -> Generator[int, None, None]:
+        yield 1
+
+
+class AsyncGenCallableCls:
+    async def __call__(self) -> AsyncGenerator[int, None]:
+        yield 1
+
+
 def no_wrapper(func: Callable[..., Any]) -> Callable[..., Any]:
     return func
 
@@ -62,6 +72,8 @@ def wrap_in_wraps(func: Callable[..., Any]) -> Callable[..., Any]:
         async_gen_func,
         SyncCallableCls(),
         AsyncCallableCls(),
+        SyncGenCallableCls(),
+        AsyncGenCallableCls(),
     ],
     ids=[
         "sync_callable_func",
@@ -70,6 +82,8 @@ def wrap_in_wraps(func: Callable[..., Any]) -> Callable[..., Any]:
         "async_gen_func",
         "SyncCallableCls",
         "AsyncCallableCls",
+        "SyncGenCallableCls",
+        "AsyncGenCallableCls",
     ],
 )
 @pytest.mark.parametrize(
