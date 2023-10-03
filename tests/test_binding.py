@@ -1,4 +1,3 @@
-import sys
 from abc import abstractmethod
 from typing import List, Protocol, TypeVar
 
@@ -52,10 +51,6 @@ def test_bind():
 T_co = TypeVar("T_co", covariant=True)
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 10),
-    reason="TypeError: Parameters to generic types must be types.",
-)
 def test_bind_generic():
     container = Container()
     executor = SyncExecutor()
@@ -84,8 +79,10 @@ def test_bind_generic():
 
     # ===========================================
     # clean `_tp_cache`
-    lru_cache_size = 128
-    _ = [GetterInterface[i] for i in range(lru_cache_size)]  # type: ignore[valid-type]
+    from typing import _cleanups as cache_cleanups  # type: ignore[attr-defined]
+
+    for cache_cleanup in cache_cleanups:
+        cache_cleanup()
     # ===========================================
 
     class IntService:
