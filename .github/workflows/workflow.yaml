@@ -44,8 +44,6 @@ jobs:
             os: ubuntu-latest
           - python: "3.11"
             os: ubuntu-latest
-          - python: "3.12"
-            os: ubuntu-latest
           # test OSs
           - python: "3.x"
             os: macos-latest
