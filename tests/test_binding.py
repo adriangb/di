@@ -1,3 +1,4 @@
+import sys
 from abc import abstractmethod
 from typing import List, Protocol, TypeVar
 
@@ -51,6 +52,10 @@ def test_bind():
 T_co = TypeVar("T_co", covariant=True)
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 10),
+    reason="TypeError: Parameters to generic types must be types.",
+)
 def test_bind_generic():
     container = Container()
     executor = SyncExecutor()
