@@ -1,5 +1,6 @@
+import sys
 from abc import abstractmethod
-from typing import List, Protocol, TypeVar
+from typing import List, TypeVar
 
 import pytest
 
@@ -7,6 +8,11 @@ from di import Container, bind_by_type
 from di.dependent import Dependent, Marker
 from di.executors import SyncExecutor
 from di.typing import Annotated
+
+if sys.version_info < (3, 8):  # pragma: no cover
+    from typing_extensions import Protocol
+else:  # pragma: no cover
+    from typing import Protocol
 
 
 class Request:
