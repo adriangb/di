@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import inspect
-import sys
 import typing
 from contextlib import AsyncExitStack, ExitStack, contextmanager
 from types import TracebackType
@@ -12,6 +11,7 @@ from typing import (
     Generic,
     Iterable,
     Mapping,
+    Protocol,
     Sequence,
     TypeVar,
     cast,
@@ -56,11 +56,6 @@ from di.exceptions import (
     UnknownScopeError,
     WiringError,
 )
-
-if sys.version_info < (3, 8):  # pragma: no cover
-    from typing_extensions import Protocol
-else:  # pragma: no cover
-    from typing import Protocol
 
 
 class BindHook(Protocol):

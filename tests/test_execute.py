@@ -1,13 +1,7 @@
 import contextvars
 import functools
-import sys
 from dataclasses import dataclass
-from typing import Any, AsyncGenerator, Generator, List
-
-if sys.version_info < (3, 8):
-    from typing_extensions import Literal
-else:
-    from typing import Literal
+from typing import Any, AsyncGenerator, Generator, List, Literal
 
 import anyio
 import pytest
