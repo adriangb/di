@@ -1,10 +1,10 @@
 import sys
-from typing import Generator, Type, TypeVar
+from typing import Generator, Type, TypeVar, get_args, get_origin
 
 if sys.version_info < (3, 9):
-    from typing_extensions import Annotated, get_args, get_origin
+    from typing_extensions import Annotated
 else:
-    from typing import Annotated, get_args, get_origin
+    from typing import Annotated
 
 from di._utils.inspect import get_parameters
 
