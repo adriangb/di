@@ -34,8 +34,6 @@ jobs:
       matrix:
         include:
           # test python versions
-          - python: "3.7"
-            os: ubuntu-latest
           - python: "3.8"
             os: ubuntu-latest
           - python: "3.9"
@@ -43,6 +41,8 @@ jobs:
           - python: "3.10"
             os: ubuntu-latest
           - python: "3.11"
+            os: ubuntu-latest
+          - python: "3.12"
             os: ubuntu-latest
           # test OSs
           - python: "3.x"
