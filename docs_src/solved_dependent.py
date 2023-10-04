@@ -20,7 +20,7 @@ def web_framework():
 
     dependencies = solved.dag.keys() - {solved.dependency}
     assert all(isinstance(item, Dependent) for item in dependencies)
-    assert set(dependent.call for dependent in dependencies) == {Request, MyClass}
+    assert {dependent.call for dependent in dependencies} == {Request, MyClass}
 
 
 # User code
