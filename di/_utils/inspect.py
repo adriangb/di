@@ -3,9 +3,9 @@ import inspect
 import sys
 from typing import Any, Callable, Dict, Mapping, Optional, Union, get_args, get_origin
 
-if sys.version_info < (3, 9):
+if sys.version_info < (3, 9):  # pragma: no cover
     from typing_extensions import Annotated, get_type_hints
-else:
+else:  # pragma: no cover
     from typing import Annotated, get_type_hints
 
 from di._utils.types import Some

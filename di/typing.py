@@ -1,9 +1,9 @@
 import sys
 from typing import Generator, Type, TypeVar, get_args, get_origin
 
-if sys.version_info < (3, 9):
+if sys.version_info < (3, 9):  # pragma: no cover
     from typing_extensions import Annotated
-else:
+else:  # pragma: no cover
     from typing import Annotated
 
 from di._utils.inspect import get_parameters
