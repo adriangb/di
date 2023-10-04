@@ -8,7 +8,7 @@ else:
 
 from di._utils.inspect import get_parameters
 
-__all__ = ("get_parameters", "get_markers_from_annotation")
+__all__ = ("Annotated", "get_parameters", "get_markers_from_annotation")
 
 
 T = TypeVar("T")
