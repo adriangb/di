@@ -102,7 +102,6 @@ extend-ignore = [
     'E501',
 ]
 isort = { known-first-party = ['di', 'tests'] }
-target-version = "py37"
 
 [tool.ruff.per-file-ignores]
 "docs_src/*" = ['T201']  # `print` found
