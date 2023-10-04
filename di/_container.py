@@ -81,7 +81,7 @@ def bind_by_type(
     def hook(
         param: inspect.Parameter | None, dependent: DependentBase[Any]
     ) -> DependentBase[Any] | None:
-        if dependent.call is dependency:
+        if dependent.call == dependency:
             return provider
         if param is None:
             return None
@@ -89,7 +89,7 @@ def bind_by_type(
         if type_annotation_option is None:
             return None
         type_annotation = type_annotation_option.value
-        if type_annotation is dependency:
+        if type_annotation == dependency:
             return provider
         if covariant:
             if inspect.isclass(type_annotation) and inspect.isclass(dependency):
