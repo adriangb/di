@@ -27,8 +27,8 @@ init: .clean .init
 	@echo ---- 🔧 Re-initialized project ----
 
 lint: .init
-	poetry run ruff --fix di tests
-	poetry run black di tests
+	poetry run ruff --fix di tests docs_src
+	poetry run black di tests docs_src
 	poetry run mypy di tests
 
 test: .init
