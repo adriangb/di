@@ -99,12 +99,23 @@ jobs:
           OLD_VERSION=$(poetry version -s)
           python -c "from packaging import version;assert version.parse(\"${NEW_VERSION}\") > version.parse(\"${OLD_VERSION}\"), \"❌ Bad version bump detected: you must bump the version in pyproject.toml\""
           python -c "print(\"✅ Version will be bumped from ${OLD_VERSION} to ${NEW_VERSION}\")"
+  test-docs-build:
+    name: Run Test Docs Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+      - name: Install and configure Poetry
+        uses: snok/install-poetry@v1.3.1
+      - name: Build Docs
+        run: make docs-build
   docs:
     if: github.ref == 'refs/heads/main'
     concurrency: docs-branch
     name: 🚀 Deploy Docs 📄
     runs-on: ubuntu-latest
-    needs: ["test", "lint"]
+    needs: ["test", "lint", "test-docs-build"]
     steps:
       - uses: actions/checkout@v2
         with:
@@ -122,7 +133,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     name: 🚀 PyPi Release 📦
     runs-on: ubuntu-latest
-    needs: ["test", "lint"]
+    needs: ["test", "lint", "test-docs-build"]
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python

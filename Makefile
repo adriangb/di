@@ -40,6 +40,10 @@ test-mutation: .init
 	@poetry run python -m pip install mutmut
 	@(poetry run pytest --cov && poetry run mutmut run --use-coverage && echo "---- ✅ Passed ----" && exit 0 || echo "---- ❌ Failed ----" && exit 1)
 
+docs-build: .init
+	@echo ---- 🏗️ Building docs ----
+	@poetry run mkdocs build
+
 docs-serve: .init
 	@echo ---- 📝 Serving docs ----
 	@poetry run mkdocs serve --dev-addr localhost:8001
