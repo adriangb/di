@@ -1,13 +1,6 @@
-import sys
 from dataclasses import dataclass
 from types import TracebackType
-from typing import Generic, Optional, Type, TypeVar, Union
-
-if sys.version_info < (3, 8):  # pragma: no cover
-    from typing_extensions import Protocol
-else:  # pragma: no cover
-    from typing import Protocol
-
+from typing import Generic, Optional, Protocol, Type, TypeVar, Union
 
 T = TypeVar("T")
 

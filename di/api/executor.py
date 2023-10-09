@@ -1,12 +1,6 @@
 from __future__ import annotations
 
-import sys
-from typing import Iterable, Union
-
-if sys.version_info < (3, 8):
-    from typing_extensions import Protocol
-else:
-    from typing import Protocol
+from typing import Iterable, Protocol, Union
 
 from di._task import AsyncTask, ExecutionState, SyncTask
 

@@ -17,9 +17,9 @@ from typing import (
     overload,
 )
 
-if sys.version_info < (3, 10):
+if sys.version_info < (3, 10):  # pragma: no cover
     from typing_extensions import ParamSpec
-else:
+else:  # pragma: no cover
     from typing import ParamSpec
 
 import anyio

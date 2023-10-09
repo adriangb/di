@@ -1,14 +1,14 @@
 import sys
 from typing import Generator, Type, TypeVar
 
-if sys.version_info < (3, 9):
+if sys.version_info < (3, 9):  # pragma: no cover
     from typing_extensions import Annotated, get_args, get_origin
-else:
+else:  # pragma: no cover
     from typing import Annotated, get_args, get_origin
 
 from di._utils.inspect import get_parameters
 
-__all__ = ("get_parameters", "get_markers_from_annotation")
+__all__ = ("Annotated", "get_parameters", "get_markers_from_annotation")
 
 
 T = TypeVar("T")
